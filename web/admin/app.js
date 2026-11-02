@@ -1096,7 +1096,8 @@
   // ================================================================ STOCK + PRODUCTS
   VIEWS.stock = async (view) => {
     await loadStock();
-    const [blanks, dtf] = await Promise.all([q(sb.from('blank_stock').select('*')).catch(() => []), q(sb.from('dtf_stock').select('*')).catch(() => [])]);
+    const [blanks, dtf, gone] = await Promise.all([q(sb.from('blank_stock').select('*')).catch(() => []), q(sb.from('dtf_stock').select('*')).catch(() => []),
+      q(sb.from('products').select('id,name,deleted_at,deleted_by').not('deleted_at', 'is', null).order('deleted_at', { ascending: false })).catch(() => [])]);
     const lim = num(state.settings.low_stock_alert) || 5;
     const groups = [...new Map(state.stock.map((v) => [v.product_id, v])).values()].sort((a, b) => a.product_name.localeCompare(b.product_name));
     const totalPieces = state.stock.filter((v) => v.active).reduce((t, v) => t + Math.max(0, v.stock), 0);
@@ -1117,13 +1118,13 @@
             return b ? `<td><span class="cell ${b.qty <= 0 ? 'zero' : b.qty <= lim ? 'low' : 'ok'}" style="display:grid;place-items:center">${b.qty}</span></td>` : '<td></td>';
           }).join('')}</tr>`).join('')}</tbody></table>`;
         })() : '<div class="muted" style="margin-top:8px">Not tracking blanks yet. Add your first purchase of plain black tees.</div>'}
-        <div class="actions"><button class="btn small" data-blank="purchase">+ Bought blanks</button><button class="btn small outline" data-blank="damaged" style="color:var(--pink)">Damaged blanks</button></div>
+        <div class="actions"><button class="btn small" data-blank="purchase">+ Bought blanks</button><button class="btn small outline" data-dmg="blank" style="color:var(--pink)">Damaged blanks</button></div>
       </div>
       <div class="card blanks-card">
         <div class="row"><div><b>DTF prints (ready to press)</b><div class="muted">${dtf.reduce((t, d) => t + Math.max(0, d.qty), 0)} prints · used automatically when a batch starts printing</div></div></div>
         ${dtf.length ? dtf.map((d) => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(d.name)}<div class="muted">${d.bought || 0} bought · ${d.used || 0} used${d.cost_per_print ? ` · ${esc(inr(d.cost_per_print))}/print` : ''}</div></span>
           <b class="${d.qty <= lim ? 'neg' : 'pos'}">${d.qty}</b></div>`).join('') : '<div class="muted" style="margin-top:8px">Not tracking DTF prints yet.</div>'}
-        <div class="actions"><button class="btn small" data-dtf="purchase">+ Bought DTF prints</button><button class="btn small outline" data-dtf="damaged" style="color:var(--pink)">Damaged prints</button></div>
+        <div class="actions"><button class="btn small" data-dtf="purchase">+ Bought DTF prints</button><button class="btn small outline" data-dmg="dtf" style="color:var(--pink)">Damaged prints</button></div>
       </div>
       <h2>Printed tees (ready to sell)</h2>
       ${groups.length ? groups.map((g) => {
@@ -1153,8 +1154,16 @@
             ${isPartner() && g.cost_price !== null ? `<span class="pill" style="align-self:center">Cost ${esc(inr(g.cost_price))} · margin ${Number(g.price) ? Math.round((1 - g.cost_price / g.price) * 100) : 0}%</span>` : ''}
           </div>
         </div>`;
-      }).join('') : '<div class="empty">No products yet. Add your first tee.</div>'}`;
+      }).join('') : '<div class="empty">No products yet. Add your first tee.</div>'}
+      <button class="btn block outline" data-dmg="tee" style="color:var(--pink)">Report damaged printed tees</button>
+      ${gone.length ? `<details class="card" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Deleted products (${gone.length})</summary>
+        ${gone.map((p) => `<div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span>${esc(p.name)}<div class="muted">deleted ${esc(day(p.deleted_at))} · ${esc(memberName(p.deleted_by))}</div></span>
+          ${isPartner() ? `<button class="btn small outline" data-restore="${p.id}">Restore</button>` : ''}</div>`).join('')}</details>` : ''}`;
 
+    view.querySelectorAll('[data-dmg]').forEach((b) => { b.onclick = () => reportDamage(b.dataset.dmg, () => VIEWS.stock(view)); });
+    view.querySelectorAll('[data-restore]').forEach((b) => {
+      b.onclick = async () => { try { const n = await q(sb.rpc('restore_product', { p_id: Number(b.dataset.restore) })); toast(`${n} is back as a draft`); await loadStock(); VIEWS.stock(view); } catch (e) { toast(errText(e), true); } };
+    });
     view.querySelector('#newProd').onclick = () => openProductForm();
     view.querySelectorAll('[data-dtf]').forEach((b) => {
       b.onclick = async () => {
@@ -1228,7 +1237,7 @@
     body.querySelectorAll('[data-q]').forEach((b) => { b.onclick = () => add(Number(b.dataset.q)); });
     body.querySelector('#qAdd').onclick = () => { const n = Number(body.querySelector('#qCustom').value); if (n > 0) add(n); else toast('Enter a number', true); };
     q(sb.from('stock_history').select('*').eq('variant_id', vid).order('id', { ascending: false }).limit(50)).then((h) => {
-      const RS = { opening: 'Opening stock', production: 'Printed / added', sale: 'Sold', cancel: 'Order cancelled', rto: 'RTO back', return: 'Returned', replacement_out: 'Exchange sent', writeoff: 'Written off' };
+      const RS = { opening: 'Opening stock', production: 'Printed / added', sale: 'Sold', cancel: 'Order cancelled', rto: 'RTO back', return: 'Returned', replacement_out: 'Exchange sent', writeoff: 'Written off', damaged: 'Damaged (vendor claim)', vendor_replace: 'Vendor replaced', damage_undo: 'Damage claim cancelled' };
       body.querySelector('#qHist').innerHTML = h.length ? h.map((x) => `<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc(RS[x.reason] || x.reason)}${x.order_no ? ` · ${esc(x.order_no)}` : ''}${x.note ? ` · ${esc(x.note)}` : ''}
         <div class="muted">${esc(when(x.at))}${x.by_name ? ` · ${esc(x.by_name)}` : ''}</div></span><b class="${x.qty > 0 ? 'pos' : 'neg'}">${x.qty > 0 ? '+' : ''}${x.qty}</b></div>`).join('') : '<div class="muted">No movement yet.</div>';
     }).catch(() => {});
@@ -1302,7 +1311,16 @@
         </div>` : ''}
         <label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" id="pFeat" style="width:auto" ${prod && prod.featured ? 'checked' : ''}> Feature at the top of the shop</label>
         ${prod ? `<label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" id="pActive" style="width:auto" ${prod.active ? 'checked' : ''}> Show in the shop</label>` : ''}
-        <button class="btn block" id="pSave">${prod ? 'Save changes' : isPartner() ? 'Save and publish' : 'Save draft'}</button>`);
+        <button class="btn block" id="pSave">${prod ? 'Save changes' : isPartner() ? 'Save and publish' : 'Save draft'}</button>
+        ${prod && isPartner() ? '<button class="btn block outline" id="pDel" style="color:var(--pink);border-color:rgba(255,79,154,.4);margin-top:10px">Delete this product</button>' : ''}`);
+      const del = body.querySelector('#pDel');
+      if (del) del.onclick = async () => {
+        const left = existing.reduce((t, v) => t + Math.max(0, v.stock), 0);
+        const v = await ask({ title: `Delete ${prod.name}?`, html: `<p class="muted">It disappears from the shop, stock and billing. Past orders, reports and books keep it. You can restore it later from the bottom of the Stock screen.</p>${left ? `<div class="disc-warn">${left} pieces are still in stock. They will be hidden too.</div>` : ''}`,
+          fields: [{ name: 'why', label: 'Why? (optional)', placeholder: 'e.g. Added by mistake / design discontinued' }], ok: 'Delete', okClass: 'bad' });
+        if (!v) return;
+        try { await q(sb.rpc('delete_product', { p_id: prod.id, p_reason: v.why || null })); closePanel(); toast(`${prod.name} deleted`); await loadStock(); state.tab = 'stock'; render(); } catch (err) { toast(errText(err), true); }
+      };
 
       const offHint = body.querySelector('#offHint');
       const updOff = () => {
@@ -1971,7 +1989,7 @@
   // ================================================================ PHASE 3 · helpers
   const HR_LABEL = {
     shift_start: 'Shift starts', shift_end: 'Shift ends', grace_min: 'Grace (minutes late allowed)', lates_per_half_day: 'Late marks = half day',
-    weekly_off: 'Weekly off', paid_leaves_per_month: 'Paid leaves per month', ot_after: 'Overtime after', ot_multiplier: 'Overtime pay × day rate',
+    weekly_off: 'Weekly off', paid_leaves_per_month: 'Paid leaves per month', ot_after: 'Overtime after', ot_multiplier: 'Overtime pay × hourly rate', salary_days: 'Day rate = salary ÷ days', hours_per_day: 'Hourly rate = day rate ÷ hours',
     office_lat: 'Store latitude', office_lng: 'Store longitude', office_radius_m: 'Attendance radius (metres)',
     lunch_min: 'Lunch break (minutes)', half_day_allowed: 'Half day allowed',
   };
@@ -2399,6 +2417,7 @@
       <h2>Stock at the store</h2>
       <div class="card"><div class="row"><span>${pieces} printed pieces ready to sell</span><button class="linkish" id="toStock">Stock ›</button></div>
         ${low ? `<div class="neg" style="margin-top:4px">${low} sizes running low</div>` : ''}</div>
+      <div id="dmgBox"></div>
       <h2>Day register · last 14 days</h2>
       <div class="card table-wrap"><table><thead><tr><th>Day</th><th>Open</th><th>Close</th>${P ? '<th class="r">Opening</th><th class="r">Cash sales</th><th class="r">Handed</th><th class="r">Closing</th><th class="r">Diff</th>' : '<th class="r">Bills</th>'}</tr></thead><tbody>
         ${reg.map((r) => `<tr><td style="white-space:nowrap">${esc(new Date(`${r.day}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}</td><td>${esc(timeOf(r.opened_at))}</td><td>${esc(timeOf(r.closed_at))}</td>
@@ -2407,6 +2426,7 @@
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), att[0], () => VIEWS.store(view));
     view.querySelectorAll('[data-ph]').forEach((b) => { b.onclick = () => showProof(b.dataset.ph); });
     view.querySelector('#toStock').onclick = () => go('stock');
+    damageSection(view.querySelector('#dmgBox'));
     const os = view.querySelector('#openStore');
     if (os) os.onclick = async () => { try { await q(sb.rpc('store_open', { p_note: null })); C.chime(); toast('Store is open. Have a great day!'); VIEWS.store(view); } catch (e) { toast(errText(e), true); } };
     const sp = view.querySelector('#pettySpend');
@@ -2421,6 +2441,171 @@
     const back = box.querySelector('#back'); if (back) back.remove();
     const h1 = box.querySelector('h1'); if (h1) { const h2 = document.createElement('h2'); h2.textContent = 'Store cash'; h1.replaceWith(h2); }
   };
+
+  // ================================================================ DAMAGED GOODS → vendor claims
+  const DMG_ITEM = { dtf: 'DTF print', blank: 'Blank tee', tee: 'Printed tee' };
+  const DMG_ASK = { return: 'Return', refund: 'Refund', replace: 'Replace' };
+  const DMG_STATUS = { reported: ['Reported', 'pending'], sent: ['With vendor', 'shipped'], replaced: ['Replaced', 'approved'], refunded: ['Refunded', 'approved'],
+    settled: ['Settled', 'approved'], rejected: ['Vendor refused', 'rejected'], cancelled: ['Cancelled', 'cancelled'] };
+
+  async function damageSection(box, opts = {}) {
+    if (!box) return;
+    let rows = [];
+    try { rows = await q(sb.from('damage_board').select('*').order('created_at', { ascending: false }).limit(opts.all ? 200 : 30)); }
+    catch (e) { box.innerHTML = `<h2>Damaged goods</h2><div class="card warnbox">${esc(errText(e))}</div>`; return; }
+    const open = rows.filter((r) => ['reported', 'sent'].includes(r.status));
+    const lost = rows.filter((r) => r.status === 'rejected').reduce((t, r) => t + Number(r.value || 0), 0);
+    const atVendor = open.reduce((t, r) => t + Number(r.value || 0), 0);
+    const list = opts.all ? rows : [...open, ...rows.filter((r) => !open.includes(r)).slice(0, 5)];
+    box.innerHTML = `
+      <h2>Damaged goods</h2>
+      <div class="card">
+        <div class="row"><div><b>Return, refund or replace from the vendor</b>
+          <div class="muted">Damaged DTF prints, blank tees or printed tees. Add photos, they leave stock, and the claim follows the vendor until it is settled.</div></div></div>
+        <div class="punch-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat"><div class="k">Open claims</div><div class="v" style="font-size:18px">${open.length}</div></div>
+          <div class="stat"><div class="k">Value at vendors</div><div class="v" style="font-size:16px">${esc(inr(atVendor))}</div></div>
+          <div class="stat"><div class="k">Lost (refused)</div><div class="v neg" style="font-size:16px">${esc(inr(lost))}</div></div>
+        </div>
+        <div class="actions" style="margin-top:0"><button class="btn small" data-new="dtf">Damaged DTF</button><button class="btn small" data-new="blank">Damaged blanks</button><button class="btn small" data-new="tee">Damaged printed tee</button></div>
+      </div>
+      ${list.map((r) => {
+        const [lab, cls] = DMG_STATUS[r.status] || [r.status, ''];
+        const live = ['reported', 'sent'].includes(r.status);
+        return `<div class="card">
+          <div class="row"><div><b>${r.qty} × ${esc(r.what || r.item_label)}</b><div class="muted">${esc(r.item_label)} · ${esc(r.vendor)} · asked to ${esc((DMG_ASK[r.ask] || r.ask).toLowerCase())}</div></div>
+            <span class="pill ${cls}">${esc(lab)}</span></div>
+          <div class="muted" style="margin-top:6px">${esc(r.reason)}</div>
+          <div class="thumbs" data-photos="${esc(JSON.stringify(r.photos || []))}"></div>
+          <div class="muted" style="margin-top:6px">#${r.id} · ${esc(r.reported_by_name || '')} · ${esc(ago(r.created_at))}${r.value ? ` · worth ${esc(inr(r.value))}` : ''}
+            ${r.replaced_qty ? ` · ${r.replaced_qty} replaced` : ''}${Number(r.refund_amount) ? ` · ${esc(inr(r.refund_amount))} refund${r.refund_status ? ` (${esc(r.refund_status)})` : ''}` : ''}
+            ${r.settle_note ? `<br>${esc(r.settle_note)}` : ''}${r.settle_photo ? ` · <button class="linkish" data-ph="${esc(r.settle_photo)}">refund proof</button>` : ''}</div>
+          ${live ? `<div class="actions">
+            ${r.status === 'reported' ? `<button class="btn small outline" data-act="sent" data-id="${r.id}">Sent to vendor</button>` : ''}
+            <button class="btn small good" data-act="settle" data-id="${r.id}">Vendor settled</button>
+            <button class="btn small outline" data-act="rejected" data-id="${r.id}" style="color:var(--pink)">Vendor refused</button>
+            ${r.status === 'reported' && (isPartner() || r.reported_by === state.me.id) ? `<button class="btn small ghost" data-act="cancel" data-id="${r.id}">Cancel</button>` : ''}</div>` : ''}
+        </div>`;
+      }).join('') || ''}
+      ${!opts.all && rows.length > list.length ? '<button class="linkish" id="dmgAll">See all claims ›</button>' : ''}`;
+    const redo = () => damageSection(box, opts);
+    box.querySelectorAll('[data-new]').forEach((b) => { b.onclick = () => reportDamage(b.dataset.new, redo); });
+    box.querySelectorAll('[data-ph]').forEach((b) => { b.onclick = () => showProof(b.dataset.ph); });
+    const all = box.querySelector('#dmgAll'); if (all) all.onclick = () => damageSection(box, { all: true });
+    // photo thumbnails (private: signed for 5 minutes)
+    box.querySelectorAll('[data-photos]').forEach(async (t) => {
+      const paths = JSON.parse(t.dataset.photos || '[]');
+      if (!paths.length) return;
+      let data = [];
+      try { ({ data } = await sb.storage.from('proofs').createSignedUrls(paths, 300)); } catch (_) { return; }
+      t.innerHTML = (Array.isArray(data) ? data : []).map((d, i) => d.signedUrl ? `<img src="${esc(d.signedUrl)}" alt="Damage photo ${i + 1}" data-big="${esc(paths[i])}" style="cursor:pointer">` : '').join('');
+      t.querySelectorAll('[data-big]').forEach((img) => { img.onclick = () => showProof(img.dataset.big); });
+    });
+    box.querySelectorAll('[data-act]').forEach((b) => {
+      b.onclick = async () => {
+        const r = rows.find((x) => x.id === Number(b.dataset.id));
+        const act = b.dataset.act;
+        try {
+          if (act === 'sent') {
+            const v = await ask({ title: 'Sent to the vendor?', fields: [{ name: 'note', label: 'How? (optional)', placeholder: 'e.g. Given to courier · AWB 1234' }], ok: 'Yes, sent' });
+            if (!v) return;
+            await q(sb.rpc('damage_update', { p_id: r.id, p_action: 'sent', p_qty: 0, p_amount: 0, p_note: v.note || null, p_photo: null }));
+            toast('Marked as sent to the vendor');
+          } else if (act === 'rejected') {
+            const v = await ask({ title: 'Vendor refused?', html: `<p class="muted">${r.qty} pieces worth ${esc(inr(r.value || 0))} will be counted as a loss. Partners are told.</p>`,
+              fields: [{ name: 'note', label: 'What did the vendor say?', required: true }], ok: 'Save', okClass: 'bad' });
+            if (!v) return;
+            await q(sb.rpc('damage_update', { p_id: r.id, p_action: 'rejected', p_qty: 0, p_amount: 0, p_note: v.note, p_photo: null }));
+            toast('Saved. Partners are told.');
+          } else if (act === 'cancel') {
+            const v = await ask({ title: 'Cancel this claim?', html: `<p class="muted">Use this only if it was reported by mistake. The ${r.qty} pieces go back into stock.</p>`, ok: 'Cancel claim', okClass: 'bad' });
+            if (!v) return;
+            await q(sb.rpc('damage_update', { p_id: r.id, p_action: 'cancel', p_qty: 0, p_amount: 0, p_note: null, p_photo: null }));
+            toast('Claim cancelled, pieces back in stock');
+          } else if (act === 'settle') {
+            return settleDamage(r, redo);
+          }
+          redo();
+        } catch (e) { toast(errText(e), true); }
+      };
+    });
+  }
+
+  function settleDamage(r, done) {
+    const body = panel(`<h1 style="margin-top:14px">Vendor settled</h1>
+      <p class="sub">${r.qty} × ${esc(r.what || r.item_label)} · ${esc(r.vendor)}. Fill what the vendor gave back. It can be both.</p>
+      <label for="sqQty">Pieces replaced (come back into stock)</label><input id="sqQty" type="number" inputmode="numeric" min="0" max="${r.qty}" value="${r.ask === 'replace' ? r.qty : 0}">
+      <label for="sqAmt">Money refunded (₹)</label><input id="sqAmt" type="number" inputmode="decimal" min="0" value="${r.ask !== 'replace' && r.value ? r.value : 0}">
+      <div class="hint">A refund goes into the books as income once partners approve it, like any other income.</div>
+      <label for="sqPhoto">Photo of the refund (UPI screenshot or credit note)</label><input id="sqPhoto" type="file" accept="image/*">
+      <label for="sqNote">Note (optional)</label><input id="sqNote" placeholder="e.g. 3 new prints received">
+      <button class="btn block good" id="sqGo">Save</button>`);
+    body.querySelector('#sqGo').onclick = async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try {
+        const amt = num(body.querySelector('#sqAmt').value) || 0;
+        const f = body.querySelector('#sqPhoto').files[0];
+        const photo = amt > 0 ? await uploadProof(f, 'damage') : (f ? await uploadProof(f, 'damage') : null);
+        const st = await q(sb.rpc('damage_update', { p_id: r.id, p_action: 'settle', p_qty: Number(body.querySelector('#sqQty').value) || 0, p_amount: amt,
+          p_note: body.querySelector('#sqNote').value || null, p_photo: photo }));
+        closePanel(); C.chime(); toast(st === 'replaced' ? 'Replaced pieces are back in stock' : amt > 0 ? 'Saved. The refund is waiting for partner approval.' : 'Saved'); done();
+      } catch (err) { btn.disabled = false; toast(errText(err), true); }
+    };
+  }
+
+  async function reportDamage(item = 'dtf', done = () => {}) {
+    await loadStock();
+    const [blanks, dtf, vendors] = await Promise.all([q(sb.from('blank_stock').select('*')).catch(() => []), q(sb.from('dtf_stock').select('*')).catch(() => []),
+      q(sb.from('vendor_names').select('vendor')).catch(() => [])]);
+    let kind = item;
+    const prods = [...new Map(state.stock.map((x) => [x.product_id, x.product_name])).entries()];
+    const draw = () => {
+      const body = panel(`<h1 style="margin-top:14px">Report damage</h1>
+        <p class="sub">The pieces leave stock now. The claim stays open until the vendor replaces, refunds or refuses.</p>
+        <div class="seg" id="dKind">${Object.entries(DMG_ITEM).map(([k, l]) => `<button type="button" data-k="${k}" class="${kind === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+        ${kind === 'dtf' ? `<label for="dProd">Design</label><select id="dProd">${dtf.length ? dtf.map((d) => `<option value="${d.product_id}">${esc(d.name)} · ${d.qty} prints</option>`).join('') : prods.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('')}</select>`
+          : kind === 'blank' ? `<label for="dBlank">Colour and size</label><select id="dBlank">${blanks.filter((b) => b.qty > 0).map((b) => `<option value="${esc(b.colour)}|${esc(b.size)}">${esc(b.colour)} / ${esc(b.size)} · ${b.qty} pcs</option>`).join('') || '<option value="">No blank stock</option>'}</select>`
+          : `<label for="dProd">Tee</label><select id="dProd">${prods.filter(([id]) => state.stock.some((v) => v.product_id === id && v.stock > 0)).map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('')}</select>
+             <label for="dVar">Colour and size</label><select id="dVar"></select>`}
+        <label for="dQty">How many pieces?</label><input id="dQty" type="number" inputmode="numeric" min="1" value="1">
+        <label for="dVendor">Vendor (who supplied it)</label><input id="dVendor" list="dVendors" placeholder="e.g. PrintHub / Tiruppur Knits">
+        <datalist id="dVendors">${vendors.map((v) => `<option value="${esc(v.vendor)}">`).join('')}</datalist>
+        <label>Ask the vendor to</label>
+        <div class="seg" id="dAsk">${Object.entries(DMG_ASK).map(([k, l], i) => `<button type="button" data-a="${k}" class="${i === 2 ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <label for="dWhy">What is wrong?</label><input id="dWhy" placeholder="e.g. Print peeling, hole near collar, wrong colour">
+        <label for="dPhotos">Photos of the damage (one or more)</label><input id="dPhotos" type="file" accept="image/*" multiple>
+        <div class="thumbs" id="dPrev"></div>
+        <button class="btn block" id="dGo">Report damage</button>`);
+      body.querySelectorAll('#dKind [data-k]').forEach((b) => { b.onclick = () => { kind = b.dataset.k; draw(); }; });
+      body.querySelectorAll('#dAsk [data-a]').forEach((b) => { b.onclick = () => { body.querySelectorAll('#dAsk [data-a]').forEach((x) => x.classList.toggle('on', x === b)); }; });
+      const fillVar = () => {
+        const sel = body.querySelector('#dVar'); if (!sel) return;
+        const pid = Number(body.querySelector('#dProd').value);
+        sel.innerHTML = state.stock.filter((v) => v.product_id === pid && v.stock > 0).map((v) => `<option value="${v.variant_id}">${esc(v.colour)} / ${esc(v.size)} · ${v.stock} in stock</option>`).join('') || '<option value="">Nothing in stock</option>';
+      };
+      if (kind === 'tee') { body.querySelector('#dProd').onchange = fillVar; fillVar(); }
+      const ph = body.querySelector('#dPhotos');
+      ph.onchange = () => { body.querySelector('#dPrev').innerHTML = [...ph.files].slice(0, 6).map((f) => `<img src="${URL.createObjectURL(f)}" alt="">`).join(''); };
+      body.querySelector('#dGo').onclick = async (e) => {
+        const btn = e.currentTarget; btn.disabled = true;
+        try {
+          const files = [...ph.files];
+          if (!files.length) throw new Error('Add at least one photo of the damage.');
+          if (files.length > 6) throw new Error('Up to 6 photos.');
+          const photos = [];
+          for (const f of files) photos.push(await uploadProof(f, 'damage'));
+          const p = { item: kind, qty: Number(body.querySelector('#dQty').value), vendor: body.querySelector('#dVendor').value, reason: body.querySelector('#dWhy').value,
+            ask: (body.querySelector('#dAsk .on') || {}).dataset.a, photos };
+          if (kind === 'dtf') p.product_id = Number(body.querySelector('#dProd').value);
+          if (kind === 'tee') p.variant_id = Number(body.querySelector('#dVar').value) || null;
+          if (kind === 'blank') { const [c, z] = (body.querySelector('#dBlank').value || '|').split('|'); p.colour = c; p.size = z; }
+          const id = await q(sb.rpc('report_damage', { p }));
+          closePanel(); toast(`Claim #${id} saved. Partners are told.`); done();
+        } catch (err) { btn.disabled = false; toast(errText(err), true); }
+      };
+    };
+    draw();
+  }
 
   function pettySpend(done) {
     const body = panel(`<h1 style="margin-top:14px">Spend petty cash</h1>
@@ -2671,7 +2856,7 @@
         <span>Salary</span><b>${esc(inr(p.monthly_salary))}</b><span>Working days so far</span><b>${p.working_days}</b>
         <span>Present</span><b>${p.present_days}</b><span>Paid leave</span><b>${p.paid_leave}</b>
         <span>Unpaid leave</span><b>${p.unpaid_leave}</b><span>Absent</span><b>${p.absent_days}</b>
-        <span>Late marks</span><b>${p.late_count} (${p.late_half_days} half-day cut)</b><span>Overtime</span><b>${p.ot_hours} h · ${esc(inr(p.ot_pay))}</b>
+        <span>Late marks</span><b>${p.late_count} (${p.late_half_days} half-day cut)</b><span>Overtime</span><b>${p.ot_hours} h × ${esc(inr(p.per_hour ?? 0))} = ${esc(inr(p.ot_pay))}</b>
         <span>Deductions</span><b class="neg">− ${esc(inr(p.deductions))}</b><span>Day rate</span><b>${esc(inr(p.per_day))}</b>
       </div>${!Number(p.monthly_salary) ? '<div class="hint">Salary not set yet. A partner sets it (all partners approve).</div>' : ''}</div>`;
     const leaveCard = (l) => `<div class="card" data-l="${l.id}"><div class="row"><div><b>${esc(memberName(l.member_id))}</b> · ${esc(day(l.from_day))}${l.to_day !== l.from_day ? ` – ${esc(day(l.to_day))}` : ''}</div><span class="pill ${l.status}">${esc(l.status)}</span></div>
@@ -2761,7 +2946,7 @@
     const hp = view.querySelector('#hrPrint');
     if (hp) hp.onclick = () => printDoc(`Payslips ${monthName(month)}`, pay.map((p) => `<h1>${esc(biz().name)} · Payslip</h1><p>${esc(p.name)} · ${esc(monthName(month))}</p>
       <table>${[['Monthly salary', inr(p.monthly_salary)], ['Working days', p.working_days], ['Present', p.present_days], ['Paid leave', p.paid_leave], ['Unpaid leave', p.unpaid_leave], ['Absent', p.absent_days],
-        ['Late marks', `${p.late_count} (${p.late_half_days} half-day cut)`], ['Overtime', `${p.ot_hours} h = ${inr(p.ot_pay)}`], ['Deductions', `− ${inr(p.deductions)}`]].map(([k, val]) => `<tr><td>${k}</td><td class="r">${esc(val)}</td></tr>`).join('')}
+        ['Late marks', `${p.late_count} (${p.late_half_days} half-day cut)`], ['Day rate', inr(p.per_day)], ['Hourly rate', inr(p.per_hour ?? 0)], ['Overtime', `${p.ot_hours} h = ${inr(p.ot_pay)}`], ['Deductions', `− ${inr(p.deductions)}`]].map(([k, val]) => `<tr><td>${k}</td><td class="r">${esc(val)}</td></tr>`).join('')}
       <tr><td><b>Net pay</b></td><td class="r big">${esc(inr(p.net_pay))}</td></tr></table><div class="sig"><div>Employee</div><div>Partner</div><div>Partner</div><div>Date</div></div><div style="page-break-after:always"></div>`).join(''));
   };
 

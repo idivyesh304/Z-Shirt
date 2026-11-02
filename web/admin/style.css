@@ -541,3 +541,7 @@ a.btn { text-decoration: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 @media print { .zs-bg, nav.tabs, .fab, header.top { display: none; } }
+.actions .btn.small { flex: 1 1 auto; white-space: nowrap; }
+details.card > summary { list-style: none; } details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::before { content: '›'; display: inline-block; margin-right: 8px; color: var(--violet); transition: transform .3s; }
+details.card[open] > summary::before { transform: rotate(90deg); }

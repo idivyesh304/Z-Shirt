@@ -108,7 +108,8 @@ select t.eq('stock history shows the batch', (select count(*) > 0 from stock_his
 select t.eq('shift ends 21:00 with 30-min lunch', (hr_policy()->>'shift_end') || '/' || (hr_policy()->>'lunch_min'), '21:00/30');
 :as_mahendra
 select t.expect_error(format('select request_leave(%L, %L, ''half_day'', ''doctor'')', today_ist() + 9, today_ist() + 9), 'Half days are not allowed');
-select t.expect_error(format('select request_leave(%L, %L, ''paid'', ''trip'')', today_ist() + 9, today_ist() + 9), 'no paid leave');
+select request_leave((date_trunc('month', today_ist()) + interval '1 month 4 days')::date, (date_trunc('month', today_ist()) + interval '1 month 4 days')::date, 'paid', 'Family function');
+select t.expect_error(format('select request_leave(%L, %L, ''paid'', ''trip'')', (date_trunc('month', today_ist()) + interval '1 month 9 days')::date, (date_trunc('month', today_ist()) + interval '1 month 9 days')::date), 'Only 1 paid leave a month');
 select t.expect_error('select punch(''lunch_in'', null, null, null)', 'Start lunch first');
 
 \o
