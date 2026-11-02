@@ -99,7 +99,12 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.className = ''; }, isErr ? 6000 : 2800);
   }
-  const errText = (e) => (e && (e.message || e.error_description)) || String(e);
+  const errText = (e) => {
+    const m = (e && (e.message || e.error_description)) || String(e);
+    if (/Could not find the (function|table)|schema cache|PGRST20[25]|does not exist/i.test(m)) return 'This screen needs the latest database update. In Supabase → SQL Editor run STEP-1, STEP-2 and STEP-3, then reopen the app.';
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'No internet connection. Check your network and try again.';
+    return m;
+  };
   const biz = () => ({ name: (state.settings && state.settings.business_name) || cfg.BUSINESS_NAME || 'Z-SHIRTS', address: (state.settings && state.settings.business_address) || cfg.BUSINESS_ADDRESS || '',
     gstin: (state.settings && state.settings.gstin) || cfg.GSTIN || '' });
 
