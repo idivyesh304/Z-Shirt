@@ -1,111 +1,132 @@
-# Z-SHIRTS Books — Phase 1
+# Z-SHIRTS — one place for everything
 
-One place where all four partners see every rupee of Z-SHIRTS, and where **no money moves without the right partners approving it**.
+Shop, orders, stock, returns, money and partner trust — in one system.
 
-Partners: Aaryak Patel, Ayush Fotariya, Devanshi Panchal, Jigar Panchal · plus one employee who runs the store.
+| | Who uses it | Address after setup |
+|---|---|---|
+| **Shop** | Customers | `https://idivyesh304.github.io/Z-Shirt/` |
+| **Team app** | Aaryak, Ayush, Devanshi, Jigar (partners) and Mahendra (store) | `https://idivyesh304.github.io/Z-Shirt/admin/` |
+
+Both work on phones and laptops, and the team app installs to the home screen like a normal app.
 
 ---
 
-## What the rules are
+## What it does
 
-These rules live inside the database itself, so they hold even if someone edits the app or opens the database directly.
+### For customers (the shop)
+- Browse by category, search, and filter by **price, type, colour, discount and in-stock**; sort by newest, price or biggest discount.
+- Every tee shows a **hang-tag price** with MRP and % off, "Only 3 left" alerts, and colour dots. Without photos, the shop draws the tee in its real colour.
+- Pick colour and size (sold-out sizes are struck through, low ones show "2 left"), size guide, share link.
+- Bag with **free-delivery progress bar** and total savings.
+- Checkout: pincode **fills city and state automatically**; repeat customers' details are remembered. Pay **online (UPI/cards/netbanking via Razorpay)** or **cash on delivery**.
+- **Track order** with order number + phone, and request a **size exchange or return** within 7 days of delivery.
 
-| Action | Who must approve |
+### For the team (Mahendra and partners)
+- **Live alerts** for every website, Instagram, WhatsApp and store order, payment, return request and low stock — with **confetti and a chime**. Big moments get a full-screen celebration: first order, ₹10k / ₹25k / ₹50k / ₹1 lakh… in sales, 10 / 50 / 100… orders.
+- **Home:** today's sales, a "Do next" list (to confirm, to pack, to ship, returns, approvals, low stock), 14-day chart, next sales milestone.
+- **Orders:** one-tap pipeline — *Confirm → Mark packed → Ship → Mark delivered*. Shipping remembers the last courier. WhatsApp update to the customer with a ready-made message for each stage, call, copy address, **print invoice + shipping label**, RTO, cancel.
+- **Sell:** store counter (cash/UPI) and **Instagram/WhatsApp orders** (prepaid or COD). **Paste the customer's DM** and it picks out name, phone, pincode and address.
+- **Stock:** size × colour grid for every product, low sizes in pink, tap a number to add production pieces. New products in a minute: name, prices, tap colours and sizes, add photos.
+- **Returns & exchanges** inbox, with stock and refunds handled automatically.
+- **Books, approvals, partner shares, month close, activity log** (partners).
+
+---
+
+## The rules (enforced inside the database)
+
+| Action | Who decides |
 |---|---|
-| Expense up to **₹2,000** (employee or partner) | Nobody — recorded instantly, **bill photo required** |
+| Expense up to ₹2,000 | Recorded instantly, **bill photo required** |
 | Expense ₹2,001 – ₹15,000 | Any **2 partners** |
 | Expense above ₹15,000 | **All 4 partners** |
-| Money received (income) | 2 partners |
-| Partner puts in capital | **All 4** + bank screenshot |
-| Money paid out to a partner | **All 4** + bank screenshot |
-| Reversing a wrong entry | **All 4** |
-| Changing the ₹2,000 / ₹15,000 limits | **All 4** |
-| Profit / loss sharing rule | **All 4** |
+| Capital in / payout to a partner | **All 4** + bank screenshot |
+| **Changing a live product's price** | **All 4** |
+| **Removing damaged stock** | **All 4** |
+| Changing any limit or shop setting | **All 4** |
+| Profit / loss split | **All 4** |
+| Cancelling a **paid** order (= refund) or approving a **return** | **Partners only** (Mahendra can't) |
+| Discount on manual orders | Max **10%** (changeable by all 4) |
+| Products Mahendra adds | Stay **draft** until a partner publishes |
 
-- A partner who raises a request counts as one approval.
-- For "all 4" items, **one NO from any partner stops it**. For 2-partner items, it is rejected once approval becomes impossible (3 NOs).
-- Rejecting always needs a written reason that everyone sees.
-- **Nothing can ever be edited or deleted** — not entries, votes, signatures, proofs or the activity log. Mistakes are fixed by a reversal entry; the original stays visible.
-- **Month close:** after a month ends, each partner enters the bank balance and signs. When all 4 have signed, that month is locked and nothing can be added to it.
-- The employee can only record expenses and income and see their own requests. They cannot see the books, partner money or the activity log.
-- Every action is logged with the person's name. Anything done outside the app shows as **"system / database owner" ⚠** in the log.
+- **Nothing is ever edited or deleted:** books, votes, stock movements, order history, activity log. Mistakes are fixed by a reversal that all 4 approve.
+- **Sales post themselves to the books** when money actually arrives (online payment confirmed by Razorpay, store sale, or COD delivered). Refunds post themselves too.
+- **Order totals are always calculated by the database** from the real price list. Someone tampering with the website can't change a price.
+- **Stock can't be oversold:** two people buying the last piece at the same moment — only one gets it.
+- **Online orders not paid within 30 minutes** release their stock automatically.
+- **Month close:** each partner enters the bank balance and signs; after all 4 sign, that month is locked.
+- **Mahendra** sees orders, stock and returns, but not the books, partner money or the activity log.
 
-### Profit and loss sharing
-
-Shares are calculated from the books: Aaryak ₹2,00,000 (40%), Ayush, Devanshi and Jigar ₹1,00,000 each (20%).
-
-The rule is **not set yet** — all 4 partners must approve one in the app (New → Profit / loss rule). For each of profit and loss you choose *by investment ratio* or *equally*.
-
-> Your example (if everything is lost, each partner pays Aaryak ₹25,000) is **"loss shared equally"**. With "loss by investment ratio", nobody would owe anybody anything. Agree on one, and put the same rule in your partnership deed.
-
-The **Partners** screen shows, for each partner, "if settled today": invested − paid out + share of profit/loss. All four add up to the money in the business.
+### Profit & loss split
+**25% each by default** (profit and loss). It can be changed any time — equal, by investment ratio, or custom % per partner — but only when all 4 approve (Team app → More → Partners → *Change split*). The **Partners** screen shows each person's investment, share, and "if settled today".
 
 ---
 
-## What's in this repo
+## What's in the repo
 
 ```
-supabase/migrations/001_phase1_partner_ledger.sql   all tables, rules, approval engine, reports
-supabase/migrations/002_storage.sql                 private storage for bill photos (no deleting)
-supabase/seed/members.sql                           the 4 partners + employee (edit e-mails first)
-supabase/tests/                                     automatic test of every rule (runs on GitHub)
-web/                                                the app (works on phone and laptop, installable)
+web/                         the shop (customers)
+web/admin/                   the team app
+web/config.js                your Supabase keys + business details  ← edit this
+web/celebrate.js             confetti, chime, milestone moments
+supabase/migrations/         database: 001 books & approvals · 002 bill photos · 003 shop, orders, stock · 004 product photos + auto clean-up
+supabase/functions/razorpay  the payment server function
+supabase/seed/members.sql    the 4 partners + Mahendra  ← edit e-mails first
+supabase/tests/              128 automatic checks of every rule (run on every GitHub push)
 ```
 
 ---
 
-## One-time setup (about 30 minutes)
+## Setup (about 45 minutes, one time)
 
-You need: a free **Supabase** account (the database) and this GitHub repo (hosting).
+### 1. Database (Supabase, free)
+1. **supabase.com** → sign in with GitHub → **New project** → name `zshirts`, region **Mumbai**, strong password (save it).
+2. **SQL Editor → New query**, and run these files **in this order** (open each on GitHub, copy all, paste, **Run**):
+   1. `supabase/migrations/001_phase1_partner_ledger.sql`
+   2. `supabase/migrations/002_storage.sql`
+   3. `supabase/migrations/003_phase2_commerce.sql`
+   4. `supabase/migrations/004_storage_products_and_cron.sql`
+   5. `supabase/seed/members.sql` — **replace the 5 example e-mails with the real ones first**
+3. **Authentication → Sign In / Providers → Email:** keep **Confirm email** on.
+4. **Database → Publications → supabase_realtime:** make sure **notifications** is ticked (for instant alerts).
 
-### 1. Create the database
-1. Go to **supabase.com** → sign in with GitHub → **New project**.
-2. Name: `zshirts` · choose a strong database password (save it) · Region: **Mumbai (ap-south-1)**.
-3. Wait ~2 minutes for it to finish.
+### 2. Connect the apps
+1. Supabase → **Project Settings → API**: copy the **Project URL** and the **anon public** key.
+2. On GitHub open `web/config.js` → ✏️ → paste both. Also fill in your WhatsApp number, Instagram handle and business address → **Commit changes**.
 
-### 2. Load the rules
-1. In Supabase, open **SQL Editor** → **New query**.
-2. Open `supabase/migrations/001_phase1_partner_ledger.sql` here on GitHub → copy everything → paste → **Run**. It should say *Success*.
-3. New query → paste `002_storage.sql` → **Run**.
-4. Open `supabase/seed/members.sql`, **replace the 5 example e-mails with the real ones**, paste it in a new query → **Run**.
+### 3. Online payments (Razorpay)
+1. Create a Razorpay account and complete KYC (needs the business PAN/bank). Start in **Test mode**.
+2. Razorpay → **Settings → API Keys** → generate keys.
+3. Supabase → **Edge Functions → Deploy a new function → Via editor**: name it `razorpay`, paste `supabase/functions/razorpay/index.ts`, deploy. In the function's settings turn **off "Verify JWT"**.
+4. Supabase → **Edge Functions → Secrets**: add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (any long random text).
+5. Razorpay → **Webhooks → Add**: URL `https://YOUR-PROJECT-ID.supabase.co/functions/v1/razorpay`, the same webhook secret, events **payment.captured** and **order.paid**.
+6. Test with Razorpay's test UPI/card. When happy, switch Razorpay to **Live mode** keys.
 
-### 3. Lock down sign-ups
-Supabase → **Authentication → Sign In / Providers → Email**: keep it enabled with **Confirm email** ON.
-(Anyone can create an account, but only the 5 e-mails you added get any access.)
+Until this step is done, customers can still order with **cash on delivery**.
 
-### 4. Connect the app
-1. Supabase → **Project Settings → API**. Copy the **Project URL** and the **anon public** key.
-2. In this repo open `web/config.js` → pencil ✏️ → paste both values → **Commit changes**.
-   The anon key is safe to put here; the database rules control access.
+### 4. Put it online
+1. Repo → **Settings → Pages** → Source: **GitHub Actions**.
+2. Repo → **Actions → Publish app → Run workflow**.
+3. Supabase → **Authentication → URL Configuration** → Site URL = `https://idivyesh304.github.io/Z-Shirt/admin/`.
 
-### 5. Put the app online
-1. Repo → **Settings → Pages** → under *Build and deployment* choose **GitHub Actions**.
-2. Repo → **Actions** → **Publish app** → **Run workflow**.
-3. After a minute the app is live at `https://idivyesh304.github.io/Z-Shirt/`.
-4. Supabase → **Authentication → URL Configuration** → set **Site URL** to that address.
+### 5. Everyone joins the team app
+Each partner and Mahendra opens `…/Z-Shirt/admin/`, taps **Create account** with their registered e-mail, confirms it, signs in, and adds it to the home screen. Tap the 🔔 → **Turn on phone alerts**.
 
-### 6. Everyone joins
-Each partner and the employee opens the link → **Create account** with their registered e-mail → confirms the e-mail → signs in.
-On a phone: browser menu → **Add to Home screen** to install it like an app.
-
-### 7. First things to do in the app
-1. One partner proposes the **Profit / loss rule** → the other three approve.
-2. Each partner records their **Capital in** with the bank transfer screenshot → the other three approve.
-
----
-
-## Honest limits — what software alone cannot stop
-
-- **The Supabase account owner can bypass the rules** (it's their database). Mitigation: add all 4 partners to the Supabase organisation (*Organization → Team*), and watch the activity log for "system / database owner" entries.
-- **Cash that never enters the system.** Take payments by UPI/QR straight to the business bank account wherever possible, and count the cash counter daily.
-- **The bank account itself.** Set it up so payments need 2 partners' authorisation, and use the month-close check.
-- **Stock taken off the books.** Phase 2 adds stock tracking; a partner should still do a surprise physical count each month.
-- The partnership deed (profit share, exit, disputes) should be drafted by a CA or lawyer. The app enforces what you agree; it doesn't replace the deed.
+### 6. First steps inside
+1. Each partner records their **capital in** (More → New money entry) — the others approve.
+2. **Stock → + New product** → add your tees, then tap the grid to add pieces.
+3. Open the shop and place a test COD order — watch the confetti on everyone's phone.
 
 ---
+
+## Honest limits
+
+- **Alerts arrive while the team app is open** (on screen or in a background tab). Alerts to a fully closed phone app need push notifications — that's in the next phase.
+- **Instagram and WhatsApp orders are entered by the team** (with the paste-a-DM shortcut). Reading DMs automatically needs Meta's business API approval.
+- **Courier booking** is manual for now (enter courier + AWB). Shiprocket/Delhivery integration can auto-book and auto-track.
+- **GST:** prices are treated as inclusive of GST and the invoice says so. A full GST tax invoice (HSN, CGST/SGST split) should be added once you register — check rates with your CA.
+- **The Supabase account owner can technically bypass rules.** Add all 4 partners to the Supabase organisation and watch the activity log for "system / database owner".
+- **Cash outside the system** can't be seen by software. Prefer UPI/online payments into the business account and do a monthly physical stock count.
+- Order numbers can skip (e.g. ZS1003 → ZS1005) when a checkout fails at the last step — normal, nothing is missing.
 
 ## Coming next
-
-- **Phase 2:** stock, production, orders, billing, daily cash counter close (price changes and stock write-offs will need all 4 partners).
-- **Phase 3:** the Z-SHIRTS shop website, with online payments straight into the business account.
-- **Phase 4:** Android app on the Play Store.
+HRMS for Mahendra (attendance, salary, leave) · daily cash-counter close · push notifications to closed phones · Shiprocket auto-booking · GST invoices · discount coupons · abandoned-cart WhatsApp nudges · Play Store app.

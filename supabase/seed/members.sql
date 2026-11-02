@@ -13,4 +13,4 @@ insert into members (name, email, role) values
   ('Ayush Fotariya',   'ayush@example.com',    'partner'),
   ('Devanshi Panchal', 'devanshi@example.com', 'partner'),
   ('Jigar Panchal',    'jigar@example.com',    'partner'),
-  ('Store Manager',    'store@example.com',    'employee');
+  ('Mahendra Sisodiya', 'mahendra@example.com', 'employee');

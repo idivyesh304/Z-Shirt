@@ -3,23 +3,72 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0b0c">
-  <title>Z-SHIRTS Books</title>
-  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <title>Z-SHIRTS · Oversized tees</title>
+  <meta name="description" content="Oversized t-shirts for Gen-Z. Heavy cotton, big fits, easy size exchange.">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shop.css">
 </head>
 <body>
-  <div id="app">
-    <div class="boot">Loading…</div>
-  </div>
+  <a class="skip" href="#grid">Skip to products</a>
+
+  <header class="bar">
+    <a class="logo" href="./" aria-label="Z-SHIRTS home">Z<span>-</span>SHIRTS</a>
+    <div class="bar-actions">
+      <button class="icon-btn" id="btnSearch" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" id="btnTrack" aria-label="Track my order">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="18" r="2" fill="currentColor"/><circle cx="17" cy="18" r="2" fill="currentColor"/></svg>
+      </button>
+      <button class="bag-btn" id="btnBag" aria-label="Open bag">
+        Bag <span class="bag-count" id="bagCount">0</span>
+      </button>
+    </div>
+    <div class="search" id="searchBox" hidden>
+      <input id="searchInput" type="search" placeholder="Search tees, colours…" aria-label="Search products">
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-label="Z-SHIRTS">
+      <h1 class="hero-type"><span>Big fits.</span><span>Zero apologies.</span></h1>
+      <p class="hero-sub" id="heroSub">Heavyweight oversized tees, cut to drop off the shoulder.</p>
+      <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+    </section>
+
+    <section class="shop" aria-label="Products">
+      <div class="shop-bar">
+        <div class="chips" id="catChips" role="tablist" aria-label="Categories"></div>
+        <button class="filter-btn" id="btnFilter">Filter <span class="dot" id="filterDot" hidden></span></button>
+      </div>
+      <p class="result-line" id="resultLine"></p>
+      <div class="grid" id="grid"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="logo small">Z<span>-</span>SHIRTS</div>
+    <div class="foot-links" id="footLinks"></div>
+  </footer>
+
+  <a class="wa-float" id="waFloat" hidden target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+    <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>
+  </a>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <button class="sheet-close" id="sheetClose" aria-label="Close">✕</button>
+    <div class="sheet-body" id="sheetBody"></div>
+  </section>
+
   <div id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="celebrate.js"></script>
+  <script src="shop.js"></script>
 </body>
 </html>

@@ -32,7 +32,7 @@ grant execute on all functions in schema t to authenticated;
 -- ---------- logins ----------
 insert into auth.users (email) values
   ('aaryak@example.com'), ('ayush@example.com'), ('devanshi@example.com'),
-  ('jigar@example.com'), ('store@example.com'), ('stranger@example.com');
+  ('jigar@example.com'), ('mahendra@example.com'), ('stranger@example.com');
 
 select t.eq('all 5 members linked to their logins',
             (select count(*) from members where auth_user_id is not null), 5::bigint);
@@ -46,7 +46,7 @@ select id as jigar  from members where email = 'jigar@example.com' \gset
 \set as_ayush    'reset role; select set_config(''request.jwt.claim.sub'', (select id::text from auth.users where email=''ayush@example.com''), false); set role authenticated;'
 \set as_devanshi 'reset role; select set_config(''request.jwt.claim.sub'', (select id::text from auth.users where email=''devanshi@example.com''), false); set role authenticated;'
 \set as_jigar    'reset role; select set_config(''request.jwt.claim.sub'', (select id::text from auth.users where email=''jigar@example.com''), false); set role authenticated;'
-\set as_store    'reset role; select set_config(''request.jwt.claim.sub'', (select id::text from auth.users where email=''store@example.com''), false); set role authenticated;'
+\set as_store    'reset role; select set_config(''request.jwt.claim.sub'', (select id::text from auth.users where email=''mahendra@example.com''), false); set role authenticated;'
 \set as_stranger 'reset role; select set_config(''request.jwt.claim.sub'', (select id::text from auth.users where email=''stranger@example.com''), false); set role authenticated;'
 \set as_owner    'reset role; select set_config(''request.jwt.claim.sub'', '''', false);'
 
@@ -185,8 +185,8 @@ select t.eq('limit is now 3000', setting_num('employee_petty_limit'), 3000::nume
 
 \echo '\n== 10. Profit / loss sharing =='
 :as_aaryak
-select t.eq('no rule agreed yet → no share shown',
-            (select count(*) from partner_positions where result_share is not null), 0::bigint);
+select t.eq('default rule: every partner shares 25%',
+            (select count(*) from partner_positions where result_share = 0.25), 4::bigint);
 -- Option B: profit by investment, loss equal
 select raise_request('share_rule', null, 'Profit by investment, loss equal', null,
                      '{"profit_rule":"investment","loss_rule":"equal"}') as r_rule \gset
