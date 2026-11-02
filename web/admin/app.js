@@ -180,31 +180,24 @@
           <input id="email" type="email" autocomplete="email" required>
           <label for="password">Password</label>
           <input id="password" type="password" autocomplete="current-password" minlength="8" required>
-          <button class="btn block" type="submit">Sign in</button>
-          <div class="actions">
-            <button class="btn ghost small" type="button" id="signup">First time? Create account</button>
-            <button class="btn ghost small" type="button" id="forgot">Forgot password</button>
-          </div>
-          <p class="hint">Use the e-mail the partners registered for you. Other e-mails get no access.</p>
+          <button class="btn block" type="submit" id="signinBtn">Sign in</button>
+          <p class="hint">Your login is created by Divyesh. Ask him for your e-mail and first password, then change the password from More → My password.</p>
         </form>
       </div>`;
-    const email = () => document.getElementById('email').value.trim();
+    const email = () => document.getElementById('email').value.trim().toLowerCase();
     const password = () => document.getElementById('password').value;
     document.getElementById('loginForm').onsubmit = async (e) => {
       e.preventDefault();
+      const btn = document.getElementById('signinBtn');
+      btn.disabled = true; btn.textContent = 'Signing in…';
       const { error } = await sb.auth.signInWithPassword({ email: email(), password: password() });
-      if (error) toast(errText(error), true);
-    };
-    document.getElementById('signup').onclick = async () => {
-      if (!email() || password().length < 8) return toast('Enter your e-mail and a password of at least 8 characters.', true);
-      const { data, error } = await sb.auth.signUp({ email: email(), password: password() });
-      if (error) return toast(errText(error), true);
-      if (!data.session) renderLogin('Account created. Check your e-mail and tap the confirmation link, then sign in.');
-    };
-    document.getElementById('forgot').onclick = async () => {
-      if (!email()) return toast('Type your e-mail first.', true);
-      const { error } = await sb.auth.resetPasswordForEmail(email(), { redirectTo: location.href.split('#')[0] });
-      toast(error ? errText(error) : 'Password reset link sent to your e-mail.', !!error);
+      if (error) {
+        btn.disabled = false; btn.textContent = 'Sign in';
+        const m = errText(error);
+        toast(/invalid login/i.test(m) ? 'Wrong e-mail or password. Check for typos, or ask Divyesh to reset your login.'
+          : /not confirmed/i.test(m) ? 'This login is not activated yet. Ask Divyesh to create it again with "Auto confirm" ticked.'
+          : m, true);
+      }
     };
   }
 
@@ -1040,6 +1033,7 @@
       isPartner() && ['close', 'Month close', 'Check the bank and lock the month'],
       isPartner() && ['log', 'Activity log', 'Who did what, when'],
       ['settings', 'Shop settings', 'Delivery, COD, discounts, limits'],
+      ['password', 'My password', 'Change your login password'],
     ].filter(Boolean);
     view.innerHTML = `
       <h1>More</h1>
@@ -1093,6 +1087,34 @@
         try { await q(sb.rpc('set_service_status', { p_id: id, p_action: act, p_note: note })); toast('Done'); VIEWS.returns(view); updateBadges(); } catch (e) { toast(errText(e), true); }
       };
     });
+  };
+
+  // ---------------- my password (no e-mail needed)
+  VIEWS.password = async (view) => {
+    view.innerHTML = `${backBtn}
+      <h1>My password</h1>
+      <p class="sub">Signed in as ${esc(state.session.user.email)}. Choose a new password only you know.</p>
+      <form id="pwForm" class="card">
+        <label for="pw1" style="margin-top:0">New password</label>
+        <input id="pw1" type="password" autocomplete="new-password" minlength="8" required>
+        <label for="pw2">Type it again</label>
+        <input id="pw2" type="password" autocomplete="new-password" minlength="8" required>
+        <div class="hint">At least 8 characters. Mix letters, numbers and a symbol.</div>
+        <button class="btn block" type="submit" id="pwBtn">Change password</button>
+      </form>`;
+    wireBack(view);
+    view.querySelector('#pwForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const a = view.querySelector('#pw1').value, b = view.querySelector('#pw2').value;
+      if (a.length < 8) return toast('Use at least 8 characters.', true);
+      if (a !== b) return toast('The two passwords are different.', true);
+      const btn = view.querySelector('#pwBtn'); btn.disabled = true;
+      const { error } = await sb.auth.updateUser({ password: a });
+      btn.disabled = false;
+      if (error) return toast(errText(error), true);
+      view.querySelector('#pwForm').reset();
+      toast('Password changed. Use the new one next time.');
+    };
   };
 
   // ---------------- settings
