@@ -13,6 +13,16 @@ alter type request_type add value if not exists 'salary_change';
 alter type request_type add value if not exists 'decision';
 alter type request_type add value if not exists 'coupon';
 
+-- guards also cover deletes now (return the old row so allowed deletes go through)
+create or replace function require_internal() returns trigger
+language plpgsql as $$
+begin
+  if coalesce(current_setting('zs.internal', true), '') <> 'on' then
+    raise exception 'Direct changes to % are not allowed. Use the Z-SHIRTS app.', tg_table_name;
+  end if;
+  return coalesce(new, old);
+end $$;
+
 select set_config('zs.internal', 'on', false);
 
 insert into settings (key, value, label) values

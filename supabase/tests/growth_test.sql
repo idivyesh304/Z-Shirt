@@ -180,6 +180,10 @@ select block_cod_pincode('411001', 'High RTO', true);
 :as_guest
 select t.eq('COD off for risky pincode', (delivery_check('411001', 'Pune', 'Maharashtra'))->>'cod', 'false');
 select t.expect_error(format('select place_web_order(%L, ''[{"variant_id": %s, "qty": 1}]'', ''cod'')', :guest, :bl), 'not available for this pincode');
+:as_mahendra
+select block_cod_pincode('411001', null, false);
+:as_guest
+select t.eq('COD back on after unblock', (delivery_check('411001', 'Pune', 'Maharashtra'))->>'cod', 'true');
 select save_push_subscription('https://push.example.com/om', 'k2', 'a2');
 select request_restock(:bxl, 'https://push.example.com/om');
 :as_mahendra
