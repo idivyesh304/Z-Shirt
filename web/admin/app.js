@@ -89,7 +89,26 @@
     stock: '<svg viewBox="0 0 24 24"><path d="M8 4 4 6l1.5 4L8 9v11h8V9l2.5 1L20 6l-4-2a4 4 0 0 1-8 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>',
     bell: '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    crown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="currentColor" fill-opacity=".25"/></svg>',
+    flame: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5.3 2 1.3 3 2.5 3C11 9 11 6 12 3z" fill="currentColor" fill-opacity=".2"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    shop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9M3 9h18v1a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM5 13v7h14v-7"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>',
+    bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+    truck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h11v9H2zM13 10h4l4 4v2h-8"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+    rocket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4 2 6 6 5 11l-3 3h-4l-3-3c-1-5 1-9 5-11z"/><circle cx="12" cy="10" r="2"/><path d="M8 17l-2 4M16 17l2 4"/></svg>',
+    userplus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>',
+    trophy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20zM12 10v4M12 17v.5"/></svg>',
+    rupee: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12M6 9h12M6 4h3a5 5 0 0 1 0 10H6l8 7"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor" fill-opacity=".25"/></svg>',
+    arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
+    bang: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10M12 19v.5"/></svg>',
   };
+  const gi = (k) => `<span class="gi" aria-hidden="true">${ICON[k]}</span>`;
 
   let toastTimer;
   function toast(msg, isErr = false) {
@@ -151,7 +170,7 @@
     p.className = 'panel';
     p.setAttribute('role', 'dialog');
     p.setAttribute('aria-modal', 'true');
-    p.innerHTML = `<button class="panel-close" aria-label="Close">✕</button><div class="panel-body">${html}</div>`;
+    p.innerHTML = `<button class="panel-close" aria-label="Close">${ICON.x}</button><div class="panel-body">${html}</div>`;
     document.body.append(scrim, p);
     scrim.onclick = closePanel;
     p.querySelector('.panel-close').onclick = closePanel;
@@ -308,7 +327,7 @@
     if (b) { b.textContent = n > 9 ? '9+' : n; b.hidden = n === 0; }
   }
   function openNotifs() {
-    const ICONS = { order: '₹', payment: '₹', milestone: '★', status: '➜', service: '↺', stock: '!', approval: '✓', sale: '🏪', dispatch: '🚚', launch: '🚀', client: '👋' };
+    const ICONS = { order: ICON.bag, payment: ICON.rupee, milestone: ICON.trophy, status: ICON.arrow, service: ICON.refresh, stock: ICON.bang, approval: ICON.check, sale: ICON.shop, dispatch: ICON.truck, launch: ICON.rocket, client: ICON.userplus };
     const seen = state.lastSeen;
     const body = panel(`
       <h1>Alerts</h1>
@@ -318,7 +337,7 @@
       ${NATIVE ? '<p class="hint" style="margin-top:-4px">The Android app alerts you while it is open. For alerts with the app closed, open the team web app in Chrome once and tap "Turn on phone alerts".</p>' : ''}
       ${state.notifs.length ? state.notifs.map((n) => `
         <div class="notif ${n.kind}${n.id > seen ? ' unread' : ''}" ${n.order_id ? `data-order="${n.order_id}" style="cursor:pointer"` : ''}>
-          <div class="ic">${ICONS[n.kind] || '•'}</div>
+          <div class="ic">${ICONS[n.kind] || ICON.star}</div>
           <div style="flex:1;min-width:0"><b>${esc(n.title)}</b>
             <div class="muted">${n.amount ? `${esc(inr(n.amount))} · ` : ''}${esc(n.body || '')}</div>
             <div class="muted" style="font-size:12px">${esc(ago(n.at))}</div></div>
@@ -493,7 +512,7 @@
     // last 6 month closings
     const closings = (months || []).map((m) => ({ ...m, st: (mstat || []).find((x) => x.month === m.month) }));
     const closingCard = closings.length ? `<div class="card table-wrap"><table><thead><tr><th>Month</th><th class="r">Sales</th><th class="r">Spent</th><th class="r">Net</th><th class="r">Closing</th></tr></thead><tbody>
-        ${closings.map((m) => `<tr><td>${esc(shortMonth(m.month))} ${m.st && m.st.locked ? '🔒' : ''}<div class="muted">${m.orders} orders · ${m.pieces} pcs</div></td><td class="r">${esc(inr(Number(m.sales) - Number(m.refunds)))}</td>
+        ${closings.map((m) => `<tr><td>${esc(shortMonth(m.month))} ${m.st && m.st.locked ? gi('lock') : ''}<div class="muted">${m.orders} orders · ${m.pieces} pcs</div></td><td class="r">${esc(inr(Number(m.sales) - Number(m.refunds)))}</td>
           <td class="r">${esc(inr(m.expenses))}</td><td class="r">${signed(m.net_result)}</td><td class="r">${m.st ? esc(inr(m.st.closing_balance)) : '—'}</td></tr>`).join('')}</tbody></table></div>` : '';
 
     const cashCard = pv && P ? `<div class="card cash-hero small-hero"><div class="row"><div><div class="k">Cash at the store now</div><div class="v">${esc(inr(pv.expected))}</div></div>
@@ -1086,7 +1105,7 @@
     view.innerHTML = `
       <h1>Stock</h1>
       <p class="sub">${totalPieces} pieces in stock · worth ${esc(inr(value))} at selling price. Tap any number to add pieces.
-        ${state.stock.some((v) => v.waiting > 0) ? `<br><b style="color:var(--cyan)">${state.stock.reduce((t, v) => t + Number(v.waiting || 0), 0)} customers waiting for a restock alert</b> (sizes marked 🔔).` : ''}</p>
+        ${state.stock.some((v) => v.waiting > 0) ? `<br><b style="color:var(--cyan)">${state.stock.reduce((t, v) => t + Number(v.waiting || 0), 0)} customers waiting for a restock alert</b> (sizes marked with a dot).` : ''}</p>
       <button class="btn block" id="newProd" style="margin:0 0 16px">+ New product</button>
       <div class="card blanks-card">
         <div class="row"><div><b>Blank tees (before printing)</b><div class="muted">${blanks.reduce((t, b) => t + Math.max(0, b.qty), 0)} plain pieces · used automatically when a batch starts printing</div></div></div>
@@ -1121,7 +1140,7 @@
               const v = vars.find((x) => x.colour === cn && x.size === sz);
               if (!v) return '<td></td>';
               const cls = v.stock <= 0 ? 'zero' : v.stock <= lim ? 'low' : 'ok';
-              return `<td><button class="cell ${cls}" data-v="${v.variant_id}" aria-label="${esc(cn)} ${esc(sz)}: ${v.stock} pieces">${v.stock}${v.waiting > 0 ? '<sup>🔔</sup>' : ''}</button></td>`;
+              return `<td><button class="cell ${cls}" data-v="${v.variant_id}" aria-label="${esc(cn)} ${esc(sz)}: ${v.stock} pieces">${v.stock}${v.waiting > 0 ? '<sup>●</sup>' : ''}</button></td>`;
             }).join('')}</tr>`).join('')}</tbody></table>
           <div class="actions">
             <button class="btn small outline" data-edit="${g.product_id}">Edit</button>
@@ -1944,7 +1963,7 @@
       <h1>Activity log</h1>
       <p class="sub">Every action by every person, permanently. Changes made outside the app show as “system / database owner”.</p>
       ${rows.map((r) => `<div class="card"><div class="row"><b>${esc(label(r))}</b><span class="muted" style="white-space:nowrap">${esc(ago(r.at))}</span></div>
-        <div class="muted" style="margin-top:4px">${r.actor_name === 'system / database owner' ? '⚠ ' : ''}${esc(r.actor_name)}</div>
+        <div class="muted" style="margin-top:4px">${r.actor_name === 'system / database owner' ? gi('alert') : ''}${esc(r.actor_name)}</div>
         <details style="margin-top:6px"><summary class="muted">Details</summary><pre style="white-space:pre-wrap;font-size:12px;color:var(--muted)">${esc(JSON.stringify({ before: r.old_data, after: r.new_data }, null, 2))}</pre></details></div>`).join('') || '<div class="empty">No activity yet.</div>'}`;
     wireBack(view);
   };
@@ -2105,15 +2124,15 @@
     root.innerHTML = `<div class="card demand">
       <div class="seg" style="margin-bottom:8px">${[[7, 'Week'], [15, '15 days'], [30, 'Month']].map(([k, l]) => `<button data-dd="${k}" class="${st.days === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="seg">${[['products', 'Tee'], ['categories', 'Category'], ['colours', 'Colour'], ['sizes', 'Size']].map(([k, l]) => `<button data-db="${k}" class="${st.by === k ? 'on' : ''}">${l}</button>`).join('')}</div>
-      ${top ? `<div class="crown"><span class="crown-ic">👑</span><div><div class="muted">Best seller ${label}</div>
+      ${top ? `<div class="crown"><span class="crown-ic">${ICON.crown}</span><div><div class="muted">Best seller ${label}</div>
           <b>${esc(top.name)}${st.by === 'products' && top.category ? ` <small class="muted">· ${esc(top.category)}</small>` : ''}</b>
           <div class="muted">${top.units} pcs${top.revenue ? ` · ${esc(inr(top.revenue))}` : ''}${st.by === 'products' && top.by_colour && top.by_colour[0] ? ` · mostly ${esc(top.by_colour[0].c)}` : ''}</div></div></div>
         <div class="hbars" style="margin-top:12px">${list.slice(0, 8).map((x, i) => `<div class="hbar"><span class="l">${i + 1}. ${st.by === 'colours' ? `<span class="dot-c" style="background:${esc(x.hex || '#888')}"></span>` : ''}${esc(x.name)}</span>
           <span class="b"><i style="width:${(x.units / maxU) * 100}%"></i></span><span class="v">${x.units} pcs</span></div>`).join('')}</div>
         ${st.by === 'products' ? list.filter((x) => Number(x.stock_left) <= (num(state.settings.low_stock_alert) || 5) && Number(x.units) > 0).slice(0, 3)
-          .map((x) => `<div class="hot">🔥 <b>${esc(x.name)}</b> is selling fast: ${x.units} sold, only ${x.stock_left} left. Plan the next batch.</div>`).join('') : ''}`
+          .map((x) => `<div class="hot">${ICON.flame}<span><b>${esc(x.name)}</b> is selling fast: ${x.units} sold, only ${x.stock_left} left. Plan the next batch.</span></div>`).join('') : ''}`
         : `<div class="empty" style="padding:16px 0">No sales ${label} yet.</div>`}
-      ${d.wanted && d.wanted.length ? `<div class="wanted"><b>Customers waiting for a restock</b>${d.wanted.slice(0, 5).map((w) => `<div class="row"><span>${esc(w.name)} · ${esc(w.colour)} / ${esc(w.size)}</span><b>${w.n} 🔔</b></div>`).join('')}</div>` : ''}
+      ${d.wanted && d.wanted.length ? `<div class="wanted"><b>Customers waiting for a restock</b>${d.wanted.slice(0, 5).map((w) => `<div class="row"><span>${esc(w.name)} · ${esc(w.colour)} / ${esc(w.size)}</span><b>${w.n} waiting</b></div>`).join('')}</div>` : ''}
     </div>`;
     root.querySelectorAll('[data-dd]').forEach((b) => { b.onclick = () => { st.days = Number(b.dataset.dd); demandCard(root); }; });
     root.querySelectorAll('[data-db]').forEach((b) => { b.onclick = () => { st.by = b.dataset.db; demandCard(root); }; });
@@ -2319,8 +2338,8 @@
       <div class="seg">${[['today', 'Today'], ['yesterday', 'Yesterday'], ['week', 'Last 7 days']].map(([k, l]) => `<button data-r="${k}" class="${range === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="grid">
         <div class="stat hero"><div class="k">Total sales</div><div class="v">${esc(inr(sum(rows)))}</div><div class="muted">${rows.length} bills · ${pcs(rows)} pieces</div></div>
-        <div class="stat"><div class="k">🏪 Offline (store, events, stalls)</div><div class="v">${esc(inr(sum(off)))}</div><div class="muted">${off.length} bills · ${pcs(off)} pcs</div></div>
-        <div class="stat"><div class="k">🌐 Online (web, app, DMs)</div><div class="v">${esc(inr(sum(on)))}</div><div class="muted">${on.length} orders · ${pcs(on)} pcs</div></div>
+        <div class="stat"><div class="k">${gi('shop')}Offline (store, events, stalls)</div><div class="v">${esc(inr(sum(off)))}</div><div class="muted">${off.length} bills · ${pcs(off)} pcs</div></div>
+        <div class="stat"><div class="k">${gi('globe')}Online (web, app, DMs)</div><div class="v">${esc(inr(sum(on)))}</div><div class="muted">${on.length} orders · ${pcs(on)} pcs</div></div>
       </div>
       ${off.length ? `<div class="cash-flow" style="margin:8px 0 0">Offline paid by: <span>Cash ${esc(inr(payMix(off, 'cash')))}</span><span>UPI ${esc(inr(payMix(off, 'upi')))}</span></div>` : ''}
       ${on.length ? `<div class="cash-flow" style="margin:4px 0 0">Online: <span>Prepaid ${esc(inr(sum(on.filter((o) => o.payment_status === 'paid'))))}</span><span>COD to collect ${esc(inr(sum(on.filter((o) => o.payment_status !== 'paid'))))}</span></div>` : ''}
@@ -3152,6 +3171,72 @@
   }
 
   // ================================================================ start
+  // ================================================================ motion: tilt, ripple, count-up
+  (() => {
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (calm) return;
+    // press ripple on every button
+    document.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest && e.target.closest('.btn, .fab');
+      if (!b) return;
+      const r = b.getBoundingClientRect();
+      const d = Math.max(r.width, r.height);
+      const s = document.createElement('span');
+      s.className = 'ripple';
+      Object.assign(s.style, { width: `${d}px`, height: `${d}px`, left: `${e.clientX - r.left - d / 2}px`, top: `${e.clientY - r.top - d / 2}px` });
+      b.appendChild(s);
+      setTimeout(() => s.remove(), 650);
+    }, { passive: true });
+    // 3D tilt for hero cards: follows the finger or mouse, springs back on release
+    const TILT = '.stat.hero, .cash-hero, .today .stat:first-child, .pcard, .demand .crown';
+    let cur = null;
+    const reset = () => { if (cur) { cur.style.setProperty('--rx', '0deg'); cur.style.setProperty('--ry', '0deg'); cur = null; } };
+    document.addEventListener('pointermove', (e) => {
+      const el = e.target.closest && e.target.closest(TILT);
+      if (el !== cur) reset();
+      if (!el) return;
+      cur = el; el.classList.add('tilt');
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.setProperty('--rx', `${(-y * 8).toFixed(2)}deg`);
+      el.style.setProperty('--ry', `${(x * 10).toFixed(2)}deg`);
+    }, { passive: true });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => document.addEventListener(t, reset, { passive: true }));
+    // the background orbs drift with the phone's tilt
+    const bg = document.querySelector('.zs-bg');
+    if (bg) window.addEventListener('deviceorientation', (e) => {
+      if (e.gamma == null) return;
+      const x = Math.max(-20, Math.min(20, e.gamma)) / 20, y = Math.max(-20, Math.min(20, (e.beta || 0) - 40)) / 20;
+      bg.style.transform = `translate3d(${(x * -14).toFixed(1)}px, ${(y * -14).toFixed(1)}px, 0)`;
+    }, { passive: true });
+    // big numbers count up when a screen opens
+    const fmt = (n, dec) => n.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    function countUp(el) {
+      el.dataset.cu = '1';
+      const t = el.textContent;
+      const m = t.match(/^([^\d-]*)(-?[\d,]+(?:\.\d+)?)(.*)$/);
+      if (!m || /\d/.test(m[1] + m[3]) || el.children.length) return;
+      const target = Number(m[2].replace(/,/g, ''));
+      if (!Number.isFinite(target) || Math.abs(target) < 2) return;
+      const dec = (m[2].split('.')[1] || '').length;
+      const grouped = m[2].includes(',') || Math.abs(target) >= 1000;
+      const t0 = performance.now(), dur = 900;
+      (function step(now) {
+        if (!el.isConnected) return;
+        const p = Math.min(1, (now - t0) / dur), e2 = 1 - Math.pow(1 - p, 3);
+        const v = target * e2;
+        el.textContent = m[1] + (grouped ? fmt(v, dec) : v.toFixed(dec)) + m[3];
+        if (p < 1) requestAnimationFrame(step); else el.textContent = t;
+      })(t0);
+    }
+    let pend = false;
+    new MutationObserver(() => {
+      if (pend) return; pend = true;
+      requestAnimationFrame(() => { pend = false; $app.querySelectorAll('.stat .v:not([data-cu]), .kpi b:not([data-cu]), .cash-hero .v:not([data-cu])').forEach(countUp); });
+    }).observe($app, { childList: true, subtree: true });
+  })();
+
   let started = false;
   sb.auth.onAuthStateChange((_event, session) => {
     const prev = state.session && state.session.user.id;
@@ -3159,8 +3244,8 @@
     if (!started || prev !== (session && session.user.id)) { started = true; boot(); }
   });
   if (NATIVE) {
-    // Android: black status bar, and the back button closes panels / goes back before leaving the app
-    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#000000' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'DARK' }); } catch (_) { /* */ }
+    // Android: light glass status bar, and the back button closes panels / goes back before leaving the app
+    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#f4f0ff' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'LIGHT' }); } catch (_) { /* */ }
     if (Plug.App) {
       Plug.App.addListener('backButton', () => {
         const dlg = document.querySelector('dialog[open]');
