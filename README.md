@@ -118,6 +118,21 @@ Each partner and Mahendra opens `…/Z-Shirt/admin/`, taps **Create account** wi
 
 ---
 
+## Android app (team)
+
+The team app is also an installable Android app. GitHub builds a new APK automatically every time the app changes.
+
+**Install:** on the phone, open **github.com/idivyesh304/Z-Shirt/releases** → latest *Z-SHIRTS Team app* → tap **Z-SHIRTS-Team.apk** → open it. The first time, Android asks to allow "Install unknown apps" for your browser — allow it.
+**Update:** install the newer APK over the old one; you stay logged in.
+
+Notes:
+- The app needs the Supabase keys in `web/config.js` (step 2 of setup). After you paste them, GitHub rebuilds the APK by itself — install that version.
+- In the app, the invoice button sends the invoice to the customer on WhatsApp (phones can't print). Print invoices and labels from a laptop at `…/Z-Shirt/admin/`.
+- Every APK is signed with the same key (`android-app/signing/`), so updates always install. Before a Play Store launch, switch to a private key: add repo secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` — the build uses them automatically.
+- Alerts work while the app is open or recently used. Alerts on a fully closed phone (push) are the next step.
+
+---
+
 ## Honest limits
 
 - **Alerts arrive while the team app is open** (on screen or in a background tab). Alerts to a fully closed phone app need push notifications — that's in the next phase.
