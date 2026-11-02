@@ -57,7 +57,8 @@
     hr_policy: 'HR rules', salary_change: 'Salary', decision: 'Partner decision',
   };
   const EXP_CAT = [['production', 'Production / blanks / printing'], ['ads', 'Ads (Instagram / Meta / Google)'], ['influencer', 'Influencer'], ['packaging', 'Packaging'],
-    ['shipping', 'Courier / shipping'], ['rent', 'Rent & bills'], ['salary', 'Salary'], ['software', 'Apps & software'], ['other', 'Other']];
+    ['shipping', 'Courier / shipping'], ['rent', 'Rent & bills'], ['salary', 'Salary'], ['software', 'Apps & software'], ['equipment', 'Equipment (printer, heat press, furniture)'],
+    ['interest', 'Loan interest / bank charges'], ['tax', 'Income tax paid'], ['other', 'Other']];
   const STAGES = [['planned', 'Planned'], ['blanks', 'Blanks bought'], ['printing', 'Printing'], ['quality_check', 'Quality check'], ['ready', 'Ready · in stock']];
   const MAKING = [['queued', 'Queued'], ['printing', 'Printing'], ['quality_check', 'Quality check'], ['ready', 'Ready']];
   const KIND = { capital_in: 'Capital in', partner_payout: 'Partner payout', expense: 'Expense', income: 'Income', sale: 'Sale', refund: 'Refund' };
@@ -74,11 +75,14 @@
     free_shipping_above: 'Free delivery above', cod_enabled: 'Cash on delivery (1 on / 0 off)', max_store_discount_pct: 'Max discount on manual orders (%)',
     low_stock_alert: 'Low-stock alert at (pieces)', return_window_days: 'Exchange / return window (days)',
     loyalty_points_per_100: 'Z-Club points per ₹100', loyalty_max_redeem_pct: 'Max % of an order paid by points',
+    income_tax_rate_pct: 'Income tax on profit (%)',
   };
   const MONEY_SETTINGS = ['employee_petty_limit', 'all_partner_limit', 'shipping_fee', 'free_shipping_above'];
   const ICON = {
     home: '<svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     orders: '<svg viewBox="0 0 24 24"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 9h6M9 13h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    sales: '<svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    finance: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 6V4h10v2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
     reports: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     store: '<svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9v1a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0V9M5 13v7h14v-7M10 20v-4h4v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
     sell: '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
@@ -271,7 +275,7 @@
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
       try { new Notification(n.title, { body: [n.amount ? inr(n.amount) : '', n.body].filter(Boolean).join(' · '), icon: 'icon.svg', tag: `zs-${n.id}` }); } catch (_) { /* */ }
     }
-    if (['order', 'sale', 'dispatch', 'client', 'status', 'service', 'payment'].includes(n.kind) && ['home', 'orders'].includes(state.tab) && !panelEl) render();
+    if (['order', 'sale', 'dispatch', 'client', 'status', 'service', 'payment'].includes(n.kind) && ['home', 'orders', 'sales', 'store'].includes(state.tab) && !panelEl) render();
   }
   function startLive() {
     try {
@@ -320,7 +324,8 @@
   }
 
   // ================================================================ shell
-  const TABS = [['home', 'Home'], ['stock', 'Stock'], ['sell', 'Sell'], ['orders', 'Orders'], ['reports', 'Reports'], ['store', 'Store'], ['more', 'More']];
+  const ALL_TABS = [['home', 'Home'], ['stock', 'Stock'], ['orders', 'Orders'], ['sales', 'Sales'], ['store', 'Store'], ['finance', 'Finance'], ['reports', 'Reports'], ['more', 'More']];
+  const tabsFor = () => ALL_TABS.filter(([k]) => k !== 'finance' || isPartner());
 
   function render() {
     $app.innerHTML = `
@@ -334,11 +339,13 @@
         </header>
         <main id="view"><div class="empty">Loading…</div></main>
       </div>
-      <nav class="tabs">${TABS.map(([k, label]) => `
-        <button data-tab="${k}" class="${k === 'sell' ? 'sell ' : ''}${state.tab === k ? 'on' : ''}" aria-label="${label}">
+      ${state.tab !== 'sell' ? '<button class="fab" id="fabBill" aria-label="New bill">+ Bill</button>' : ''}
+      <nav class="tabs">${tabsFor().map(([k, label]) => `
+        <button data-tab="${k}" class="${state.tab === k || (k === 'sales' && state.tab === 'sell') ? 'on' : ''}" aria-label="${label}">
           <span class="ico">${ICON[k]}</span>${label}${k === 'orders' || k === 'more' ? `<span class="badge" id="badge-${k}" hidden></span>` : ''}</button>`).join('')}
       </nav>`;
     document.getElementById('bell').onclick = openNotifs;
+    const fab = document.getElementById('fabBill'); if (fab) fab.onclick = () => go('sell');
     document.getElementById('me').onclick = async () => {
       const ok = await ask({ title: 'Sign out?', html: `<p class="muted">Signed in as ${esc(state.me.name)} (${esc(state.me.role)}).</p>`, ok: 'Sign out', okClass: 'bad' });
       if (ok) sb.auth.signOut();
@@ -466,29 +473,12 @@
     const channelCard = chRows.length ? `<div class="card hbars">${chRows.map(([k, r]) => `<div class="hbar"><span class="l">${esc(CHANNEL[k] || k)}</span>
         <span class="b"><i style="width:${(r.v / chMax) * 100}%"></i></span><span class="v">${esc(inr(r.v))} · ${r.pcs}</span></div>`).join('')}</div>` : '<div class="empty">No sales yet this month.</div>';
 
-    // partner money + who owes whom
-    let partnerCards = '';
-    if (pos && pos.length) {
-      const rule = state.settings.profit_rule;
-      const split = state.settings.custom_split || {};
-      const share = (p) => (rule === 'equal' ? 1 / pos.length : rule === 'investment' ? Number(p.investment_share || 0) : Number(split[p.partner_id] || 0) / 100);
-      const netIn = pos.map((p) => ({ p, net: Number(p.capital) - Number(p.payouts) }));
-      const total = netIn.reduce((s2, x) => s2 + x.net, 0);
-      const diffs = netIn.map((x) => ({ name: x.p.name, d: Math.round(x.net - total * share(x.p)) }));
-      const give = diffs.filter((x) => x.d < 0).map((x) => ({ ...x, d: -x.d })), get = diffs.filter((x) => x.d > 0).map((x) => ({ ...x }));
-      const moves = [];
-      for (const g of give) for (const r of get) { const amt = Math.min(g.d, r.d); if (amt > 0) { moves.push(`${esc(g.name.split(' ')[0])} → ${esc(r.name.split(' ')[0])}: <b>${esc(inr(amt))}</b>`); g.d -= amt; r.d -= amt; } }
-      partnerCards = `<div class="partner-grid">${pos.map((p) => `<div class="card pcard${p.partner_id === state.me.id ? ' me' : ''}">
-          <b>${esc(p.name)}</b>
-          <div class="row"><span class="muted">Invested</span><span class="amt">${esc(inr(p.capital))}</span></div>
-          ${Number(p.payouts) ? `<div class="row"><span class="muted">Taken out</span><span class="amt">${esc(inr(p.payouts))}</span></div>` : ''}
-          ${(() => { const h = (held || []).find((x) => x.partner_id === p.partner_id); return h && Number(h.collected) ? `<div class="row"><span class="muted">Store cash collected</span><span class="amt">${esc(inr(h.collected))}</span></div>` : ''; })()}
-          <div class="row"><span class="muted">Profit / loss (${esc(pct(p.result_share))})</span>${signed(p.result_amount)}</div>
-          <div class="row" style="border-top:1px solid var(--line);padding-top:6px;margin-top:6px"><span class="muted">If settled today</span>${signed(p.settlement_balance)}</div></div>`).join('')}</div>
-        <div class="card settle"><b>To make every partner equal (${esc(RULE[rule] || rule)})</b>
-          ${moves.length ? `<div class="settle-list">${moves.map((m) => `<div>${m}</div>`).join('')}</div><div class="hint">Pay each other directly. When a partner pays the business instead, record it as Capital in.</div>`
-            : '<div class="muted" style="margin-top:6px">Everyone has put in their fair share. Nothing to settle ✓</div>'}</div>`;
-    }
+    // my share (full partner finance lives in the Finance tab)
+    const mine_ = (pos || []).find((p) => p.partner_id === state.me.id);
+    const partnerCards = mine_ ? `<div class="card pcard me"><div class="row"><b>My share</b><button class="linkish" data-goto="finance">Finance ›</button></div>
+        <div class="row"><span class="muted">I invested</span><span class="amt">${esc(inr(mine_.capital))}</span></div>
+        <div class="row"><span class="muted">My profit / loss (${esc(pct(mine_.result_share))})</span>${signed(mine_.result_amount)}</div>
+        <div class="row"><span class="muted">If settled today</span>${signed(mine_.settlement_balance)}</div></div>` : '';
 
     // last 6 month closings
     const closings = (months || []).map((m) => ({ ...m, st: (mstat || []).find((x) => x.month === m.month) }));
@@ -522,6 +512,9 @@
         <div class="stat"><div class="k">Orders</div><div class="v">${t.orders}</div></div>
         <div class="stat"><div class="k">Pieces</div><div class="v">${t.pieces}</div></div>
       </div>
+      ${biz.target_pcs || biz.target_amount ? `<div class="card"><div class="row"><b>Today's target</b><span class="muted">monthly target ÷ ${lastDay} days</span></div>
+        ${biz.target_pcs ? meter(Number(t.pieces), Math.ceil(biz.target_pcs / lastDay), false) : ''}${biz.target_amount ? meter(Number(t.value), Math.ceil(biz.target_amount / lastDay), true) : ''}</div>` : ''}
+      <button class="btn block" data-goto="sell" style="margin:4px 0 6px">+ New bill</button>
       ${cashCard}
       <h2>Do next</h2>
       ${actions.length ? `<div class="action-list">${actions.map(([n, c, t1, t2], i) => `
@@ -548,18 +541,45 @@
           <div class="stat"><div class="k">Expenses</div><div class="v">${esc(inr(summary.total_expenses))}</div></div>
           <div class="stat" style="grid-column:1/-1"><div class="k">Profit / loss so far</div><div class="v">${signed(summary.business_result)}</div></div>
         </div>` : ''}
-      ${partnerCards ? `<h2>Partners · invested, profit & settle-up</h2>${partnerCards}` : ''}
+      ${partnerCards}
       ${closingCard ? `<h2>Last 6 months</h2>${closingCard}` : ''}
       ${P ? `<h2>All reports</h2><div class="chipset">${REPORTS.map(([k, l]) => `<button data-rep="${k}">${l}</button>`).join('')}<button data-go="production">Production</button><button data-go="hr">Team & HR</button><button data-go="influencers">Influencers</button><button data-go="coupons">Coupons</button></div>` : ''}`;
     view.querySelectorAll('[data-a]').forEach((b) => { b.onclick = actions[Number(b.dataset.a)][4]; });
     view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('reports'); }; });
     view.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => go('more', b.dataset.go); });
+    view.querySelectorAll('[data-goto]').forEach((b) => { b.onclick = () => go(b.dataset.goto); });
     view.querySelectorAll('[data-hand]').forEach((b) => { b.onclick = () => cashHandover(() => VIEWS.home(view)); });
     const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('store');
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
     demandCard(view.querySelector('#demandBox'));
     const st = view.querySelector('#setTargets'); if (st) st.onclick = () => targetsDialog(targets || [], () => VIEWS.home(view));
   };
+
+  function partnerFinanceHtml(pos, held) {
+  let partnerCards = '';
+  if (pos && pos.length) {
+    const rule = state.settings.profit_rule;
+    const split = state.settings.custom_split || {};
+    const share = (p) => (rule === 'equal' ? 1 / pos.length : rule === 'investment' ? Number(p.investment_share || 0) : Number(split[p.partner_id] || 0) / 100);
+    const netIn = pos.map((p) => ({ p, net: Number(p.capital) - Number(p.payouts) }));
+    const total = netIn.reduce((s2, x) => s2 + x.net, 0);
+    const diffs = netIn.map((x) => ({ name: x.p.name, d: Math.round(x.net - total * share(x.p)) }));
+    const give = diffs.filter((x) => x.d < 0).map((x) => ({ ...x, d: -x.d })), get = diffs.filter((x) => x.d > 0).map((x) => ({ ...x }));
+    const moves = [];
+    for (const g of give) for (const r of get) { const amt = Math.min(g.d, r.d); if (amt > 0) { moves.push(`${esc(g.name.split(' ')[0])} → ${esc(r.name.split(' ')[0])}: <b>${esc(inr(amt))}</b>`); g.d -= amt; r.d -= amt; } }
+    partnerCards = `<div class="partner-grid">${pos.map((p) => `<div class="card pcard${p.partner_id === state.me.id ? ' me' : ''}">
+        <b>${esc(p.name)}</b>
+        <div class="row"><span class="muted">Invested</span><span class="amt">${esc(inr(p.capital))}</span></div>
+        ${Number(p.payouts) ? `<div class="row"><span class="muted">Taken out</span><span class="amt">${esc(inr(p.payouts))}</span></div>` : ''}
+        ${(() => { const h = (held || []).find((x) => x.partner_id === p.partner_id); return h && Number(h.collected) ? `<div class="row"><span class="muted">Store cash collected</span><span class="amt">${esc(inr(h.collected))}</span></div>` : ''; })()}
+        <div class="row"><span class="muted">Profit / loss (${esc(pct(p.result_share))})</span>${signed(p.result_amount)}</div>
+        <div class="row" style="border-top:1px solid var(--line);padding-top:6px;margin-top:6px"><span class="muted">If settled today</span>${signed(p.settlement_balance)}</div></div>`).join('')}</div>
+      <div class="card settle"><b>To make every partner equal (${esc(RULE[rule] || rule)})</b>
+        ${moves.length ? `<div class="settle-list">${moves.map((m) => `<div>${m}</div>`).join('')}</div><div class="hint">Pay each other directly. When a partner pays the business instead, record it as Capital in.</div>`
+          : '<div class="muted" style="margin-top:6px">Everyone has put in their fair share. Nothing to settle ✓</div>'}</div>`;
+  }
+  return partnerCards;
+}
 
   async function targetsDialog(rows, done) {
     const team = state.members.filter((m) => m.active);
@@ -825,7 +845,7 @@
     const c = s.customer;
 
     view.innerHTML = `
-      <h1>Sell</h1>
+      <div class="row" style="align-items:center"><h1>New bill</h1><button class="linkish" id="toSales">Today's sales ›</button></div>
       <div class="seg">${SELL_CHANNELS.map(([k, l]) => `<button data-ch="${k}" class="${s.channel === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="row2" style="grid-template-columns:1fr auto;align-items:start"><input class="search-in" id="sSearch" type="search" placeholder="Find a tee or colour" value="${esc(s.search)}">
         <button class="btn cyan" id="sScan" style="height:46px">Scan tag</button></div>
@@ -886,6 +906,7 @@
     };
     const redraw = () => { keepForm(); const y = window.scrollY; VIEWS.sell(view).then(() => window.scrollTo(0, y)); };
     view.querySelectorAll('[data-ch]').forEach((b) => { b.onclick = () => { s.channel = b.dataset.ch; redraw(); }; });
+    view.querySelector('#toSales').onclick = () => go('sales');
     view.querySelector('#sSearch').oninput = (e) => {
       s.search = e.target.value;
       clearTimeout(view._t);
@@ -997,7 +1018,7 @@
   // ================================================================ STOCK + PRODUCTS
   VIEWS.stock = async (view) => {
     await loadStock();
-    const blanks = await q(sb.from('blank_stock').select('*')).catch(() => []);
+    const [blanks, dtf] = await Promise.all([q(sb.from('blank_stock').select('*')).catch(() => []), q(sb.from('dtf_stock').select('*')).catch(() => [])]);
     const lim = num(state.settings.low_stock_alert) || 5;
     const groups = [...new Map(state.stock.map((v) => [v.product_id, v])).values()].sort((a, b) => a.product_name.localeCompare(b.product_name));
     const totalPieces = state.stock.filter((v) => v.active).reduce((t, v) => t + Math.max(0, v.stock), 0);
@@ -1020,6 +1041,13 @@
         })() : '<div class="muted" style="margin-top:8px">Not tracking blanks yet. Add your first purchase of plain black tees.</div>'}
         <div class="actions"><button class="btn small" data-blank="purchase">+ Bought blanks</button><button class="btn small outline" data-blank="damaged" style="color:var(--pink)">Damaged blanks</button></div>
       </div>
+      <div class="card blanks-card">
+        <div class="row"><div><b>DTF prints (ready to press)</b><div class="muted">${dtf.reduce((t, d) => t + Math.max(0, d.qty), 0)} prints · used automatically when a batch starts printing</div></div></div>
+        ${dtf.length ? dtf.map((d) => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(d.name)}<div class="muted">${d.bought || 0} bought · ${d.used || 0} used${d.cost_per_print ? ` · ${esc(inr(d.cost_per_print))}/print` : ''}</div></span>
+          <b class="${d.qty <= lim ? 'neg' : 'pos'}">${d.qty}</b></div>`).join('') : '<div class="muted" style="margin-top:8px">Not tracking DTF prints yet.</div>'}
+        <div class="actions"><button class="btn small" data-dtf="purchase">+ Bought DTF prints</button><button class="btn small outline" data-dtf="damaged" style="color:var(--pink)">Damaged prints</button></div>
+      </div>
+      <h2>Printed tees (ready to sell)</h2>
       ${groups.length ? groups.map((g) => {
         const vars = state.stock.filter((v) => v.product_id === g.product_id && v.active);
         const colours = [...new Map(vars.map((v) => [v.colour, v.colour_hex])).entries()];
@@ -1050,6 +1078,17 @@
       }).join('') : '<div class="empty">No products yet. Add your first tee.</div>'}`;
 
     view.querySelector('#newProd').onclick = () => openProductForm();
+    view.querySelectorAll('[data-dtf]').forEach((b) => {
+      b.onclick = async () => {
+        const buy = b.dataset.dtf === 'purchase';
+        const prods = [...new Map(state.stock.map((x) => [x.product_id, x.product_name])).entries()];
+        const v = await ask({ title: buy ? 'DTF prints bought' : 'Damaged DTF prints', fields: [
+          { name: 'p', label: 'Design (tee)', type: 'select', options: prods }, { name: 'qty', label: 'Prints', type: 'number', required: true },
+          ...(buy ? [{ name: 'cost', label: 'Total cost (₹, optional)', type: 'number' }] : []), { name: 'note', label: buy ? 'Vendor / bill no.' : 'What happened?' }], ok: 'Save' });
+        if (!v) return;
+        try { const left = await q(sb.rpc('add_dtf', { p_product: Number(v.p), p_qty: Number(v.qty), p_reason: b.dataset.dtf, p_cost: num(v.cost), p_note: v.note || null })); toast(`${left} DTF prints now`); VIEWS.stock(view); } catch (e) { toast(errText(e), true); }
+      };
+    });
     view.querySelectorAll('[data-blank]').forEach((b) => {
       b.onclick = async () => {
         const buy = b.dataset.blank === 'purchase';
@@ -2045,22 +2084,6 @@
     };
   };
 
-  // Store tab: Mahendra's attendance card on top, then store cash
-  VIEWS.store = async (view) => {
-    await VIEWS.cash(view);
-    const back = view.querySelector('#back'); if (back) back.remove();
-    view.querySelector('h1').textContent = 'Store';
-    if (state.me.role === 'employee') {
-      const [pol, att] = await Promise.all([q(sb.rpc('hr_policy')), q(sb.from('attendance').select('*').eq('member_id', state.me.id).eq('day', todayKey()))]).catch(() => [null, []]);
-      if (pol) {
-        const box = document.createElement('div');
-        box.innerHTML = punchHtml(att[0], pol);
-        view.querySelector('h1').after(box);
-        wirePunch(box, att[0], () => VIEWS.store(view));
-      }
-    }
-  };
-
   // Cash leaves the store only as a handover to a named partner
   function cashHandover(done) {
     const P = isPartner();
@@ -2084,6 +2107,235 @@
       } catch (err) { btn.disabled = false; toast(errText(err), true); }
     };
   }
+
+  // ================================================================ SALES (today's sales, online + offline)
+  VIEWS.sales = async (view) => {
+    const range = state.salesRange || 'today';
+    const from = range === 'today' ? todayKey() : range === 'yesterday' ? new Date(Date.now() - 864e5).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : new Date(Date.now() - 6 * 864e5).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const to = range === 'yesterday' ? todayKey() : null;
+    let qy = sb.from('order_board').select('*').gte('created_at', istStart(from)).neq('status', 'cancelled').order('created_at', { ascending: false });
+    if (to) qy = qy.lt('created_at', istStart(to));
+    const rows = (await q(qy)).filter((o) => !(o.payment_method === 'online' && o.payment_status !== 'paid'));
+    const off = rows.filter((o) => IN_PERSON.includes(o.channel)), on = rows.filter((o) => !IN_PERSON.includes(o.channel));
+    const sum = (a) => a.reduce((t, o) => t + Number(o.total) - Number(o.shipping), 0);
+    const pcs = (a) => a.reduce((t, o) => t + Number(o.pieces), 0);
+    const by = (key, label) => {
+      const m = {};
+      rows.forEach((o) => { const k = label(o); m[k] = m[k] || { n: 0, v: 0, p: 0 }; m[k].n++; m[k].v += Number(o.total) - Number(o.shipping); m[k].p += Number(o.pieces); });
+      const list = Object.entries(m).sort((a, b) => b[1].v - a[1].v);
+      const mx = Math.max(1, ...list.map((x) => x[1].v));
+      return list.length ? `<div class="card hbars">${list.map(([k, r]) => `<div class="hbar"><span class="l">${esc(k)}</span><span class="b"><i style="width:${(r.v / mx) * 100}%"></i></span><span class="v">${esc(inr(r.v))} · ${r.p}</span></div>`).join('')}</div>` : '';
+    };
+    const payMix = (a, m) => sum(a.filter((o) => o.payment_method === m));
+    view.innerHTML = `
+      <div class="row" style="align-items:center"><h1>Sales</h1><button class="btn small" id="newBill">+ New bill</button></div>
+      <div class="seg">${[['today', 'Today'], ['yesterday', 'Yesterday'], ['week', 'Last 7 days']].map(([k, l]) => `<button data-r="${k}" class="${range === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="grid">
+        <div class="stat hero"><div class="k">Total sales</div><div class="v">${esc(inr(sum(rows)))}</div><div class="muted">${rows.length} bills · ${pcs(rows)} pieces</div></div>
+        <div class="stat"><div class="k">🏪 Offline (store, events, stalls)</div><div class="v">${esc(inr(sum(off)))}</div><div class="muted">${off.length} bills · ${pcs(off)} pcs</div></div>
+        <div class="stat"><div class="k">🌐 Online (web, app, DMs)</div><div class="v">${esc(inr(sum(on)))}</div><div class="muted">${on.length} orders · ${pcs(on)} pcs</div></div>
+      </div>
+      ${off.length ? `<div class="cash-flow" style="margin:8px 0 0">Offline paid by: <span>Cash ${esc(inr(payMix(off, 'cash')))}</span><span>UPI ${esc(inr(payMix(off, 'upi')))}</span></div>` : ''}
+      ${on.length ? `<div class="cash-flow" style="margin:4px 0 0">Online: <span>Prepaid ${esc(inr(sum(on.filter((o) => o.payment_status === 'paid'))))}</span><span>COD to collect ${esc(inr(sum(on.filter((o) => o.payment_status !== 'paid'))))}</span></div>` : ''}
+      <h2>By channel</h2>${by('channel', (o) => CHANNEL[o.channel] || o.channel) || '<div class="empty">No sales yet.</div>'}
+      <h2>By person</h2>${by('person', (o) => soldByName(o) || 'Website (no one)')}
+      <h2>Bills</h2>${rows.length ? rows.map(orderCard).join('') : '<div class="empty">No sales yet. Tap + New bill.</div>'}`;
+    view.querySelector('#newBill').onclick = () => go('sell');
+    view.querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { state.salesRange = b.dataset.r; VIEWS.sales(view); }; });
+    view.querySelectorAll('.order').forEach((c) => { c.onclick = (e) => { if (!e.target.closest('[data-next]')) openOrder(Number(c.dataset.id), rows); }; });
+    view.querySelectorAll('[data-next]').forEach((b) => { b.onclick = async () => { if (await advance(rows.find((x) => x.id === Number(b.dataset.next)))) VIEWS.sales(view); }; });
+  };
+
+  // ================================================================ STORE (day register, cash, petty cash, stock at a glance)
+  VIEWS.store = async (view) => {
+    const P = isPartner();
+    const emp = state.me.role === 'employee';
+    const [reg, pol, att, petty, myPetty] = await Promise.all([
+      q(sb.rpc('store_register', { p_days: 14 })).catch(() => []),
+      emp ? q(sb.rpc('hr_policy')).catch(() => null) : Promise.resolve(null),
+      emp ? q(sb.from('attendance').select('*').eq('member_id', state.me.id).eq('day', todayKey())).catch(() => []) : Promise.resolve([]),
+      q(sb.from('petty_board').select('*')).catch(() => []),
+      q(sb.from('petty_moves').select('*').order('id', { ascending: false }).limit(20)).catch(() => []),
+    ]);
+    await loadStock();
+    const today = reg.find((r) => r.day === todayKey()) || {};
+    const pieces = state.stock.filter((v) => v.active).reduce((t, v) => t + Math.max(0, v.stock), 0);
+    const lim = num(state.settings.low_stock_alert) || 5;
+    const low = state.stock.filter((v) => v.active && v.published && v.stock <= lim && !v.is_preorder).length;
+    const myBal = (petty.find((x) => x.holder === state.me.id) || {}).balance;
+    view.innerHTML = `
+      <h1>Store</h1>
+      ${emp && pol ? `<div id="punchBox">${punchHtml(att[0], pol)}</div>` : ''}
+      <div class="card store-day">
+        <div class="row"><b>Store hours · ${esc(new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }))}</b>
+          <span class="pill ${today.closed_at ? 'approved' : today.opened_at ? 'pending' : 'cancelled'}">${today.closed_at ? 'Closed' : today.opened_at ? 'Open' : 'Not opened'}</span></div>
+        <div class="punch-grid" style="grid-template-columns:1fr 1fr">
+          <div class="stat"><div class="k">Opened</div><div class="v" style="font-size:16px">${esc(timeOf(today.opened_at))}</div><div class="muted" style="font-size:11px">${esc(today.opened_by || '')}</div></div>
+          <div class="stat"><div class="k">Closed</div><div class="v" style="font-size:16px">${esc(timeOf(today.closed_at))}</div><div class="muted" style="font-size:11px">${esc(today.closed_by || '')}</div></div>
+        </div>
+        ${P ? `<div class="punch-grid" style="grid-template-columns:repeat(3,1fr);margin-top:0">
+          <div class="stat"><div class="k">Opening balance</div><div class="v" style="font-size:15px">${esc(inr(today.opening))}</div></div>
+          <div class="stat"><div class="k">Cash sales</div><div class="v pos" style="font-size:15px">${esc(inr(today.cash_sales))}</div></div>
+          <div class="stat"><div class="k">UPI sales</div><div class="v" style="font-size:15px">${esc(inr(today.upi_sales))}</div></div></div>` : ''}
+        <div class="muted">${today.bills || 0} bills · ${today.pieces || 0} pieces sold at the store today</div>
+        ${!today.opened_at ? '<button class="btn block" id="openStore" style="margin-top:12px">Open the store</button>' : ''}
+      </div>
+      <div id="cashBox"></div>
+      <h2>Petty cash</h2>
+      <div class="card">
+        ${emp || myBal !== undefined ? `<div class="row"><span>My petty cash</span><b class="amt">${esc(inr(myBal || 0))}</b></div>` : ''}
+        ${P ? petty.map((x) => `<div class="row" style="padding:4px 0"><span>${esc(x.name)}</span><b class="amt">${esc(inr(x.balance))}</b></div>`).join('') || '<div class="muted">No petty cash given yet.</div>' : ''}
+        <div class="actions">${myBal > 0 ? '<button class="btn small" id="pettySpend">Spend from petty cash</button>' : ''}${P ? '<button class="btn small outline" id="pettyGive">Give petty cash</button><button class="btn small ghost" id="pettyBack">Take back</button>' : ''}</div>
+        <div class="hint">Petty cash is separate from the sales drawer. Every spend needs a bill photo and goes into the books as an expense.</div>
+        ${myPetty.length ? `<div style="margin-top:10px">${myPetty.slice(0, 8).map((m) => `<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${esc(m.reason)}<div class="muted">${esc(day(m.day))} · ${esc(memberName(m.holder))}${m.photo_path ? ` · <button class="linkish" data-ph="${esc(m.photo_path)}">bill</button>` : ''}</div></span>
+          <b class="${m.kind === 'topup' ? 'pos' : 'neg'}">${m.kind === 'topup' ? '+' : '−'} ${esc(inr(m.amount))}</b></div>`).join('')}</div>` : ''}
+      </div>
+      <h2>Stock at the store</h2>
+      <div class="card"><div class="row"><span>${pieces} printed pieces ready to sell</span><button class="linkish" id="toStock">Stock ›</button></div>
+        ${low ? `<div class="neg" style="margin-top:4px">${low} sizes running low</div>` : ''}</div>
+      <h2>Day register · last 14 days</h2>
+      <div class="card table-wrap"><table><thead><tr><th>Day</th><th>Open</th><th>Close</th>${P ? '<th class="r">Opening</th><th class="r">Cash sales</th><th class="r">Handed</th><th class="r">Closing</th><th class="r">Diff</th>' : '<th class="r">Bills</th>'}</tr></thead><tbody>
+        ${reg.map((r) => `<tr><td style="white-space:nowrap">${esc(new Date(`${r.day}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}</td><td>${esc(timeOf(r.opened_at))}</td><td>${esc(timeOf(r.closed_at))}</td>
+          ${P ? `<td class="r">${esc(inr(r.opening))}</td><td class="r">${esc(inr(r.cash_sales))}</td><td class="r">${esc(inr(r.handed_over))}</td><td class="r">${r.counted !== null ? esc(inr(r.counted)) : '—'}</td>
+            <td class="r">${r.difference === null ? '—' : Number(r.difference) ? signed(r.difference) : '<span class="pos">✓</span>'}</td>` : `<td class="r">${r.bills}</td>`}</tr>`).join('')}</tbody></table></div>`;
+    if (emp && pol) wirePunch(view.querySelector('#punchBox'), att[0], () => VIEWS.store(view));
+    view.querySelectorAll('[data-ph]').forEach((b) => { b.onclick = () => showProof(b.dataset.ph); });
+    view.querySelector('#toStock').onclick = () => go('stock');
+    const os = view.querySelector('#openStore');
+    if (os) os.onclick = async () => { try { await q(sb.rpc('store_open', { p_note: null })); C.chime(); toast('Store is open. Have a great day!'); VIEWS.store(view); } catch (e) { toast(errText(e), true); } };
+    const sp = view.querySelector('#pettySpend');
+    if (sp) sp.onclick = () => pettySpend(() => VIEWS.store(view));
+    const pg = view.querySelector('#pettyGive');
+    if (pg) pg.onclick = () => pettyGive(false, () => VIEWS.store(view));
+    const pb = view.querySelector('#pettyBack');
+    if (pb) pb.onclick = () => pettyGive(true, () => VIEWS.store(view));
+    // store cash (handovers + daily close) underneath
+    const box = view.querySelector('#cashBox');
+    await VIEWS.cash(box);
+    const back = box.querySelector('#back'); if (back) back.remove();
+    const h1 = box.querySelector('h1'); if (h1) { const h2 = document.createElement('h2'); h2.textContent = 'Store cash'; h1.replaceWith(h2); }
+  };
+
+  function pettySpend(done) {
+    const body = panel(`<h1 style="margin-top:14px">Spend petty cash</h1>
+      <label for="psAmt">Amount (₹)</label><input id="psAmt" type="number" inputmode="decimal">
+      <label for="psCat">Category</label><select id="psCat">${EXP_CAT.filter(([k]) => !['equipment', 'interest', 'tax', 'salary'].includes(k)).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
+      <label for="psWhy">What did you buy?</label><input id="psWhy" placeholder="e.g. Packing tape + 50 courier bags">
+      <label for="psPhoto">Photo of the bill</label><input id="psPhoto" type="file" accept="image/*" capture="environment">
+      <button class="btn block" id="psGo" style="margin-top:16px">Save</button>`);
+    body.querySelector('#psGo').onclick = async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try {
+        const path = await uploadProof(body.querySelector('#psPhoto').files[0], 'petty');
+        const left = await q(sb.rpc('petty_spend', { p_amount: num(body.querySelector('#psAmt').value), p_reason: body.querySelector('#psWhy').value, p_category: body.querySelector('#psCat').value, p_photo: path }));
+        closePanel(); toast(`Saved · ${inr(left)} petty cash left`); done();
+      } catch (err) { btn.disabled = false; toast(errText(err), true); }
+    };
+  }
+  async function pettyGive(back, done) {
+    const v = await ask({ title: back ? 'Take petty cash back' : 'Give petty cash', fields: [
+      { name: 'who', label: back ? 'From' : 'To', type: 'select', options: state.members.filter((m) => m.active && m.role === 'employee').map((m) => [m.id, m.name]) },
+      { name: 'amt', label: 'Amount (₹)', type: 'number', required: true }, { name: 'note', label: 'Note (optional)' }], ok: back ? 'Take back' : 'Give' });
+    if (!v) return;
+    try { const bal = await q(sb.rpc('petty_topup', { p_holder: v.who, p_amount: num(v.amt), p_note: v.note || null, p_return: back })); toast(`Petty cash now ${inr(bal)}`); done(); } catch (e) { toast(errText(e), true); }
+  }
+
+  // ================================================================ FINANCE (partners)
+  const PERIODS = () => {
+    const d = new Date(); const y = d.getFullYear(); const mth = d.getMonth();
+    const iso = (x) => x.toLocaleDateString('en-CA');
+    const fyStart = mth >= 3 ? new Date(y, 3, 1) : new Date(y - 1, 3, 1);
+    const qStart = new Date(y, Math.floor(mth / 3) * 3, 1);
+    return {
+      month: ['This month', iso(new Date(y, mth, 1)), iso(new Date(y, mth + 1, 1))],
+      last: ['Last month', iso(new Date(y, mth - 1, 1)), iso(new Date(y, mth, 1))],
+      quarter: ['This quarter', iso(qStart), iso(new Date(qStart.getFullYear(), qStart.getMonth() + 3, 1))],
+      fy: [`FY ${fyStart.getFullYear()}-${String(fyStart.getFullYear() + 1).slice(2)}`, iso(fyStart), iso(new Date(fyStart.getFullYear() + 1, 3, 1))],
+      all: ['Since start', '2020-01-01', iso(new Date(y + 1, 0, 1))],
+    };
+  };
+  VIEWS.finance = async (view) => {
+    if (!isPartner()) { view.innerHTML = '<div class="empty">Finance is for partners.</div>'; return; }
+    const per = PERIODS();
+    const k = state.finPeriod && per[state.finPeriod] ? state.finPeriod : 'month';
+    const [label, from, to] = per[k];
+    const [f, pos, held, summary] = await Promise.all([
+      q(sb.rpc('finance_statement', { p_from: from, p_to: to })),
+      q(sb.from('partner_positions').select('*')), q(sb.from('cash_with_partners').select('*')).catch(() => []),
+      q(sb.from('business_summary').select('*').single()),
+    ]);
+    const cat = (c) => (EXP_CAT.find((x) => x[0] === c) || [0, c])[1];
+    const line = (l, v, cls = '', note = '') => `<tr class="${cls}"><td>${l}${note ? `<div class="muted">${note}</div>` : ''}</td><td class="r">${typeof v === 'string' ? v : esc(inr(v))}</td></tr>`;
+    const pnl = `
+      <table class="pnl">
+        ${line('Sales (incl. GST)', f.gross_sales)}
+        ${line('− Refunds', -f.refunds)}
+        ${line(`− GST collected (${f.gst_rate}%)`, -f.output_gst, '', 'Belongs to the government, paid with GSTR-3B')}
+        ${line('Net revenue', f.revenue, 'sub')}
+        ${line('− Cost of tees sold', -f.cogs, '', f.cogs_basis === 'cost price' ? 'Blank + DTF/print + packing, from cost price' : 'Using production spend (set cost prices for accuracy)')}
+        ${line('Gross profit', f.gross_profit, 'sub')}
+        ${Object.entries(f.expenses_by_category || {}).filter(([c]) => !['production', 'equipment', 'interest', 'tax'].includes(c)).map(([c, v]) => line(`− ${esc(cat(c))}`, -v)).join('')}
+        ${line('EBITDA', f.ebitda, 'sub', 'Earnings before interest, tax, depreciation')}
+        ${line('− Equipment written off', -f.depreciation)}
+        ${line('EBIT', f.ebit, 'sub', 'Operating profit')}
+        ${line('− Interest / bank charges', -f.interest)}
+        ${line('+ Other income', f.other_income)}
+        ${line('PBT', f.pbt, 'sub', 'Profit before tax')}
+        ${line(`− Income tax (${f.tax_rate}%)`, -f.tax, '', 'Estimate. Advance tax is due 15 Jun / Sep / Dec / Mar')}
+        ${line('PAT · Net profit', f.pat, 'total', 'Profit after tax')}
+      </table>`;
+    const fyLabel = per.fy[0];
+    const now = new Date();
+    const nextDue = (dayOfMonth) => { const x = new Date(now.getFullYear(), now.getMonth(), dayOfMonth); if (x < now) x.setMonth(x.getMonth() + 1); return x.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); };
+    view.innerHTML = `
+      <h1>Finance</h1>
+      <div class="seg">${Object.entries(per).map(([kk, [l]]) => `<button data-p="${kk}" class="${k === kk ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <p class="sub">${esc(label)} · ${esc(day(from))} to ${esc(day(f.to))} · ${f.orders} orders</p>
+      <div class="kpis">
+        <div class="kpi"><span>Net revenue</span><b>${esc(inr(f.revenue))}</b></div>
+        <div class="kpi"><span>Gross profit</span><b>${esc(inr(f.gross_profit))}</b><small>${f.gross_margin ?? '—'}% margin</small></div>
+        <div class="kpi"><span>EBITDA</span><b class="${f.ebitda < 0 ? 'neg' : 'pos'}">${esc(inr(f.ebitda))}</b><small>${f.ebitda_margin ?? '—'}% margin</small></div>
+        <div class="kpi"><span>EBIT</span><b>${esc(inr(f.ebit))}</b><small>${f.ebit_margin ?? '—'}%</small></div>
+        <div class="kpi"><span>PBT</span><b>${esc(inr(f.pbt))}</b></div>
+        <div class="kpi"><span>PAT · Net profit</span><b class="${f.pat < 0 ? 'neg' : 'pos'}">${esc(inr(f.pat))}</b><small>${f.net_margin ?? '—'}% net margin</small></div>
+      </div>
+      <h2>Profit & loss</h2>
+      <div class="card report">${pnl}<div class="actions"><button class="btn small outline" id="finPrint">${NATIVE ? 'Share' : 'Print / PDF'}</button></div></div>
+      <h2>Partners · invested, profit & settle-up</h2>
+      <div class="card"><div class="row"><span class="muted">Money in the business (books)</span><b class="amt">${esc(inr(summary.cash_balance))}</b></div>
+        <div class="row"><span class="muted">Profit / loss since start</span>${signed(summary.business_result)}</div></div>
+      ${partnerFinanceHtml(pos, held)}
+      <h2>Tax & compliance</h2>
+      <div class="card">
+        <div class="row"><span>GST collected in this period</span><b>${esc(inr(f.output_gst))}</b></div>
+        <div class="row"><span class="muted">GST on purchases (input credit)</span><span class="muted">add from bills with your CA</span></div>
+        <div class="row"><span>Estimated income tax on profit</span><b>${esc(inr(f.tax))}</b></div>
+        <div class="row"><span class="muted">Income tax already paid (expense category "Income tax paid")</span><span>${esc(inr(f.tax_paid))}</span></div>
+        <table class="compliance">
+          <tr><td>GSTR-1 (sales invoices)</td><td>monthly, by the 11th</td><td class="r">next ${esc(nextDue(11))}</td></tr>
+          <tr><td>GSTR-3B (pay GST)</td><td>monthly, by the 20th</td><td class="r">next ${esc(nextDue(20))}</td></tr>
+          <tr><td>Advance income tax</td><td>15 Jun · 15 Sep · 15 Dec · 15 Mar</td><td class="r">${esc(fyLabel)}</td></tr>
+          <tr><td>Income tax return (firm)</td><td>31 Jul, or 31 Oct if audited</td><td class="r">${esc(fyLabel)}</td></tr>
+          <tr><td>Partners' month close</td><td>after each month, in the app</td><td class="r"><button class="linkish" id="toClose">Open ›</button></td></tr>
+        </table>
+        <div class="hint">Tees up to ₹2,500 a piece carry 5% GST. Small businesses can choose quarterly GST filing (QRMP). Confirm dates and rates with your CA; this is a guide, not tax advice.</div>
+        <button class="btn small outline" id="taxRate" style="margin-top:10px">Change income tax %</button>
+      </div>
+      <h2>Expenses by category</h2>
+      ${Object.keys(f.expenses_by_category || {}).length ? `<div class="card hbars">${(() => { const e = Object.entries(f.expenses_by_category).sort((a, b) => b[1] - a[1]); const mx = Math.max(1, ...e.map((x) => x[1]));
+        return e.map(([c, v]) => `<div class="hbar"><span class="l">${esc(cat(c))}</span><span class="b"><i class="neg" style="width:${(v / mx) * 100}%"></i></span><span class="v">${esc(inr(v))}</span></div>`).join(''); })()}</div>` : '<div class="empty">No expenses in this period.</div>'}
+      <div class="chipset" style="margin-top:14px">${[['books', 'Books'], ['partners', 'Partners'], ['close', 'Month close'], ['approvals', 'Approvals'], ['requests', 'Money entry']].map(([kk, l]) => `<button data-more="${kk}">${l}</button>`).join('')}</div>`;
+    view.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => { state.finPeriod = b.dataset.p; VIEWS.finance(view); }; });
+    view.querySelectorAll('[data-more]').forEach((b) => { b.onclick = () => go('more', b.dataset.more); });
+    view.querySelector('#toClose').onclick = () => go('more', 'close');
+    view.querySelector('#finPrint').onclick = () => printDoc(`Z-SHIRTS P&L ${label}`, `<h1>${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')} · Profit & loss</h1><p class="muted">${esc(label)}: ${esc(day(from))} to ${esc(day(f.to))}</p>${pnl.replace('class="pnl"', '')}`);
+    view.querySelector('#taxRate').onclick = async () => {
+      const v = await ask({ title: 'Income tax on profit (%)', html: '<p class="muted">Partnership firm: 30% + 4% cess = 31.2% (more if profit crosses ₹1 crore). All partners approve.</p>', fields: [{ name: 'value', label: 'Rate %', type: 'number', value: f.tax_rate, required: true }, { name: 'why', label: 'Why?', required: true, placeholder: 'As advised by CA' }], ok: 'Send for approval' });
+      if (!v) return;
+      try { await q(sb.rpc('raise_request', { p_type: 'setting_change', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { key: 'income_tax_rate_pct', value: num(v.value) } })); toast('Sent to partners'); } catch (e) { toast(errText(e), true); }
+    };
+  };
 
   // ================================================================ PRODUCTION TRACKER
   VIEWS.production = async (view) => {
@@ -2460,7 +2712,7 @@
   };
 
   // ================================================================ REPORTS (partners)
-  const REPORTS = [['demand', 'Best sellers'], ['profit', 'Profit per tee'], ['monthly', 'Monthly report'], ['ads', 'Ads & influencers'], ['forecast', 'Cash forecast'], ['investor', 'Investor view']];
+  const REPORTS = [['demand', 'Best sellers'], ['people', 'Sales by person'], ['customers', 'Customers'], ['deadstock', 'Slow stock'], ['returns', 'Returns & RTO'], ['profit', 'Profit per tee'], ['monthly', 'Monthly report'], ['ads', 'Ads & influencers'], ['forecast', 'Cash forecast'], ['investor', 'Investor view']];
   VIEWS.reports = async (view) => {
     const list = isPartner() ? REPORTS : REPORTS.filter(([k]) => k === 'demand');
     const r = list.some(([k]) => k === state.report) ? state.report : 'demand';
@@ -2477,6 +2729,65 @@
   };
   const REPORT_VIEWS = {
     async demand(el) { await demandCard(el); },
+
+    async people(el) {
+      const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); return monthKey(d); });
+      const m = state.repMonth2 || months[0];
+      const rows = await q(sb.rpc('target_progress', { p_month: m }));
+      const biz = rows.find((r) => !r.member_id) || {};
+      el.innerHTML = `<select id="pm" class="inline-select" style="margin-bottom:10px">${months.map((x) => `<option value="${x}" ${x === m ? 'selected' : ''}>${esc(monthName(x))}</option>`).join('')}</select>
+        <div class="card table-wrap"><table><thead><tr><th>Person</th><th class="r">Bills</th><th class="r">Pieces</th><th class="r">Sales</th><th class="r">Target</th></tr></thead><tbody>
+        ${rows.filter((r) => r.member_id).sort((a, b) => b.amount - a.amount).map((r) => `<tr><td>${esc(r.name)}<div class="muted">${esc(r.role)}</div></td><td class="r">${r.orders}</td><td class="r">${r.pcs}</td><td class="r">${esc(inr(r.amount))}</td>
+          <td class="r">${r.target_pcs ? `${Math.round((r.pcs / r.target_pcs) * 100)}% of ${r.target_pcs}` : '—'}</td></tr>`).join('')}
+        <tr><td><b>Whole business</b></td><td class="r"><b>${biz.orders || 0}</b></td><td class="r"><b>${biz.pcs || 0}</b></td><td class="r"><b>${esc(inr(biz.amount))}</b></td><td class="r">${biz.target_pcs ? `${Math.round((biz.pcs / biz.target_pcs) * 100)}%` : '—'}</td></tr></tbody></table></div>`;
+      el.querySelector('#pm').onchange = (e) => { state.repMonth2 = e.target.value; REPORT_VIEWS.people(el); };
+    },
+
+    async customers(el) {
+      const rows = await q(sb.from('customer_board').select('*').order('spend', { ascending: false, nullsFirst: false }).limit(300));
+      const repeat = rows.filter((r) => Number(r.orders) > 1);
+      el.innerHTML = `<div class="kpis"><div class="kpi"><span>Customers</span><b>${rows.length}</b></div><div class="kpi"><span>Came back</span><b>${repeat.length}</b><small>${rows.length ? Math.round((repeat.length / rows.length) * 100) : 0}% repeat</small></div>
+          <div class="kpi"><span>Avg spend</span><b>${esc(inr(rows.length ? Math.round(rows.reduce((t, r) => t + Number(r.spend || 0), 0) / rows.length) : 0))}</b></div></div>
+        <h2>Top customers</h2><div class="card table-wrap"><table><thead><tr><th>Customer</th><th class="r">Orders</th><th class="r">Spent</th><th class="r">Last</th></tr></thead><tbody>
+        ${rows.slice(0, 50).map((r) => `<tr><td>${esc(r.name)}<div class="muted">${esc(r.phone)}${Number(r.rto) ? ` · <span class="neg">${r.rto} RTO</span>` : ''}${r.points ? ` · ${r.points} pts` : ''}</div></td><td class="r">${r.orders}</td><td class="r">${esc(inr(r.spend))}</td><td class="r">${esc(ago(r.last_order))}</td></tr>`).join('')}</tbody></table></div>
+        <p class="hint">Message your repeat customers first when a new drop lands. They buy again.</p>`;
+    },
+
+    async deadstock(el) {
+      await loadStock();
+      const d = await q(sb.rpc('demand_report', { p_days: 30 }));
+      const sold = new Map((d.products || []).map((x) => [x.product_id, Number(x.units)]));
+      const prods = [...new Map(state.stock.filter((v) => v.active && v.product_active).map((v) => [v.product_id, v])).values()].map((p) => {
+        const pcs = state.stock.filter((v) => v.product_id === p.product_id).reduce((t, v) => t + Math.max(0, v.stock), 0);
+        const s30 = sold.get(p.product_id) || 0;
+        return { ...p, pcs, s30, days: s30 ? Math.round((pcs / s30) * 30) : null };
+      }).filter((p) => p.pcs > 0).sort((a, b) => (b.days ?? 9999) - (a.days ?? 9999));
+      el.innerHTML = `<p class="sub">Tees with stock that is not moving. "Days of stock" = how long the current stock lasts at the last 30 days' speed.</p>
+        <div class="card table-wrap"><table><thead><tr><th>Tee</th><th class="r">In stock</th><th class="r">Sold 30d</th><th class="r">Days of stock</th><th class="r">Money stuck</th></tr></thead><tbody>
+        ${prods.map((p) => `<tr><td>${esc(p.product_name)}</td><td class="r">${p.pcs}</td><td class="r">${p.s30}</td><td class="r ${p.days === null || p.days > 90 ? 'neg' : ''}">${p.days === null ? 'not selling' : p.days}</td>
+          <td class="r">${esc(inr(p.pcs * Number(p.cost_price || p.price)))}</td></tr>`).join('')}</tbody></table></div>
+        <p class="hint">Ideas for slow stock: put it in a combo, give it to an influencer, or run a store-only coupon.</p>`;
+    },
+
+    async returns(el) {
+      const [orders, svc] = await Promise.all([
+        q(sb.from('orders').select('id,status,payment_method,channel,address,total,created_at').gte('created_at', istStart(new Date(Date.now() - 90 * 864e5).toLocaleDateString('en-CA')))),
+        q(sb.from('service_board').select('*').order('created_at', { ascending: false }).limit(100)),
+      ]);
+      const shipped = orders.filter((o) => ['shipped', 'delivered', 'rto', 'returned'].includes(o.status));
+      const rto = shipped.filter((o) => o.status === 'rto');
+      const rate = (a) => (a.length ? Math.round((a.filter((o) => o.status === 'rto').length / a.length) * 100) : 0);
+      const cod = shipped.filter((o) => o.payment_method === 'cod'), pre = shipped.filter((o) => o.payment_method !== 'cod');
+      const cities = {};
+      rto.forEach((o) => { const c = (o.address && o.address.city) || '—'; cities[c] = (cities[c] || 0) + 1; });
+      el.innerHTML = `<p class="sub">Last 90 days of shipped orders.</p>
+        <div class="kpis"><div class="kpi"><span>RTO rate</span><b class="${rate(shipped) > 20 ? 'neg' : ''}">${rate(shipped)}%</b><small>${rto.length} of ${shipped.length}</small></div>
+          <div class="kpi"><span>COD RTO</span><b>${rate(cod)}%</b></div><div class="kpi"><span>Prepaid RTO</span><b>${rate(pre)}%</b></div>
+          <div class="kpi"><span>Exchanges</span><b>${svc.filter((r) => r.kind === 'replacement').length}</b></div><div class="kpi"><span>Returns</span><b>${svc.filter((r) => r.kind === 'return').length}</b></div></div>
+        ${Object.keys(cities).length ? `<h2>RTO by city</h2><div class="card">${Object.entries(cities).sort((a, b) => b[1] - a[1]).map(([c, n]) => `<div class="row"><span>${esc(c)}</span><b>${n}</b></div>`).join('')}
+          <div class="hint">Cities with many RTOs: block COD for their pincodes in Settings.</div></div>` : ''}
+        <h2>Why customers asked for exchange / return</h2><div class="card">${svc.slice(0, 20).map((r) => `<div style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(r.reason)}<div class="muted">${esc(r.order_no)} · ${r.kind === 'replacement' ? 'exchange' : 'return'} · ${esc(r.status)}</div></div>`).join('') || '<div class="muted">None yet.</div>'}</div>`;
+    },
     async profit(el) {
       const [prod, drops] = await Promise.all([q(sb.from('product_profit').select('*').order('profit', { ascending: false })), q(sb.from('drop_profit').select('*').order('profit', { ascending: false }))]);
       const noCost = prod.filter((p) => !Number(p.cost_price) && Number(p.units_sold));

@@ -329,3 +329,21 @@ a.btn { text-decoration: none; }
 .demand .hbar { grid-template-columns: 130px 1fr auto; }
 
 @media (max-width: 380px) { nav.tabs button .ico svg { width: 20px; height: 20px; } nav.tabs button { font-size: 10px; } }
+
+/* ---------- phase 6: 8 tabs, FAB, finance ---------- */
+nav.tabs button { font-size: 10px; }
+nav.tabs button .ico svg { width: 21px; height: 21px; }
+@media (max-width: 400px) { nav.tabs { padding-left: 2px; padding-right: 2px; gap: 0; } nav.tabs button { font-size: 9.5px; } nav.tabs button .ico svg { width: 19px; height: 19px; } }
+.fab { position: fixed; right: 14px; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 7; height: 52px; padding: 0 20px; border-radius: 999px; border: 0;
+  background: var(--lime); color: #000; font-weight: 800; font-size: 16px; box-shadow: 0 0 0 4px var(--bg), 0 8px 30px rgba(198,255,0,.45); }
+.shell { padding-bottom: 150px; }
+.pnl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pnl td { padding: 7px 2px; border-bottom: 1px solid var(--line); }
+.pnl td.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pnl tr.sub td { font-weight: 700; border-bottom: 1px solid var(--muted); }
+.pnl tr.total td { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--lime); border-bottom: 0; padding-top: 12px; }
+.compliance { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+.compliance td { padding: 7px 2px; border-top: 1px solid var(--line); }
+.compliance td.r { text-align: right; color: var(--cyan); white-space: nowrap; }
+.store-day { border-color: rgba(0,229,255,.4); }
+.stat.hero .muted { color: rgba(0,0,0,.65); }
