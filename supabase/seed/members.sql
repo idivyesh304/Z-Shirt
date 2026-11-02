@@ -9,7 +9,7 @@
 select set_config('zs.internal', 'on', false);
 
 insert into members (name, email, role) values
-  ('Aaryak Patel',     'aaryakpatel@yahoo.co.in',   'partner'),
+  ('Aaryak Patel',     'aaryakpatel@gmail.com',   'partner'),
   ('Ayush Fotariya',   'ayushfotariya@gmail.com',    'partner'),
   ('Devanshi Panchal', 'devanshikansara28@gmail.com', 'partner'),
   ('Jigar Panchal',    'gj112panchal@gmail.com',    'partner'),
