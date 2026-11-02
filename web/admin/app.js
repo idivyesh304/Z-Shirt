@@ -79,6 +79,8 @@
   const ICON = {
     home: '<svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     orders: '<svg viewBox="0 0 24 24"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 9h6M9 13h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    reports: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    store: '<svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9v1a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0V9M5 13v7h14v-7M10 20v-4h4v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
     sell: '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
     stock: '<svg viewBox="0 0 24 24"><path d="M8 4 4 6l1.5 4L8 9v11h8V9l2.5 1L20 6l-4-2a4 4 0 0 1-8 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>',
@@ -318,7 +320,7 @@
   }
 
   // ================================================================ shell
-  const TABS = [['home', 'Home'], ['orders', 'Orders'], ['sell', 'Sell'], ['stock', 'Stock'], ['more', 'More']];
+  const TABS = [['home', 'Home'], ['stock', 'Stock'], ['sell', 'Sell'], ['orders', 'Orders'], ['reports', 'Reports'], ['store', 'Store'], ['more', 'More']];
 
   function render() {
     $app.innerHTML = `
@@ -413,7 +415,7 @@
 
     const actions = [
       [emp && !a ? 1 : 0, 'cyan', 'Check in for today', 'Selfie + time, takes 5 seconds', () => window.scrollTo(0, 0)],
-      [pv && !pv.closed && hour >= 20 ? 1 : 0, 'pink', "Close today's cash", 'Count the drawer and add a photo', () => go('more', 'cash')],
+      [pv && !pv.closed && hour >= 20 ? 1 : 0, 'pink', "Close today's cash", 'Count the drawer and add a photo', () => go('store')],
       [(leaves || []).length, 'pink', 'leave requests', 'Mahendra is waiting for an answer', () => go('more', 'hr')],
       [count('placed'), 'lime', 'to confirm', 'New orders waiting', () => go('orders', null, (state.orderFilter = 'placed'))],
       [count('confirmed'), 'lime', 'to pack', 'Confirmed, not packed yet', () => go('orders', null, (state.orderFilter = 'confirmed'))],
@@ -550,10 +552,10 @@
       ${closingCard ? `<h2>Last 6 months</h2>${closingCard}` : ''}
       ${P ? `<h2>All reports</h2><div class="chipset">${REPORTS.map(([k, l]) => `<button data-rep="${k}">${l}</button>`).join('')}<button data-go="production">Production</button><button data-go="hr">Team & HR</button><button data-go="influencers">Influencers</button><button data-go="coupons">Coupons</button></div>` : ''}`;
     view.querySelectorAll('[data-a]').forEach((b) => { b.onclick = actions[Number(b.dataset.a)][4]; });
-    view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('more', 'reports'); }; });
+    view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('reports'); }; });
     view.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => go('more', b.dataset.go); });
     view.querySelectorAll('[data-hand]').forEach((b) => { b.onclick = () => cashHandover(() => VIEWS.home(view)); });
-    const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('more', 'cash');
+    const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('store');
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
     demandCard(view.querySelector('#demandBox'));
     const st = view.querySelector('#setTargets'); if (st) st.onclick = () => targetsDialog(targets || [], () => VIEWS.home(view));
@@ -1286,13 +1288,11 @@
       ['returns', 'Returns & exchanges', 'Replacement and return requests from customers', c.svc],
       isPartner() && ['approvals', 'Approvals', 'Expenses, payouts, price changes, damaged stock', c.approvals],
       ['requests', isPartner() ? 'New money entry' : 'Expenses', isPartner() ? 'Expense, income, capital, payout' : 'Record an expense with the bill photo'],
-      ['cash', 'Store cash', isPartner() ? 'Cash at the store, handovers, daily close' : 'Hand over cash to a partner, close the day'],
       ['production', 'Production tracker', 'Batches from blanks to ready stock'],
       ['hr', isPartner() ? 'Team & HR' : 'My attendance', isPartner() ? 'Attendance, leave, salary, HR rules' : 'Check in, leave, my salary'],
       ['coupons', 'Coupons & combos', 'Online and store codes, combo offers'],
       ['influencers', 'Influencers', 'Who promotes us and what it brings'],
       isPartner() && ['decisions', 'Partner voting', 'Big decisions, voted and recorded'],
-      isPartner() && ['reports', 'Reports', 'Profit per tee and drop, monthly report, ads, cash forecast, investor view'],
       isPartner() && ['books', 'Books', 'Every rupee in and out'],
       isPartner() && ['partners', 'Partners', 'Each partner\'s investment and share'],
       isPartner() && ['close', 'Month close', 'Check the bank and lock the month'],
@@ -1387,7 +1387,7 @@
     await loadSettings();
     view.innerHTML = `${backBtn}
       <h1>Settings</h1>
-      ${isPartner() ? `<div class="chipset" style="margin-bottom:14px">${[['hr', 'HR rules & salary'], ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['production', 'Production'], ['cash', 'Store cash'], ['partners', 'Profit split'], ['decisions', 'Partner voting']]
+      ${isPartner() ? `<div class="chipset" style="margin-bottom:14px">${[['hr', 'HR rules & salary'], ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['production', 'Production'], ['partners', 'Profit split'], ['decisions', 'Partner voting']]
         .map(([k, l]) => `<button data-hub="${k}">${l}</button>`).join('')}<button id="hubTargets">Monthly targets</button></div>` : ''}
       <h2>Shop & money</h2>
       <p class="sub">${isPartner() ? `Changing any of these needs all ${partners().length} partners.` : 'Partners can change these.'}</p>
@@ -2045,6 +2045,22 @@
     };
   };
 
+  // Store tab: Mahendra's attendance card on top, then store cash
+  VIEWS.store = async (view) => {
+    await VIEWS.cash(view);
+    const back = view.querySelector('#back'); if (back) back.remove();
+    view.querySelector('h1').textContent = 'Store';
+    if (state.me.role === 'employee') {
+      const [pol, att] = await Promise.all([q(sb.rpc('hr_policy')), q(sb.from('attendance').select('*').eq('member_id', state.me.id).eq('day', todayKey()))]).catch(() => [null, []]);
+      if (pol) {
+        const box = document.createElement('div');
+        box.innerHTML = punchHtml(att[0], pol);
+        view.querySelector('h1').after(box);
+        wirePunch(box, att[0], () => VIEWS.store(view));
+      }
+    }
+  };
+
   // Cash leaves the store only as a handover to a named partner
   function cashHandover(done) {
     const P = isPartner();
@@ -2446,9 +2462,10 @@
   // ================================================================ REPORTS (partners)
   const REPORTS = [['demand', 'Best sellers'], ['profit', 'Profit per tee'], ['monthly', 'Monthly report'], ['ads', 'Ads & influencers'], ['forecast', 'Cash forecast'], ['investor', 'Investor view']];
   VIEWS.reports = async (view) => {
-    const r = state.report || 'demand';
-    view.innerHTML = `${backBtn}<h1>Reports</h1>
-      <div class="seg">${REPORTS.map(([k, l]) => `<button data-r="${k}" class="${r === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="rep"><div class="empty">Loading…</div></div>`;
+    const list = isPartner() ? REPORTS : REPORTS.filter(([k]) => k === 'demand');
+    const r = list.some(([k]) => k === state.report) ? state.report : 'demand';
+    view.innerHTML = `${state.tab === 'more' ? backBtn : ''}<h1>Reports</h1>
+      <div class="seg">${list.map(([k, l]) => `<button data-r="${k}" class="${r === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="rep"><div class="empty">Loading…</div></div>`;
     wireBack(view);
     view.querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { state.report = b.dataset.r; VIEWS.reports(view); }; });
     const el = view.querySelector('#rep');

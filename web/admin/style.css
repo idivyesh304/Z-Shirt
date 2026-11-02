@@ -38,19 +38,19 @@ header.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: c
 .bell .badge { top: -4px; right: -4px; }
 .me-chip { height: 42px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: none; font-size: 13px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; display: flex; justify-content: center; gap: 4px;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: rgba(18,18,20,.97); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
-nav.tabs button { flex: 1 1 0; min-width: 0; max-width: 120px; background: none; border: 0; border-radius: 14px; padding: 8px 2px 6px;
-  color: var(--muted); font-size: 11px; font-weight: 600; position: relative; white-space: nowrap; }
+nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; display: flex; justify-content: center; gap: 2px;
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom)); background: rgba(18,18,20,.97); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
+nav.tabs button { flex: 1 1 0; min-width: 0; max-width: 104px; background: none; border: 0; border-radius: 14px; padding: 8px 0 6px;
+  color: var(--muted); font-size: 10.5px; font-weight: 600; position: relative; white-space: nowrap; }
 nav.tabs button .ico { display: block; height: 22px; margin-bottom: 2px; }
 nav.tabs button .ico svg { width: 22px; height: 22px; }
 nav.tabs button.on { color: var(--text); }
 nav.tabs button.on .ico { color: var(--lime); }
-nav.tabs button.sell { flex: 0 0 74px; }
+nav.tabs button.sell { flex: 0 0 62px; }
 nav.tabs button.sell .ico { width: 54px; height: 54px; margin: -26px auto 2px; border-radius: 50%; background: var(--lime); color: #000;
   display: grid; place-items: center; box-shadow: 0 0 0 5px var(--bg), 0 0 24px rgba(198,255,0,.45); }
 nav.tabs button.sell.on .ico { color: #000; }
-.badge { position: absolute; top: 0; right: 14px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+.badge { position: absolute; top: 0; right: 8px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
   background: var(--pink); color: #fff; font-size: 11px; line-height: 18px; font-weight: 700; text-align: center; }
 
 h1 { font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: -.3px; margin: 18px 0 4px; }
@@ -327,3 +327,5 @@ a.btn { text-decoration: none; }
 .demand .wanted .row { padding: 4px 0; }
 .hbar .l .dot-c { margin-right: 4px; }
 .demand .hbar { grid-template-columns: 130px 1fr auto; }
+
+@media (max-width: 380px) { nav.tabs button .ico svg { width: 20px; height: 20px; } nav.tabs button { font-size: 10px; } }
