@@ -7,6 +7,7 @@
   <title>Z-SHIRTS · Oversized tees</title>
   <meta name="description" content="Oversized t-shirts for Gen-Z. Heavy cotton, big fits, easy size exchange.">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="shop.css">
@@ -22,6 +23,10 @@
       </button>
       <button class="icon-btn" id="btnTrack" aria-label="Track my order">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="18" r="2" fill="currentColor"/><circle cx="17" cy="18" r="2" fill="currentColor"/></svg>
+      </button>
+      <button class="icon-btn acct-btn" id="btnAccount" aria-label="Sign in">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="pts"></span>
       </button>
       <button class="bag-btn" id="btnBag" aria-label="Open bag">
         Bag <span class="bag-count" id="bagCount">0</span>
@@ -39,6 +44,8 @@
       <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
     </section>
 
+    <section class="drop-banner" id="dropBanner" hidden aria-live="polite"></section>
+
     <section class="shop" aria-label="Products">
       <div class="shop-bar">
         <div class="chips" id="catChips" role="tablist" aria-label="Categories"></div>
@@ -46,6 +53,7 @@
       </div>
       <p class="result-line" id="resultLine"></p>
       <div class="grid" id="grid"></div>
+      <section class="recent" id="recent" hidden></section>
     </section>
   </main>
 

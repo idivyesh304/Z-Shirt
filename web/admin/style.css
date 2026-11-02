@@ -237,3 +237,50 @@ dialog { background: var(--panel); color: var(--text); border: 1px solid var(--l
 dialog::backdrop { background: rgba(0,0,0,.7); }
 img.proof { max-width: 100%; border-radius: 12px; margin-top: 10px; }
 a.btn { text-decoration: none; }
+
+/* ---------- phase 3 ---------- */
+.cell sup { font-size: 10px; margin-left: 2px; }
+.scan-box { position: relative; border-radius: 18px; overflow: hidden; background: #000; aspect-ratio: 1; max-height: 60vh; margin: 0 auto; }
+.scan-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-frame { position: absolute; inset: 18%; border: 3px solid var(--lime); border-radius: 18px; box-shadow: 0 0 0 999px rgba(0,0,0,.35); animation: scanPulse 1.6s ease-in-out infinite; }
+@keyframes scanPulse { 50% { border-color: var(--cyan); } }
+@media (prefers-reduced-motion: reduce) { .scan-frame { animation: none; } }
+.stage-track { display: flex; gap: 4px; margin-top: 10px; }
+.stage-track span { flex: 1; font-size: 10px; text-align: center; padding: 6px 2px; border-radius: 8px; background: var(--panel-2); color: var(--muted); line-height: 1.2; }
+.stage-track span.on { background: var(--cyan); color: #000; font-weight: 700; }
+.qty-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.qty-cell { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); font-size: 13px; }
+.qty-cell input { width: 64px; height: 38px; text-align: center; padding: 0 6px; }
+.pay-grid { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 6px 10px; margin-top: 10px; font-size: 13px; }
+.pay-grid span { color: var(--muted); }
+.pay-grid b { text-align: right; }
+@media (max-width: 520px) { .pay-grid { grid-template-columns: 1fr auto; } }
+.inline-select { display: inline-block; width: auto; height: 36px; padding: 0 10px; font-size: 14px; border-radius: 10px; vertical-align: middle; }
+.code-tag { font-family: var(--display); font-weight: 800; letter-spacing: 1px; padding: 4px 10px; border: 2px dashed var(--lime); border-radius: 10px; color: var(--lime); }
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 6px; }
+.kpi-row div { background: var(--panel-2); border-radius: 10px; padding: 8px; }
+.kpi-row span { display: block; font-size: 11px; color: var(--muted); }
+.kpi-row b { font-family: var(--display); font-size: 14px; }
+.hbars { display: grid; gap: 8px; }
+.hbar { display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .l { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar .b { height: 14px; background: var(--panel-2); border-radius: 7px; overflow: hidden; }
+.hbar .b i { display: block; height: 100%; background: var(--lime); border-radius: 7px; }
+.hbar .b i.neg { background: var(--pink); }
+.hbar .v { font-family: var(--display); font-weight: 700; font-size: 12px; }
+.report h1 { font-size: 18px; margin: 0 0 4px; }
+.report h2 { font-size: 14px; margin: 18px 0 6px; color: var(--lime); }
+.report table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.report td { padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.report td.r { text-align: right; }
+.report .big { font-family: var(--display); font-size: 18px; font-weight: 800; }
+.report .sig { display: none; }
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 600px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+.kpi { background: var(--panel-2); border-radius: 12px; padding: 12px; }
+.kpi span { display: block; font-size: 12px; color: var(--muted); }
+.kpi b { display: block; font-family: var(--display); font-size: 20px; margin-top: 2px; }
+.kpi small { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.investor { border-color: rgba(198,255,0,.4); }
+.punch-btn { cursor: pointer; }
+.punch-card { border-color: rgba(0,229,255,.45); }

@@ -108,6 +108,7 @@ begin
     'id', c.id, 'name', c.name, 'phone', c.phone, 'email', c.email, 'points', points_of(c.id),
     'orders', (select coalesce(jsonb_agg(jsonb_build_object(
                  'order_no', o.order_no, 'status', o.status, 'total', o.total, 'created_at', o.created_at,
+                 'phone', o.customer_phone, 'delivered_at', o.delivered_at,
                  'payment_status', o.payment_status, 'production_status', o.production_status,
                  'items', (select jsonb_agg(jsonb_build_object('name', i.product_name, 'variant', i.variant_label, 'qty', i.qty,
                                                                'variant_id', i.variant_id, 'price', i.price)) from order_items i where i.order_id = o.id))
@@ -354,6 +355,16 @@ language plpgsql stable security definer set search_path = public as $$
 begin
   p_opts := coalesce(p_opts, '{}'::jsonb) - 'discount_pct' || jsonb_build_object('customer_id', my_customer_id());
   return _price_cart('website', p_items, p_opts, false);
+end $$;
+
+-- Team app: live price preview at the counter / for a DM order
+create function staff_quote(p_channel text, p_items jsonb, p_discount_pct numeric default 0, p_coupon text default null,
+                            p_phone text default null) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if (current_member()).id is null then raise exception 'Members only.'; end if;
+  return _price_cart(p_channel, p_items,
+    jsonb_build_object('discount_pct', coalesce(p_discount_pct, 0), 'coupon', p_coupon, 'phone', p_phone), false);
 end $$;
 
 -- =====================================================================
@@ -1381,6 +1392,11 @@ left join lateral (
 ) s on true
 where p.active and p.published_at is not null;
 
+create or replace view public_settings as
+select key, value from settings
+where key in ('shipping_fee', 'free_shipping_above', 'cod_enabled', 'return_window_days',
+              'loyalty_points_per_100', 'loyalty_max_redeem_pct');
+
 create view coupon_board with (security_invoker = true) as
 select cp.*, i.name as influencer_name,
        (select count(*) from orders o where o.coupon_code = cp.code and o.status <> 'cancelled') as uses,
@@ -1605,12 +1621,12 @@ grant execute on function quote_cart(jsonb, jsonb), place_web_order(jsonb, jsonb
 revoke execute on function save_my_profile(text, text), my_account() from public, anon;
 grant execute on function save_my_profile(text, text), my_account(), my_customer_id() to authenticated;
 -- team
-revoke execute on function staff_create_order(text, jsonb, jsonb, text, numeric, text, text), set_production_status(bigint, text),
+revoke execute on function staff_quote(text, jsonb, numeric, text, text), staff_create_order(text, jsonb, jsonb, text, numeric, text, text), set_production_status(bigint, text),
   save_batch(jsonb), set_batch_stage(bigint, text), set_cost_price(bigint, numeric), cash_day_preview(date),
   close_cash_day(numeric, numeric, text, text, date), punch(text, text, numeric, numeric), request_leave(date, date, text, text),
   decide_leave(bigint, boolean, text), hr_payroll(date), save_influencer(jsonb), save_coupon(jsonb), set_coupon_active(bigint, boolean),
   save_bundle(jsonb), set_product_drop(bigint, text, timestamptz, int, boolean), block_cod_pincode(text, text, boolean) from public, anon;
-grant execute on function staff_create_order(text, jsonb, jsonb, text, numeric, text, text), set_production_status(bigint, text),
+grant execute on function staff_quote(text, jsonb, numeric, text, text), staff_create_order(text, jsonb, jsonb, text, numeric, text, text), set_production_status(bigint, text),
   save_batch(jsonb), set_batch_stage(bigint, text), set_cost_price(bigint, numeric), cash_day_preview(date),
   close_cash_day(numeric, numeric, text, text, date), punch(text, text, numeric, numeric), request_leave(date, date, text, text),
   decide_leave(bigint, boolean, text), hr_payroll(date), save_influencer(jsonb), save_coupon(jsonb), set_coupon_active(bigint, boolean),

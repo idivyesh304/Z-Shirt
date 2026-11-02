@@ -41,6 +41,12 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      - name: Camera (QR scan, selfie) and location (attendance) permissions
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />#' "$M"
+          grep -n "permission\|uses-feature" "$M"
+
       - name: App icon and splash screen
         run: npx @capacitor/assets generate --android --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000' --splashBackgroundColor '#000000' --splashBackgroundColorDark '#000000'
 
