@@ -73,15 +73,20 @@ select t.eq('Aaryak got his referral piece', (select pcs from target_progress(nu
 alter table cash_closes disable trigger user;
 delete from cash_closes where day = today_ist();
 alter table cash_closes enable trigger user;
-:as_mahendra
-select (cash_day_preview(null))->>'expected' as exp0 \gset
-select cash_punch('in', 2000, 'Opening float from Aaryak');
-select t.expect_error('select cash_punch(''out'', 500, ''Tea and snacks'')', 'photo');
-select t.expect_error('select cash_punch(''out'', 5000, ''Bank deposit'', ''cash/x.jpg'')', 'up to');
-select cash_punch('out', 300, 'Courier bags', 'cash/bill.jpg');
-select t.eq('expected cash moves with punches', ((cash_day_preview(null))->>'expected')::numeric - (:'exp0')::numeric, 1700::numeric);
 :as_aaryak
-select t.eq('partners told about cash out', (select count(*) from notifications where title like 'Cash out ₹300%'), 1::bigint);
+select (cash_day_preview(null))->>'expected' as exp0 \gset
+:as_mahendra
+select t.expect_error(format('select cash_handover(100, %L)', :'mahendra'), 'partner who took');
+select t.expect_error(format('select cash_handover(99999999, %L)', :'jigar'), 'more cash than the store');
+select cash_handover(500, :'jigar', 'Weekly collection');
+select t.eq('Mahendra sees only his own handover', (select count(*) from cash_moves), 1::bigint);
+select t.eq('Mahendra cannot see what partners collected', (select count(*) from cash_with_partners), 0::bigint);
+:as_aaryak
+select t.expect_error(format('select cash_handover(100, %L)', :'jigar'), 'Record only the cash you took yourself');
+select cash_handover(200, :'aaryak', 'For courier payment');
+select t.eq('drawer goes down only by handovers', (:'exp0')::numeric - ((cash_day_preview(null))->>'expected')::numeric, 700::numeric);
+select t.eq('Jigar holds ₹500 from the store', (select collected from cash_with_partners where partner_id = :'jigar'), 500::numeric);
+select t.eq('partners told who took the cash', (select count(*) from notifications where title like 'Jigar Panchal took ₹500 cash%'), 1::bigint);
 :as_server
 select t.expect_error('delete from cash_moves', 'not allowed');
 

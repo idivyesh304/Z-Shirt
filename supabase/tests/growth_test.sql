@@ -214,11 +214,12 @@ select t.eq('monthly report has this month', (select count(*) from monthly_repor
 select t.eq('Mahendra cannot see profit', (select count(*) from product_profit), 0::bigint);
 
 \echo '\n== 32. Daily cash close =='
+:as_aaryak
+select (cash_day_preview())->>'expected' as cs \gset
 :as_mahendra
-select (cash_day_preview())->>'cash_sales' as cs \gset
+select t.eq('Mahendra cannot see the drawer amount', (cash_day_preview())->>'expected', null::text);
 select t.expect_error('select close_cash_day(100, 0, null, '''')', 'photo');
-select t.expect_error('select close_cash_day(100, 50, null, ''cash/1.jpg'')', 'where the cash');
-select close_cash_day((:'cs')::numeric - 20, 0, null, 'cash/1.jpg');
+select t.eq('Mahendra counts blind', (close_cash_day((:'cs')::numeric - 20, 0, null, 'cash/1.jpg'))->>'expected', null::text);
 select t.expect_error('select close_cash_day(100, 0, null, ''cash/2.jpg'')', 'already closed');
 :as_aaryak
 select t.eq('partners told cash is short by 20', (select count(*) from notifications where title = 'Cash short by ₹20.00'), 1::bigint);

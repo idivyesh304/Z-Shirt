@@ -379,7 +379,7 @@
     const m0 = monthKey();
     const none = Promise.resolve(null);
     const safe = (p) => p.catch(() => null);
-    const [daily, active, svc, summary, reqs, att, pv, leaves, targets, pos, months, mstat, monthOrders, myToday, blanks, pol] = await Promise.all([
+    const [daily, active, svc, summary, reqs, att, pv, leaves, targets, pos, months, mstat, monthOrders, myToday, blanks, pol, held] = await Promise.all([
       q(sb.from('sales_daily').select('*').gte('day', since)),
       q(sb.from('orders').select('id,status,payment_method,payment_status').in('status', ['placed', 'confirmed', 'packed'])),
       q(sb.from('service_requests').select('id,status').in('status', ['open', 'approved'])),
@@ -397,6 +397,7 @@
       safe(q(sb.from('order_board').select('total,shipping,pieces,status,channel').eq('sold_by', state.me.id).gte('created_at', istStart(todayKey())).not('status', 'in', '(cancelled,rto,returned)'))),
       safe(q(sb.from('blank_stock').select('*'))),
       emp ? safe(q(sb.rpc('hr_policy'))) : none,
+      P ? safe(q(sb.from('cash_with_partners').select('*'))) : none,
     ]);
     const t = daily.find((d) => d.day === todayKey()) || { orders: 0, value: 0, pieces: 0 };
     const ready = active.filter((o) => !(o.payment_method === 'online' && o.payment_status === 'pending'));
@@ -479,6 +480,7 @@
           <b>${esc(p.name)}</b>
           <div class="row"><span class="muted">Invested</span><span class="amt">${esc(inr(p.capital))}</span></div>
           ${Number(p.payouts) ? `<div class="row"><span class="muted">Taken out</span><span class="amt">${esc(inr(p.payouts))}</span></div>` : ''}
+          ${(() => { const h = (held || []).find((x) => x.partner_id === p.partner_id); return h && Number(h.collected) ? `<div class="row"><span class="muted">Store cash collected</span><span class="amt">${esc(inr(h.collected))}</span></div>` : ''; })()}
           <div class="row"><span class="muted">Profit / loss (${esc(pct(p.result_share))})</span>${signed(p.result_amount)}</div>
           <div class="row" style="border-top:1px solid var(--line);padding-top:6px;margin-top:6px"><span class="muted">If settled today</span>${signed(p.settlement_balance)}</div></div>`).join('')}</div>
         <div class="card settle"><b>To make every partner equal (${esc(RULE[rule] || rule)})</b>
@@ -492,10 +494,13 @@
         ${closings.map((m) => `<tr><td>${esc(shortMonth(m.month))} ${m.st && m.st.locked ? '🔒' : ''}<div class="muted">${m.orders} orders · ${m.pieces} pcs</div></td><td class="r">${esc(inr(Number(m.sales) - Number(m.refunds)))}</td>
           <td class="r">${esc(inr(m.expenses))}</td><td class="r">${signed(m.net_result)}</td><td class="r">${m.st ? esc(inr(m.st.closing_balance)) : '—'}</td></tr>`).join('')}</tbody></table></div>` : '';
 
-    const cashCard = pv ? `<div class="card cash-hero small-hero"><div class="row"><div><div class="k">Cash in the drawer now</div><div class="v">${esc(inr(pv.expected))}</div></div>
-        ${pv.closed ? '<span class="pill approved">Closed ✓</span>' : `<span class="actions" style="margin:0"><button class="btn small good" data-cash="in">+ In</button><button class="btn small bad" data-cash="out">− Out</button></span>`}</div>
-        <div class="cash-flow"><span>Opening ${esc(inr(pv.opening))}</span><span class="pos">+ sales ${esc(inr(pv.cash_sales))}</span><span class="pos">+ in ${esc(inr(pv.cash_in))}</span><span class="neg">− out ${esc(inr(pv.cash_out))}</span></div>
-        <button class="linkish" id="toCash" style="margin-top:8px">Open cash counter ›</button></div>` : '';
+    const cashCard = pv && P ? `<div class="card cash-hero small-hero"><div class="row"><div><div class="k">Cash at the store now</div><div class="v">${esc(inr(pv.expected))}</div></div>
+        ${pv.closed ? '<span class="pill approved">Closed ✓</span>' : '<button class="btn small" data-hand>I collected cash</button>'}</div>
+        <div class="cash-flow"><span>Opening ${esc(inr(pv.opening))}</span><span class="pos">+ cash sales ${esc(inr(pv.cash_sales))}</span><span class="neg">− handed to partners ${esc(inr(pv.handed_over))}</span></div>
+        <button class="linkish" id="toCash" style="margin-top:8px">Store cash details ›</button></div>`
+      : emp ? `<div class="card cash-hero small-hero"><div class="row"><div><b>Store cash</b><div class="muted">Handing cash to a partner? Record it here.</div></div>
+        ${pv && pv.closed ? '<span class="pill approved">Closed ✓</span>' : '<button class="btn small" data-hand>Hand over</button>'}</div>
+        <button class="linkish" id="toCash" style="margin-top:8px">Close the day ›</button></div>` : '';
 
     const mine = myToday || [];
     const mineCard = `<div class="today" style="grid-template-columns:1fr 1fr 1fr">
@@ -547,7 +552,7 @@
     view.querySelectorAll('[data-a]').forEach((b) => { b.onclick = actions[Number(b.dataset.a)][4]; });
     view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('more', 'reports'); }; });
     view.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => go('more', b.dataset.go); });
-    view.querySelectorAll('[data-cash]').forEach((b) => { b.onclick = () => cashPunch(b.dataset.cash, () => VIEWS.home(view)); });
+    view.querySelectorAll('[data-hand]').forEach((b) => { b.onclick = () => cashHandover(() => VIEWS.home(view)); });
     const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('more', 'cash');
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
     demandCard(view.querySelector('#demandBox'));
@@ -1281,7 +1286,7 @@
       ['returns', 'Returns & exchanges', 'Replacement and return requests from customers', c.svc],
       isPartner() && ['approvals', 'Approvals', 'Expenses, payouts, price changes, damaged stock', c.approvals],
       ['requests', isPartner() ? 'New money entry' : 'Expenses', isPartner() ? 'Expense, income, capital, payout' : 'Record an expense with the bill photo'],
-      ['cash', 'Cash counter', 'Cash in / out of the drawer and daily close'],
+      ['cash', 'Store cash', isPartner() ? 'Cash at the store, handovers, daily close' : 'Hand over cash to a partner, close the day'],
       ['production', 'Production tracker', 'Batches from blanks to ready stock'],
       ['hr', isPartner() ? 'Team & HR' : 'My attendance', isPartner() ? 'Attendance, leave, salary, HR rules' : 'Check in, leave, my salary'],
       ['coupons', 'Coupons & combos', 'Online and store codes, combo offers'],
@@ -1382,7 +1387,7 @@
     await loadSettings();
     view.innerHTML = `${backBtn}
       <h1>Settings</h1>
-      ${isPartner() ? `<div class="chipset" style="margin-bottom:14px">${[['hr', 'HR rules & salary'], ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['production', 'Production'], ['cash', 'Cash counter'], ['partners', 'Profit split'], ['decisions', 'Partner voting']]
+      ${isPartner() ? `<div class="chipset" style="margin-bottom:14px">${[['hr', 'HR rules & salary'], ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['production', 'Production'], ['cash', 'Store cash'], ['partners', 'Profit split'], ['decisions', 'Partner voting']]
         .map(([k, l]) => `<button data-hub="${k}">${l}</button>`).join('')}<button id="hubTargets">Monthly targets</button></div>` : ''}
       <h2>Shop & money</h2>
       <p class="sub">${isPartner() ? `Changing any of these needs all ${partners().length} partners.` : 'Partners can change these.'}</p>
@@ -1977,46 +1982,55 @@
 
   // ================================================================ DAILY CASH CLOSE
   VIEWS.cash = async (view) => {
-    const [pv, rows, moves] = await Promise.all([
+    const P = isPartner();
+    const [pv, rows, moves, held] = await Promise.all([
       q(sb.rpc('cash_day_preview', { p_day: null })),
-      q(sb.from('cash_closes').select('*').order('day', { ascending: false }).limit(31)),
-      q(sb.from('cash_moves').select('*').order('id', { ascending: false }).limit(60)),
+      P ? q(sb.from('cash_closes').select('*').order('day', { ascending: false }).limit(31)) : Promise.resolve([]),
+      q(sb.from('cash_moves').select('*').eq('kind', 'handover').order('id', { ascending: false }).limit(60)),
+      P ? q(sb.from('cash_with_partners').select('*')) : Promise.resolve([]),
     ]);
     const today = moves.filter((m) => m.day === pv.day);
+    const handRow = (m) => `<div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)">
+        <span><b>${esc(memberName(m.taken_by))}</b> took cash${m.reason && m.reason.includes(' · ') ? ` · ${esc(m.reason.split(' · ').slice(1).join(' · '))}` : ''}
+        <div class="muted">${esc(day(m.day))} ${esc(timeOf(m.created_at))} · recorded by ${esc(memberName(m.by_member))}${m.photo_path ? ` · <button class="linkish" data-ph="${esc(m.photo_path)}">photo</button>` : ''}</div></span>
+        <b class="neg">${esc(inr(m.amount))}</b></div>`;
     view.innerHTML = `${backBtn}
-      <h1>Cash counter</h1>
-      <p class="sub">Every rupee that goes into or out of the drawer is punched here. Cash sales come in by themselves.</p>
-      <div class="card cash-hero">
-        <div class="k">Cash that should be in the drawer now</div>
+      <h1>Store cash</h1>
+      <p class="sub">Cash comes in only from sales. It leaves only when a partner collects it, and every handover is recorded with that partner's name.${P ? '' : ' Only partners see the drawer amount.'}</p>
+      ${P ? `<div class="card cash-hero">
+        <div class="k">Cash at the store right now</div>
         <div class="v">${esc(inr(pv.expected))}</div>
-        <div class="cash-flow"><span>Opening ${esc(inr(pv.opening))}</span><span class="pos">+ sales ${esc(inr(pv.cash_sales))}</span><span class="pos">+ in ${esc(inr(pv.cash_in))}</span>
-          <span class="neg">− out ${esc(inr(pv.cash_out))}</span>${Number(pv.cash_refunds) ? `<span class="neg">− refunds ${esc(inr(pv.cash_refunds))}</span>` : ''}</div>
-        ${pv.closed ? '<div class="all-clear" style="margin-top:12px"><b>Today is closed ✓</b>New punches go into tomorrow.</div>' : `
-        <div class="actions"><button class="btn good" data-cash="in">+ Cash in</button><button class="btn bad" data-cash="out">− Cash out</button></div>`}
+        <div class="cash-flow"><span>Opening ${esc(inr(pv.opening))}</span><span class="pos">+ cash sales ${esc(inr(pv.cash_sales))}</span>
+          <span class="neg">− handed to partners ${esc(inr(pv.handed_over))}</span>${Number(pv.cash_refunds) ? `<span class="neg">− cash refunds ${esc(inr(pv.cash_refunds))}</span>` : ''}</div>
+        ${pv.closed ? '<div class="all-clear" style="margin-top:12px"><b>Today is closed ✓</b></div>' : '<button class="btn block" data-hand style="margin-top:14px">I collected cash from the store</button>'}
       </div>
-      ${today.length ? `<h2>Today's punches</h2><div class="card">${today.map((m) => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
-        <span>${esc(m.reason)}<div class="muted">${esc(timeOf(m.created_at))} · ${esc(memberName(m.by_member))}${m.photo_path ? ` · <button class="linkish" data-ph="${esc(m.photo_path)}">bill</button>` : ''}</div></span>
-        <b class="${m.kind === 'in' ? 'pos' : 'neg'}">${m.kind === 'in' ? '+' : '−'} ${esc(inr(m.amount))}</b></div>`).join('')}</div>` : ''}
+      <h2>Cash each partner has collected</h2>
+      <div class="card">${held.map((h) => `<div class="row" style="padding:6px 0"><span>${esc(h.name)}<div class="muted">${h.handovers} handover${h.handovers === 1 ? '' : 's'}${h.last_at ? ` · last ${esc(ago(h.last_at))}` : ''}</div></span><b>${esc(inr(h.collected))}</b></div>`).join('')}
+        <div class="hint">This cash belongs to the business. Deposit it in the bank or use it for approved expenses.</div></div>`
+      : `<div class="card cash-hero">${pv.closed ? '<div class="all-clear"><b>Today is closed ✓</b>See you tomorrow.</div>'
+        : '<b>Handing cash to a partner?</b><div class="muted" style="margin-top:4px">Record it right away, with the partner\'s name and the amount.</div><button class="btn block" data-hand style="margin-top:14px">Hand over cash to a partner</button>'}</div>`}
+      ${today.length ? `<h2>Today's handovers</h2><div class="card">${today.map(handRow).join('')}</div>` : ''}
       ${pv.closed ? '' : `<h2>Close the day</h2>
       <form class="card" id="ccForm">
         <label for="ccCount" style="margin-top:0">Cash you counted in the drawer</label><input id="ccCount" type="number" inputmode="decimal" required>
         <label for="ccPhoto">Photo of the counted cash</label><input id="ccPhoto" type="file" accept="image/*" capture="environment" required>
         <label for="ccNote">Note (optional)</label><input id="ccNote">
-        <div class="hint" id="ccDiff"></div>
+        <div class="hint" id="ccDiff">${P ? '' : 'Count carefully. Partners compare it with the sales.'}</div>
         <button class="btn block" type="submit" id="ccBtn">Close today</button>
       </form>`}
-      <h2>History</h2>
+      ${moves.length > today.length ? `<h2>Earlier handovers</h2><div class="card">${moves.filter((m) => m.day !== pv.day).slice(0, 30).map(handRow).join('')}</div>` : ''}
+      ${P ? `<h2>Daily closes</h2>
       ${rows.length ? `<div class="card table-wrap"><table><thead><tr><th>Day</th><th class="r">Expected</th><th class="r">Counted</th><th class="r">Diff</th></tr></thead><tbody>
-        ${rows.map((r) => `<tr><td>${esc(day(r.day))}<div class="muted">${esc(memberName(r.by_member))} · in ${esc(inr(r.cash_in))} · out ${esc(inr(r.cash_out))}</div></td><td class="r">${esc(inr(r.expected))}</td><td class="r">${esc(inr(r.counted))}</td>
-          <td class="r">${Number(r.difference) ? signed(r.difference) : '<span class="pos">✓</span>'} <button class="linkish" data-ph="${esc(r.photo_path)}">photo</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No closes yet.</div>'}`;
+        ${rows.map((r) => `<tr><td>${esc(day(r.day))}<div class="muted">${esc(memberName(r.by_member))} · sales ${esc(inr(r.cash_sales))} · handed ${esc(inr(r.cash_out))}</div></td><td class="r">${esc(inr(r.expected))}</td><td class="r">${esc(inr(r.counted))}</td>
+          <td class="r">${Number(r.difference) ? signed(r.difference) : '<span class="pos">✓</span>'} <button class="linkish" data-ph="${esc(r.photo_path)}">photo</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No closes yet.</div>'}` : ''}`;
     wireBack(view);
     view.querySelectorAll('[data-ph]').forEach((b) => { b.onclick = () => showProof(b.dataset.ph); });
-    view.querySelectorAll('[data-cash]').forEach((b) => { b.onclick = () => cashPunch(b.dataset.cash, () => VIEWS.cash(view)); });
+    view.querySelectorAll('[data-hand]').forEach((b) => { b.onclick = () => cashHandover(() => VIEWS.cash(view)); });
     const f = view.querySelector('#ccForm');
     if (!f) return;
-    view.querySelector('#ccCount').oninput = (e) => {
+    if (P) view.querySelector('#ccCount').oninput = (e) => {
       const d = num(e.target.value) === null ? null : num(e.target.value) - num(pv.expected);
-      view.querySelector('#ccDiff').innerHTML = d === null ? '' : d === 0 ? '<b class="pos">Matches exactly. Nice.</b>' : `<b class="neg">${d < 0 ? 'Short' : 'Extra'} by ${esc(inr(Math.abs(d)))}</b> — partners will be told.`;
+      view.querySelector('#ccDiff').innerHTML = d === null ? '' : d === 0 ? '<b class="pos">Matches exactly.</b>' : `<b class="neg">${d < 0 ? 'Short' : 'Extra'} by ${esc(inr(Math.abs(d)))}</b>`;
     };
     f.onsubmit = async (e) => {
       e.preventDefault();
@@ -2024,32 +2038,33 @@
       try {
         const path = await uploadProof(view.querySelector('#ccPhoto').files[0], 'cash');
         const r = await q(sb.rpc('close_cash_day', { p_counted: num(view.querySelector('#ccCount').value), p_cash_out: 0, p_note: view.querySelector('#ccNote').value || null, p_photo: path, p_day: null }));
-        if (Number(r.difference) === 0) { C.confetti(0.5); toast('Cash matches. Day closed.'); } else toast('Day closed. Partners were told about the difference.');
+        if (P) toast(Number(r.difference) === 0 ? 'Cash matches. Day closed.' : 'Day closed. Partners were told about the difference.');
+        else { C.confetti(0.4); toast('Day closed. Thank you!'); }
         VIEWS.cash(view);
       } catch (err) { btn.disabled = false; btn.textContent = 'Close today'; toast(errText(err), true); }
     };
   };
 
-  // Punch cash in / out of the drawer (like the cash counter in the Jayesh Fasteners app)
-  function cashPunch(kind, done) {
-    const cats = kind === 'in' ? [['float', 'Opening / change money'], ['from_partner', 'Given by a partner'], ['other', 'Other']]
-      : [['bank', 'Deposited in bank'], ['petty', 'Small expense (tea, courier, bags)'], ['to_partner', 'Given to a partner'], ['other', 'Other']];
-    const body = panel(`<h1 style="margin-top:14px">${kind === 'in' ? 'Cash in' : 'Cash out'}</h1>
-      <label for="cpAmt">Amount (₹)</label><input id="cpAmt" type="number" inputmode="decimal" required>
-      <label for="cpCat">Type</label><select id="cpCat">${cats.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
-      <label for="cpWhy">Details</label><input id="cpWhy" placeholder="${kind === 'in' ? 'e.g. ₹500 change from Aaryak' : 'e.g. 50 courier bags'}">
-      <label for="cpPhoto">${kind === 'out' ? 'Photo of the bill / deposit slip' : 'Photo (optional)'}</label><input id="cpPhoto" type="file" accept="image/*" capture="environment">
-      ${kind === 'out' && state.me.role === 'employee' ? `<div class="hint">Up to ${esc(inr(state.settings.employee_petty_limit))} at a time. Partners are told about every cash out.</div>` : ''}
-      <button class="btn block ${kind === 'in' ? 'good' : 'bad'}" id="cpGo" style="margin-top:16px">${kind === 'in' ? 'Add to drawer' : 'Take out of drawer'}</button>`);
-    body.querySelector('#cpGo').onclick = async (e) => {
+  // Cash leaves the store only as a handover to a named partner
+  function cashHandover(done) {
+    const P = isPartner();
+    const body = panel(`<h1 style="margin-top:14px">${P ? 'I collected cash' : 'Hand over cash'}</h1>
+      ${P ? `<p class="sub">Recorded in your name: <b>${esc(state.me.name)}</b>. All partners are told.</p>`
+        : `<label>Which partner took the cash?</label><div class="chipset" id="hoWho">${partners().map((m) => `<button data-who="${m.id}">${esc(m.name)}</button>`).join('')}</div>`}
+      <label for="hoAmt">Amount (₹)</label><input id="hoAmt" type="number" inputmode="decimal" required>
+      <label for="hoNote">Note (optional)</label><input id="hoNote" placeholder="e.g. weekly collection, to deposit in bank">
+      <label for="hoPhoto">Photo (optional: partner with the cash / counted notes)</label><input id="hoPhoto" type="file" accept="image/*" capture="environment">
+      <button class="btn block" id="hoGo" style="margin-top:16px">Record handover</button>`);
+    let who = P ? state.me.id : null;
+    body.querySelectorAll('[data-who]').forEach((b) => { b.onclick = () => { who = b.dataset.who; body.querySelectorAll('[data-who]').forEach((x) => x.classList.toggle('on', x === b)); }; });
+    body.querySelector('#hoGo').onclick = async (e) => {
+      if (!who) return toast('Choose the partner who took the cash', true);
       const btn = e.currentTarget; btn.disabled = true;
       try {
-        const file = body.querySelector('#cpPhoto').files[0];
+        const file = body.querySelector('#hoPhoto').files[0];
         const path = file ? await uploadProof(file, 'cash') : null;
-        const cat = body.querySelector('#cpCat');
-        await q(sb.rpc('cash_punch', { p_kind: kind, p_amount: num(body.querySelector('#cpAmt').value), p_reason: [cat.options[cat.selectedIndex].text, body.querySelector('#cpWhy').value].filter(Boolean).join(' · '),
-          p_photo: path, p_category: cat.value }));
-        closePanel(); toast(kind === 'in' ? 'Cash added' : 'Cash out recorded'); done();
+        const r = await q(sb.rpc('cash_handover', { p_amount: num(body.querySelector('#hoAmt').value), p_taken_by: who, p_note: body.querySelector('#hoNote').value || null, p_photo: path }));
+        closePanel(); toast(`${inr(r.amount)} handed to ${r.taken_by} · recorded`); done();
       } catch (err) { btn.disabled = false; toast(errText(err), true); }
     };
   }
