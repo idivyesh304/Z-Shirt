@@ -817,7 +817,8 @@
         p_customer: customer,
         p_items: items(),
         p_method: method,
-        p_opts: { coupon: opts.coupon || null, points: opts.points || 0, utm_source: attr.utm_source || null, utm_campaign: attr.utm_campaign || null },
+        p_opts: { coupon: opts.coupon || null, points: opts.points || 0, utm_source: attr.utm_source || null, utm_campaign: attr.utm_campaign || null,
+          source: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? 'app' : 'web' },
       });
       if (error) {
         err.textContent = errText(error);

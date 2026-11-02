@@ -105,7 +105,7 @@ h2 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 24p
 .pill.rejected, .pill.cancelled, .pill.rto, .pill.refunded, .pill.returned { background: rgba(255,46,136,.14); color: var(--pink); }
 .pill.confirmed, .pill.packed, .pill.shipped { background: rgba(0,229,255,.12); color: var(--cyan); }
 .ch { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; border: 1px solid; }
-.ch.website { color: var(--lime); } .ch.instagram { color: var(--pink); } .ch.whatsapp { color: #25d366; } .ch.store { color: var(--cyan); }
+.ch.website, .ch.app { color: var(--lime); } .ch.instagram, .ch.influencer { color: var(--pink); } .ch.whatsapp { color: #25d366; } .ch.store, .ch.event, .ch.stall { color: var(--cyan); } .ch.referral { color: #ffb547; }
 
 .progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
 .progress span { display: block; height: 100%; background: var(--lime); }
@@ -284,3 +284,34 @@ a.btn { text-decoration: none; }
 .investor { border-color: rgba(198,255,0,.4); }
 .punch-btn { cursor: pointer; }
 .punch-card { border-color: rgba(0,229,255,.45); }
+
+/* ---------- phase 4: home dashboard ---------- */
+.tgt { margin-top: 10px; }
+.tgt .meter { position: relative; height: 10px; border-radius: 5px; background: var(--panel-2); margin-top: 6px; overflow: visible; }
+.tgt .meter span { display: block; height: 100%; border-radius: 5px; background: var(--lime); }
+.tgt .meter i { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--cyan); }
+.lb-row { display: grid; grid-template-columns: 22px 1fr 70px auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.lb-row:last-child { border-bottom: 0; }
+.lb-row.me .lb-name { color: var(--lime); }
+.lb-rank { font-family: var(--display); font-weight: 800; color: var(--muted); }
+.lb-name { font-weight: 600; font-size: 14px; }
+.lb-name small, .lb-row b small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.lb-row b small { display: inline; }
+.lb-bar { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.lb-bar span { display: block; height: 100%; background: var(--lime); }
+.lb-row b { font-family: var(--display); }
+.partner-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.partner-grid .card { margin: 0; }
+.pcard .row { margin-top: 6px; font-size: 14px; }
+.pcard.me { border-color: rgba(198,255,0,.5); }
+.settle { margin-top: 10px; border-color: rgba(255,181,71,.45); }
+.settle-list { display: grid; gap: 6px; margin-top: 8px; font-size: 15px; }
+.cash-hero { border-color: rgba(198,255,0,.4); }
+.cash-hero .k { color: var(--muted); font-size: 13px; }
+.cash-hero .v { font-family: var(--display); font-weight: 800; font-size: 32px; color: var(--lime); }
+.small-hero .v { font-size: 24px; }
+.cash-flow { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.punch-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 12px; }
+.punch-grid .stat { padding: 10px 8px; }
+.punch-btn { cursor: pointer; display: flex; }
+.cash-hero .btn.small { white-space: nowrap; }

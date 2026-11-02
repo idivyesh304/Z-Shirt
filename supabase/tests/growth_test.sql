@@ -231,7 +231,7 @@ select t.expect_error('select punch(''in'', '''', null, null)', 'selfie');
 select punch('in', 'hr/in.jpg', 23.03, 72.55);
 select t.expect_error('select punch(''in'', ''hr/in2.jpg'', null, null)', 'already checked in');
 select punch('out', 'hr/out.jpg', 23.03, 72.55);
-select request_leave(today_ist() + 3, today_ist() + 3, 'paid', 'Family function') as lv \gset
+select request_leave(today_ist() + 3, today_ist() + 3, 'unpaid', 'Family function') as lv \gset
 select t.expect_error(format('select decide_leave(%s, true)', :lv), 'Only partners');
 select t.expect_error(format('select raise_request(''salary_change'', null, ''raise'', null, ''{"member_id":"%s","salary":99999}'')', :'mahendra'), 'Employees can only');
 :as_devanshi
@@ -250,7 +250,7 @@ select cast_vote(:sal, 'approve'); select cast_vote(:pol, 'approve');
 :as_server
 select t.eq('salary set after all 4 approve', (select monthly_salary from employee_pay limit 1), 15000.00::numeric);
 select t.eq('HR policy changed after all 4 approve', hr_policy()->>'shift_start', '10:30');
-select t.eq('other HR rules kept', hr_policy()->>'weekly_off', 'Tuesday');
+select t.eq('other HR rules kept', hr_policy()->>'weekly_off', 'None');
 :as_mahendra
 select t.eq('Mahendra sees his own payroll', (select count(*) from hr_payroll(today_ist())), 1::bigint);
 select t.eq('payroll uses the approved salary', (select monthly_salary from hr_payroll(today_ist())), 15000.00::numeric);

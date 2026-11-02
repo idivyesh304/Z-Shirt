@@ -29,6 +29,7 @@
     if (h < 24) return `${h} h ago`;
     return day(s);
   };
+  const istStart = (d) => new Date(`${d}T00:00:00+05:30`).toISOString();
   const todayKey = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
@@ -61,7 +62,11 @@
   const MAKING = [['queued', 'Queued'], ['printing', 'Printing'], ['quality_check', 'Quality check'], ['ready', 'Ready']];
   const KIND = { capital_in: 'Capital in', partner_payout: 'Partner payout', expense: 'Expense', income: 'Income', sale: 'Sale', refund: 'Refund' };
   const RULE = { investment: 'By investment ratio', equal: 'Equally (25% each)', custom: 'Custom %' };
-  const CHANNEL = { website: 'Website', instagram: 'Instagram', whatsapp: 'WhatsApp', store: 'Store' };
+  const CHANNEL = { website: 'Website', app: 'App', instagram: 'Instagram', whatsapp: 'WhatsApp', referral: 'Referral', store: 'Store',
+    event: 'Event', stall: 'Event stall', influencer: 'Influencer' };
+  const IN_PERSON = ['store', 'event', 'stall'];
+  const SELL_CHANNELS = [['store', 'Store'], ['event', 'Event'], ['stall', 'Stall'], ['instagram', 'Instagram'], ['whatsapp', 'WhatsApp'], ['referral', 'Referral'], ['influencer', 'Influencer']];
+  const soldByName = (o) => (o.sold_by ? memberName(o.sold_by) : o.sold_by_name || '');
   const STATUS = { placed: 'New', confirmed: 'Confirmed', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled', rto: 'RTO', returned: 'Returned' };
   const NEXT = { placed: ['confirmed', 'Confirm'], confirmed: ['packed', 'Mark packed'], packed: ['shipped', 'Ship'], shipped: ['delivered', 'Mark delivered'] };
   const SETTING_LABEL = {
@@ -369,37 +374,53 @@
   VIEWS.home = async (view) => {
     const since = new Date(Date.now() - 13 * 864e5).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const emp = state.me.role === 'employee';
-    const [daily, active, svc, summary, reqs, att, cashDone, leaves] = await Promise.all([
+    const P = isPartner();
+    const m0 = monthKey();
+    const none = Promise.resolve(null);
+    const safe = (p) => p.catch(() => null);
+    const [daily, active, svc, summary, reqs, att, pv, leaves, targets, pos, months, mstat, monthOrders, myToday, blanks, pol] = await Promise.all([
       q(sb.from('sales_daily').select('*').gte('day', since)),
       q(sb.from('orders').select('id,status,payment_method,payment_status').in('status', ['placed', 'confirmed', 'packed'])),
       q(sb.from('service_requests').select('id,status').in('status', ['open', 'approved'])),
-      isPartner() ? q(sb.from('business_summary').select('*').single()) : Promise.resolve(null),
-      isPartner() ? q(sb.from('request_board').select('id,voters').eq('status', 'pending')) : Promise.resolve([]),
-      emp ? q(sb.from('attendance').select('in_at,out_at').eq('member_id', state.me.id).eq('day', todayKey())) : Promise.resolve([]),
-      q(sb.from('cash_closes').select('day').eq('day', todayKey())).catch(() => [{}]),
-      isPartner() ? q(sb.from('leave_requests').select('id').eq('status', 'pending')).catch(() => []) : Promise.resolve([]),
+      P ? safe(q(sb.from('business_summary').select('*').single())) : none,
+      P ? q(sb.from('request_board').select('id,voters').eq('status', 'pending')) : Promise.resolve([]),
+      emp ? safe(q(sb.from('attendance').select('*').eq('member_id', state.me.id).eq('day', todayKey()))) : none,
+      safe(q(sb.rpc('cash_day_preview', { p_day: null }))),
+      P ? safe(q(sb.from('leave_requests').select('id').eq('status', 'pending'))) : none,
+      safe(q(sb.rpc('target_progress', { p_month: m0 }))),
+      P ? safe(q(sb.from('partner_positions').select('*'))) : none,
+      P ? safe(q(sb.from('monthly_report').select('*').order('month', { ascending: false }).limit(6))) : none,
+      P ? safe(q(sb.from('month_status').select('*'))) : none,
+      safe(q(sb.from('order_board').select('channel,total,shipping,pieces,status,payment_method,payment_status,sold_by,sold_by_name,created_at')
+        .gte('created_at', istStart(m0)).not('status', 'in', '(cancelled,rto,returned)'))),
+      safe(q(sb.from('order_board').select('total,shipping,pieces,status,channel').eq('sold_by', state.me.id).gte('created_at', istStart(todayKey())).not('status', 'in', '(cancelled,rto,returned)'))),
+      safe(q(sb.from('blank_stock').select('*'))),
+      emp ? safe(q(sb.rpc('hr_policy'))) : none,
     ]);
     const t = daily.find((d) => d.day === todayKey()) || { orders: 0, value: 0, pieces: 0 };
     const ready = active.filter((o) => !(o.payment_method === 'online' && o.payment_status === 'pending'));
     const count = (s) => ready.filter((o) => o.status === s).length;
     const lim = num(state.settings.low_stock_alert) || 5;
-    const low = state.stock.filter((s) => s.active && s.published && s.stock <= lim);
+    const low = state.stock.filter((s) => s.active && s.published && s.stock <= lim && !s.is_preorder);
+    const lowBlanks = (blanks || []).filter((b) => b.qty <= lim);
     const myApprovals = reqs.filter((r) => !(r.voters || []).some((v) => v.member_id === state.me.id)).length;
     const hour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }));
     const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const a = att && att[0];
+    const paidOrders = (monthOrders || []).filter((o) => !(o.payment_method === 'online' && o.payment_status === 'pending'));
 
     const actions = [
-      [emp && !att.length ? 1 : 0, 'cyan', 'Check in for today', 'Selfie + time, takes 5 seconds', () => go('more', 'hr')],
-      [emp && att.length && !att[0].out_at && hour >= 18 ? 1 : 0, 'cyan', 'Check out', 'Before you leave the store', () => go('more', 'hr')],
-      [!cashDone.length && hour >= 18 ? 1 : 0, 'pink', "Close today's cash", 'Count the drawer and add a photo', () => go('more', 'cash')],
-      [leaves.length, 'pink', 'leave requests', 'Mahendra is waiting for an answer', () => go('more', 'hr')],
+      [emp && !a ? 1 : 0, 'cyan', 'Check in for today', 'Selfie + time, takes 5 seconds', () => window.scrollTo(0, 0)],
+      [pv && !pv.closed && hour >= 20 ? 1 : 0, 'pink', "Close today's cash", 'Count the drawer and add a photo', () => go('more', 'cash')],
+      [(leaves || []).length, 'pink', 'leave requests', 'Mahendra is waiting for an answer', () => go('more', 'hr')],
       [count('placed'), 'lime', 'to confirm', 'New orders waiting', () => go('orders', null, (state.orderFilter = 'placed'))],
       [count('confirmed'), 'lime', 'to pack', 'Confirmed, not packed yet', () => go('orders', null, (state.orderFilter = 'confirmed'))],
       [count('packed'), 'cyan', 'to ship', 'Packed, hand to courier', () => go('orders', null, (state.orderFilter = 'packed'))],
       [svc.length, 'pink', 'exchange / return requests', 'Customers waiting for a reply', () => go('more', 'returns')],
       [myApprovals, 'pink', 'approvals need you', 'Nothing moves until partners approve', () => go('more', 'approvals')],
-      [low.length, 'pink', 'sizes running low', `At or below ${lim} pieces`, () => go('stock')],
-    ].filter((a) => a[0] > 0);
+      [low.length, 'pink', 'printed sizes running low', `At or below ${lim} pieces`, () => go('stock')],
+      [lowBlanks.length, 'pink', 'blank tee sizes running low', 'Order plain tees before printing', () => go('stock')],
+    ].filter((x) => x[0] > 0);
 
     // 14-day bars
     const days = [];
@@ -411,30 +432,97 @@
     const max = Math.max(1, ...days.map((d) => d.v));
     const total14 = days.reduce((s, d) => s + d.v, 0);
 
-    let milestone = '';
-    if (summary) {
-      const sales = Number(summary.total_sales) || 0;
-      const next = MILESTONES.find((m) => m > sales);
-      const prev = [...MILESTONES].reverse().find((m) => m <= sales) || 0;
-      if (next) {
-        milestone = `<div class="card milestone"><div class="row"><b>Next milestone: ${esc(inr(next))} in sales</b><span class="amt pos">${esc(inr(next - sales))} to go</span></div>
-          <div class="meter"><span style="width:${Math.min(100, ((sales - prev) / (next - prev)) * 100)}%"></span></div>
-          <div class="muted" style="margin-top:6px">Total sales so far ${esc(inr(sales))}</div></div>`;
-      }
+    // monthly milestone + team targets
+    const biz = (targets || []).find((x) => !x.member_id) || { target_pcs: 0, target_amount: 0, pcs: 0, amount: 0, orders: 0 };
+    const people = (targets || []).filter((x) => x.member_id).sort((x, y) => Number(y.pcs) - Number(x.pcs) || Number(y.amount) - Number(x.amount));
+    const lastDay = new Date(new Date(`${m0}T00:00:00`).getFullYear(), new Date(`${m0}T00:00:00`).getMonth() + 1, 0).getDate();
+    const dayNo = Number(todayKey().slice(8, 10));
+    const pace = (got, target) => (target ? Math.round((got / target) * 100) : 0);
+    const meter = (got, target, money) => `<div class="tgt"><div class="row"><span>${money ? esc(inr(got)) : `${got} pcs`}${target ? ` <span class="muted">of ${money ? esc(inr(target)) : `${target} pcs`}</span>` : ''}</span>
+      <b class="${pace(got, target) >= 100 ? 'pos' : ''}">${target ? `${pace(got, target)}%` : '—'}</b></div>
+      <div class="meter"><span style="width:${Math.min(100, pace(got, target))}%"></span><i style="left:${(dayNo / lastDay) * 100}%" title="Where you should be today"></i></div></div>`;
+    const hit = biz.target_pcs && biz.pcs >= biz.target_pcs;
+    if (hit && !store.get(`zs_hit_${m0}`, false)) { store.set(`zs_hit_${m0}`, true); setTimeout(() => C.moment({ title: 'Monthly target smashed!', sub: `${biz.pcs} pieces sold this month`, big: true, kind: 'milestone' }), 600); }
+    const milestoneCard = `<div class="card milestone">
+        <div class="row"><b>${esc(monthName(m0))} milestone</b><span class="muted">day ${dayNo} of ${lastDay}</span></div>
+        ${meter(Number(biz.pcs), Number(biz.target_pcs), false)}${meter(Number(biz.amount), Number(biz.target_amount), true)}
+        ${!biz.target_pcs && !biz.target_amount ? `<div class="hint">No target set for this month yet.${P ? '' : ' Partners set it.'}</div>` : ''}
+        ${P ? '<button class="btn small outline" id="setTargets" style="margin-top:10px">Set targets</button>' : ''}</div>`;
+    const leaderboard = people.length ? `<div class="card">${people.map((p, i) => `<div class="lb-row${p.member_id === state.me.id ? ' me' : ''}">
+        <span class="lb-rank">${i + 1}</span><span class="lb-name">${esc(p.name)}<small>${p.orders} orders · ${esc(inr(p.amount))}</small></span>
+        <span class="lb-bar"><span style="width:${p.target_pcs ? Math.min(100, pace(p.pcs, p.target_pcs)) : 0}%"></span></span>
+        <b>${p.pcs}${p.target_pcs ? `<small>/${p.target_pcs}</small>` : ''}</b></div>`).join('')}
+        ${(() => { const others = paidOrders.filter((o) => !o.sold_by && o.sold_by_name); return others.length ? `<div class="muted" style="margin-top:8px">Others: ${[...new Set(others.map((o) => o.sold_by_name))].map(esc).join(', ')}</div>` : ''; })()}</div>` : '';
+
+    // where sales came from this month
+    const ch = {};
+    paidOrders.forEach((o) => { ch[o.channel] = ch[o.channel] || { n: 0, v: 0, pcs: 0 }; ch[o.channel].n++; ch[o.channel].v += Number(o.total) - Number(o.shipping); ch[o.channel].pcs += Number(o.pieces); });
+    const chRows = Object.entries(ch).sort((x, y) => y[1].v - x[1].v);
+    const chMax = Math.max(1, ...chRows.map((r) => r[1].v));
+    const channelCard = chRows.length ? `<div class="card hbars">${chRows.map(([k, r]) => `<div class="hbar"><span class="l">${esc(CHANNEL[k] || k)}</span>
+        <span class="b"><i style="width:${(r.v / chMax) * 100}%"></i></span><span class="v">${esc(inr(r.v))} · ${r.pcs}</span></div>`).join('')}</div>` : '<div class="empty">No sales yet this month.</div>';
+
+    // partner money + who owes whom
+    let partnerCards = '';
+    if (pos && pos.length) {
+      const rule = state.settings.profit_rule;
+      const split = state.settings.custom_split || {};
+      const share = (p) => (rule === 'equal' ? 1 / pos.length : rule === 'investment' ? Number(p.investment_share || 0) : Number(split[p.partner_id] || 0) / 100);
+      const netIn = pos.map((p) => ({ p, net: Number(p.capital) - Number(p.payouts) }));
+      const total = netIn.reduce((s2, x) => s2 + x.net, 0);
+      const diffs = netIn.map((x) => ({ name: x.p.name, d: Math.round(x.net - total * share(x.p)) }));
+      const give = diffs.filter((x) => x.d < 0).map((x) => ({ ...x, d: -x.d })), get = diffs.filter((x) => x.d > 0).map((x) => ({ ...x }));
+      const moves = [];
+      for (const g of give) for (const r of get) { const amt = Math.min(g.d, r.d); if (amt > 0) { moves.push(`${esc(g.name.split(' ')[0])} → ${esc(r.name.split(' ')[0])}: <b>${esc(inr(amt))}</b>`); g.d -= amt; r.d -= amt; } }
+      partnerCards = `<div class="partner-grid">${pos.map((p) => `<div class="card pcard${p.partner_id === state.me.id ? ' me' : ''}">
+          <b>${esc(p.name)}</b>
+          <div class="row"><span class="muted">Invested</span><span class="amt">${esc(inr(p.capital))}</span></div>
+          ${Number(p.payouts) ? `<div class="row"><span class="muted">Taken out</span><span class="amt">${esc(inr(p.payouts))}</span></div>` : ''}
+          <div class="row"><span class="muted">Profit / loss (${esc(pct(p.result_share))})</span>${signed(p.result_amount)}</div>
+          <div class="row" style="border-top:1px solid var(--line);padding-top:6px;margin-top:6px"><span class="muted">If settled today</span>${signed(p.settlement_balance)}</div></div>`).join('')}</div>
+        <div class="card settle"><b>To make every partner equal (${esc(RULE[rule] || rule)})</b>
+          ${moves.length ? `<div class="settle-list">${moves.map((m) => `<div>${m}</div>`).join('')}</div><div class="hint">Pay each other directly. When a partner pays the business instead, record it as Capital in.</div>`
+            : '<div class="muted" style="margin-top:6px">Everyone has put in their fair share. Nothing to settle ✓</div>'}</div>`;
     }
+
+    // last 6 month closings
+    const closings = (months || []).map((m) => ({ ...m, st: (mstat || []).find((x) => x.month === m.month) }));
+    const closingCard = closings.length ? `<div class="card table-wrap"><table><thead><tr><th>Month</th><th class="r">Sales</th><th class="r">Spent</th><th class="r">Net</th><th class="r">Closing</th></tr></thead><tbody>
+        ${closings.map((m) => `<tr><td>${esc(shortMonth(m.month))} ${m.st && m.st.locked ? '🔒' : ''}<div class="muted">${m.orders} orders · ${m.pieces} pcs</div></td><td class="r">${esc(inr(Number(m.sales) - Number(m.refunds)))}</td>
+          <td class="r">${esc(inr(m.expenses))}</td><td class="r">${signed(m.net_result)}</td><td class="r">${m.st ? esc(inr(m.st.closing_balance)) : '—'}</td></tr>`).join('')}</tbody></table></div>` : '';
+
+    const cashCard = pv ? `<div class="card cash-hero small-hero"><div class="row"><div><div class="k">Cash in the drawer now</div><div class="v">${esc(inr(pv.expected))}</div></div>
+        ${pv.closed ? '<span class="pill approved">Closed ✓</span>' : `<span class="actions" style="margin:0"><button class="btn small good" data-cash="in">+ In</button><button class="btn small bad" data-cash="out">− Out</button></span>`}</div>
+        <div class="cash-flow"><span>Opening ${esc(inr(pv.opening))}</span><span class="pos">+ sales ${esc(inr(pv.cash_sales))}</span><span class="pos">+ in ${esc(inr(pv.cash_in))}</span><span class="neg">− out ${esc(inr(pv.cash_out))}</span></div>
+        <button class="linkish" id="toCash" style="margin-top:8px">Open cash counter ›</button></div>` : '';
+
+    const mine = myToday || [];
+    const mineCard = `<div class="today" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="stat"><div class="k">I sold today</div><div class="v">${mine.reduce((s2, o) => s2 + Number(o.pieces), 0)} pcs</div></div>
+        <div class="stat"><div class="k">Value</div><div class="v">${esc(inr(mine.reduce((s2, o) => s2 + Number(o.total) - Number(o.shipping), 0)))}</div></div>
+        <div class="stat"><div class="k">Bills</div><div class="v">${mine.length}</div></div></div>`;
+    const me = people.find((p) => p.member_id === state.me.id);
 
     view.innerHTML = `
       <h1>${hello}, ${esc(state.me.name.split(' ')[0])}</h1>
       <p class="sub">${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}</p>
+      ${emp && pol ? `<div id="punchBox">${punchHtml(a, pol)}</div>` : ''}
+      ${emp ? `<h2>My sales</h2>${mineCard}${me ? `<div class="card">${meter(Number(me.pcs), Number(me.target_pcs), false)}<div class="muted">My target for ${esc(monthName(m0))}</div></div>` : ''}` : ''}
+      <h2>Today · whole business</h2>
       <div class="today">
         <div class="stat"><div class="k">Sold today</div><div class="v">${esc(inr(t.value))}</div></div>
         <div class="stat"><div class="k">Orders</div><div class="v">${t.orders}</div></div>
         <div class="stat"><div class="k">Pieces</div><div class="v">${t.pieces}</div></div>
       </div>
+      ${cashCard}
       <h2>Do next</h2>
       ${actions.length ? `<div class="action-list">${actions.map(([n, c, t1, t2], i) => `
         <button class="action ${c}" data-a="${i}"><span class="n">${n}</span><span class="t"><b>${t1}</b><span>${t2}</span></span><span class="go">›</span></button>`).join('')}</div>`
         : `<div class="all-clear"><b>All clear</b>Nothing waiting. Go make some content.</div>`}
+      <h2>This month</h2>
+      ${milestoneCard}
+      ${people.length ? `<h2>Who's selling · ${esc(monthName(m0))}</h2>${leaderboard}` : ''}
+      ${P ? `<h2>Where sales came from</h2>${channelCard}` : ''}
       <h2>Last 14 days</h2>
       <div class="card">
         <div class="row"><span class="muted">Sales</span><span class="amt">${esc(inr(total14))}</span></div>
@@ -442,20 +530,40 @@
           `<div class="${i === 13 ? 'today-bar' : d.v ? 'has' : ''}" style="height:${Math.max(4, (d.v / max) * 100)}%" title="${esc(day(d.k))}: ${esc(inr(d.v))}"></div>`).join('')}</div>
         <div class="bars-x"><span>${esc(new Date(days[0].k).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}</span><span>Today</span></div>
       </div>
-      ${milestone}
       ${summary ? `
         <h2>Money</h2>
         <div class="grid">
           <div class="stat hero"><div class="k">Money in the business (as per books)</div><div class="v">${esc(inr(summary.cash_balance))}</div></div>
-          <div class="stat"><div class="k">Sales</div><div class="v">${esc(inr(summary.total_sales))}</div></div>
+          <div class="stat"><div class="k">Total sales</div><div class="v">${esc(inr(summary.total_sales))}</div></div>
           <div class="stat"><div class="k">Expenses</div><div class="v">${esc(inr(summary.total_expenses))}</div></div>
           <div class="stat" style="grid-column:1/-1"><div class="k">Profit / loss so far</div><div class="v">${signed(summary.business_result)}</div></div>
-        </div>
-        <button class="btn outline block" id="toPartners">See each partner's share</button>` : ''}`;
+        </div>` : ''}
+      ${partnerCards ? `<h2>Partners · invested, profit & settle-up</h2>${partnerCards}` : ''}
+      ${closingCard ? `<h2>Last 6 months</h2>${closingCard}` : ''}
+      ${P ? `<h2>All reports</h2><div class="chipset">${REPORTS.map(([k, l]) => `<button data-rep="${k}">${l}</button>`).join('')}<button data-go="production">Production</button><button data-go="hr">Team & HR</button><button data-go="influencers">Influencers</button><button data-go="coupons">Coupons</button></div>` : ''}`;
     view.querySelectorAll('[data-a]').forEach((b) => { b.onclick = actions[Number(b.dataset.a)][4]; });
-    const tp = view.querySelector('#toPartners');
-    if (tp) tp.onclick = () => go('more', 'partners');
+    view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('more', 'reports'); }; });
+    view.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => go('more', b.dataset.go); });
+    view.querySelectorAll('[data-cash]').forEach((b) => { b.onclick = () => cashPunch(b.dataset.cash, () => VIEWS.home(view)); });
+    const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('more', 'cash');
+    if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
+    const st = view.querySelector('#setTargets'); if (st) st.onclick = () => targetsDialog(targets || [], () => VIEWS.home(view));
   };
+
+  async function targetsDialog(rows, done) {
+    const team = state.members.filter((m) => m.active);
+    const cur = (id) => rows.find((r) => (r.member_id || null) === id) || {};
+    const v = await ask({ title: `Targets · ${monthName(monthKey())}`, html: '<p class="muted">Month runs from the 1st to the last day. Pieces and amount; leave 0 for no target.</p>',
+      fields: [{ name: 'b_pcs', label: 'Whole business · pieces', type: 'number', value: cur(null).target_pcs || 0 }, { name: 'b_amt', label: 'Whole business · sales ₹', type: 'number', value: cur(null).target_amount || 0 }]
+        .concat(team.flatMap((m) => [{ name: `p_${m.id}`, label: `${m.name} · pieces`, type: 'number', value: cur(m.id).target_pcs || 0 }, { name: `a_${m.id}`, label: `${m.name} · sales ₹`, type: 'number', value: cur(m.id).target_amount || 0 }])),
+      ok: 'Save targets' });
+    if (!v) return;
+    try {
+      await q(sb.rpc('set_target', { p_month: monthKey(), p_member: null, p_pcs: Number(v.b_pcs) || 0, p_amount: num(v.b_amt) || 0 }));
+      for (const m of team) await q(sb.rpc('set_target', { p_month: monthKey(), p_member: m.id, p_pcs: Number(v[`p_${m.id}`]) || 0, p_amount: num(v[`a_${m.id}`]) || 0 }));
+      toast('Targets saved'); done();
+    } catch (e) { toast(errText(e), true); }
+  }
 
   // ================================================================ ORDERS
   const ORDER_TABS = [['placed', 'New'], ['confirmed', 'To pack'], ['packed', 'To ship'], ['shipped', 'Shipped'], ['delivered', 'Delivered'], ['rto', 'RTO'], ['returned', 'Returned'], ['cancelled', 'Cancelled'], ['awaiting', 'Awaiting payment'], ['all', 'All']];
@@ -483,7 +591,7 @@
       <input class="search-in" id="oSearch" type="search" placeholder="Search order no, name, phone, AWB" value="${esc(state.orderSearch)}">
       <div class="seg">${ORDER_TABS.filter(([k]) => counts[k] || ['placed', 'confirmed', 'packed', 'shipped', 'all'].includes(k)).map(([k, l]) =>
         `<button data-f="${k}" class="${f === k ? 'on' : ''}">${l}<span class="c">${counts[k]}</span></button>`).join('')}</div>
-      <div class="seg">${[['all', 'All channels'], ['website', 'Website'], ['instagram', 'Instagram'], ['whatsapp', 'WhatsApp'], ['store', 'Store']].map(([k, l]) =>
+      <div class="seg">${[['all', 'All channels']].concat(Object.entries(CHANNEL)).map(([k, l]) =>
         `<button data-c="${k}" class="${state.orderChannel === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${list.length ? list.map(orderCard).join('') : `<div class="empty">${f === 'placed' ? 'No new orders right now.' : 'Nothing here.'}</div>`}`;
 
@@ -514,6 +622,7 @@
           ${o.open_requests ? '<span class="pill open">Return / exchange</span>' : ''}
           ${o.production_status && ['placed', 'confirmed'].includes(o.status) ? `<span class="pill" style="color:var(--cyan)">Making · ${esc((MAKING.find((m) => m[0] === o.production_status) || [])[1] || '')}</span>` : ''}
           ${o.coupon_code ? `<span class="pill">${esc(o.coupon_code)}</span>` : ''}
+          ${soldByName(o) ? `<span class="pill">by ${esc(soldByName(o).split(' ')[0])}</span>` : ''}
           <span class="ago">${esc(ago(o.created_at))}</span>
         </div>
         <div style="margin-top:8px;font-weight:600">${esc(o.customer_name)}${o.address && o.address.city ? ` <span class="muted">· ${esc(o.address.city)}</span>` : ''}</div>
@@ -576,7 +685,7 @@
     const body = panel(`
       <h1 style="margin-top:14px">${esc(o.order_no)}</h1>
       <div class="order-top"><span class="ch ${o.channel}">${esc(CHANNEL[o.channel])}</span><span class="pill ${o.status}">${esc(STATUS[o.status])}</span>${payPill(o)}</div>
-      <p class="muted">Placed ${esc(when(o.created_at))}${o.created_by ? ` by ${esc(memberName(o.created_by))}` : ''}</p>
+      <p class="muted">Placed ${esc(when(o.created_at))}${o.created_by ? ` by ${esc(memberName(o.created_by))}` : ''}${soldByName(o) ? ` · <b style="color:var(--lime)">sale credited to ${esc(soldByName(o))}</b>` : ''}</p>
 
       <div class="card">
         <b>${esc(o.customer_name)}</b>
@@ -698,14 +807,15 @@
     const cart = s.cart.map((c) => ({ ...c, v: state.stock.find((x) => x.variant_id === c.variant_id) })).filter((c) => c.v);
     const sub = cart.reduce((t, c) => t + c.v.price * c.qty, 0);
     const disc = Math.round((sub * s.discount) / 100);
-    const store_ = s.channel === 'store';
+    const store_ = IN_PERSON.includes(s.channel);
+    if (s.soldBy === undefined) s.soldBy = state.me.id;
     if (store_ && !['cash', 'upi'].includes(s.method)) s.method = 'cash';
     if (!store_ && !['upi', 'cod'].includes(s.method)) s.method = 'upi';
     const c = s.customer;
 
     view.innerHTML = `
       <h1>Sell</h1>
-      <div class="seg">${[['store', 'Store'], ['instagram', 'Instagram'], ['whatsapp', 'WhatsApp']].map(([k, l]) => `<button data-ch="${k}" class="${s.channel === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="seg">${SELL_CHANNELS.map(([k, l]) => `<button data-ch="${k}" class="${s.channel === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="row2" style="grid-template-columns:1fr auto;align-items:start"><input class="search-in" id="sSearch" type="search" placeholder="Find a tee or colour" value="${esc(s.search)}">
         <button class="btn cyan" id="sScan" style="height:46px">Scan tag</button></div>
       <div id="picker">${shown.length ? shown.map((p) => {
@@ -727,6 +837,10 @@
         <div class="row2" style="grid-template-columns:1fr auto"><input id="sCoupon" value="${esc(s.coupon)}" placeholder="e.g. STORE100" style="text-transform:uppercase">
           <button class="btn small outline" id="sCouponBtn">${s.coupon ? 'Remove' : 'Apply'}</button></div>
         <div class="hint" id="sCouponMsg">${s.discount && !s.coupon ? 'A coupon replaces the manual discount.' : ''}</div>
+        <label>Sold by (who gets the credit)</label>
+        <div class="chipset">${state.members.filter((m) => m.active).map((m) => `<button data-sold="${m.id}" class="${s.soldBy === m.id ? 'on' : ''}">${esc(m.name.split(' ')[0])}</button>`).join('')}
+          <button data-sold="other" class="${s.soldBy === 'other' ? 'on' : ''}">Someone else</button></div>
+        ${s.soldBy === 'other' ? `<input id="sSoldName" placeholder="Name of the person who brought this sale" value="${esc(s.soldName || '')}" style="margin-top:8px">` : ''}
       </div>
 
       ${store_ ? `
@@ -787,6 +901,8 @@
     });
     view.querySelectorAll('[data-disc]').forEach((b) => { b.onclick = () => { s.discount = Number(b.dataset.disc); redraw(); }; });
     view.querySelectorAll('[data-pay]').forEach((b) => { b.onclick = () => { s.method = b.dataset.pay; redraw(); }; });
+    view.querySelectorAll('[data-sold]').forEach((b) => { b.onclick = () => { s.soldBy = b.dataset.sold; redraw(); }; });
+    if (view.querySelector('#sSoldName')) view.querySelector('#sSoldName').oninput = (e) => { s.soldName = e.target.value; };
     view.querySelector('#sCouponBtn').onclick = () => {
       s.coupon = s.coupon ? '' : view.querySelector('#sCoupon').value.trim().toUpperCase();
       if (s.coupon) s.discount = 0;
@@ -856,8 +972,11 @@
         const res = await q(sb.rpc('staff_create_order', {
           p_channel: s.channel, p_customer: cust, p_items: s.cart.map((x) => ({ variant_id: x.variant_id, qty: x.qty })),
           p_method: s.method, p_discount_pct: s.discount, p_note: view.querySelector('#sNote').value || null, p_coupon: s.coupon || null,
+          p_sold_by: s.soldBy && s.soldBy !== 'other' ? s.soldBy : null, p_sold_by_name: s.soldBy === 'other' ? (s.soldName || '').trim() || null : null,
         }));
-        state.sell = { channel: s.channel, cart: [], discount: 0, method: s.method, search: '', customer: {}, coupon: '' };
+        if (s.soldBy === 'other' && !(s.soldName || '').trim()) toast('Tip: write the seller name next time');
+        C.confetti(0.5); C.chime();
+        state.sell = { channel: s.channel, cart: [], discount: 0, method: s.method, search: '', customer: {}, coupon: '', soldBy: s.soldBy, soldName: s.soldName };
         toast(`${res.order_no} · ${inr(res.total)} saved`);
         VIEWS.sell(view);
       } catch (err) { btn.disabled = false; toast(errText(err), true); }
@@ -867,6 +986,7 @@
   // ================================================================ STOCK + PRODUCTS
   VIEWS.stock = async (view) => {
     await loadStock();
+    const blanks = await q(sb.from('blank_stock').select('*')).catch(() => []);
     const lim = num(state.settings.low_stock_alert) || 5;
     const groups = [...new Map(state.stock.map((v) => [v.product_id, v])).values()].sort((a, b) => a.product_name.localeCompare(b.product_name));
     const totalPieces = state.stock.filter((v) => v.active).reduce((t, v) => t + Math.max(0, v.stock), 0);
@@ -877,6 +997,18 @@
       <p class="sub">${totalPieces} pieces in stock · worth ${esc(inr(value))} at selling price. Tap any number to add pieces.
         ${state.stock.some((v) => v.waiting > 0) ? `<br><b style="color:var(--cyan)">${state.stock.reduce((t, v) => t + Number(v.waiting || 0), 0)} customers waiting for a restock alert</b> (sizes marked 🔔).` : ''}</p>
       <button class="btn block" id="newProd" style="margin:0 0 16px">+ New product</button>
+      <div class="card blanks-card">
+        <div class="row"><div><b>Blank tees (before printing)</b><div class="muted">${blanks.reduce((t, b) => t + Math.max(0, b.qty), 0)} plain pieces · used automatically when a batch starts printing</div></div></div>
+        ${blanks.length ? (() => {
+          const cols = [...new Map(blanks.map((b) => [b.colour, b.colour_hex])).entries()];
+          const sizes = [...new Set(blanks.map((b) => b.size))].sort(sizeSort);
+          return `<table class="matrix"><thead><tr><th></th>${sizes.map((z) => `<th>${esc(z)}</th>`).join('')}</tr></thead><tbody>${cols.map(([cn, hex]) => `<tr><th class="c"><span class="dot-c" style="background:${esc(hex || '#000')}"></span>${esc(cn)}</th>${sizes.map((z) => {
+            const b = blanks.find((x) => x.colour === cn && x.size === z);
+            return b ? `<td><span class="cell ${b.qty <= 0 ? 'zero' : b.qty <= lim ? 'low' : 'ok'}" style="display:grid;place-items:center">${b.qty}</span></td>` : '<td></td>';
+          }).join('')}</tr>`).join('')}</tbody></table>`;
+        })() : '<div class="muted" style="margin-top:8px">Not tracking blanks yet. Add your first purchase of plain black tees.</div>'}
+        <div class="actions"><button class="btn small" data-blank="purchase">+ Bought blanks</button><button class="btn small outline" data-blank="damaged" style="color:var(--pink)">Damaged blanks</button></div>
+      </div>
       ${groups.length ? groups.map((g) => {
         const vars = state.stock.filter((v) => v.product_id === g.product_id && v.active);
         const colours = [...new Map(vars.map((v) => [v.colour, v.colour_hex])).entries()];
@@ -907,6 +1039,19 @@
       }).join('') : '<div class="empty">No products yet. Add your first tee.</div>'}`;
 
     view.querySelector('#newProd').onclick = () => openProductForm();
+    view.querySelectorAll('[data-blank]').forEach((b) => {
+      b.onclick = async () => {
+        const buy = b.dataset.blank === 'purchase';
+        const v = await ask({ title: buy ? 'Blank tees bought' : 'Damaged blank tees', fields: [
+          { name: 'colour', label: 'Colour', value: 'Black', required: true }, { name: 'size', label: 'Size', type: 'select', value: 'L', options: PRESET_SIZES.map((z) => [z, z]) },
+          { name: 'qty', label: 'Pieces', type: 'number', required: true }, ...(buy ? [{ name: 'cost', label: 'Total cost (₹, optional)', type: 'number' }] : []),
+          { name: 'note', label: buy ? 'Supplier / bill no.' : 'What happened?' }], ok: 'Save' });
+        if (!v) return;
+        const preset = PRESET_COLOURS.find((c) => c[0].toLowerCase() === v.colour.trim().toLowerCase());
+        try { const left = await q(sb.rpc('add_blanks', { p_colour: v.colour, p_hex: preset ? preset[1] : null, p_size: v.size, p_qty: Number(v.qty), p_reason: b.dataset.blank, p_cost: num(v.cost), p_note: v.note || null }));
+          toast(`${v.colour} ${v.size}: ${left} blank pieces now`); VIEWS.stock(view); } catch (e) { toast(errText(e), true); }
+      };
+    });
     view.querySelectorAll('[data-tags]').forEach((b) => {
       b.onclick = () => printTags(state.stock.filter((v) => v.product_id === Number(b.dataset.tags) && v.active && v.stock > 0).map((v) => ({ v, n: v.stock })));
     });
@@ -941,6 +1086,7 @@
       <div class="row2"><input id="qCustom" type="number" min="1" inputmode="numeric" placeholder="e.g. 36"><button class="btn" id="qAdd">Add</button></div>
       <label for="qNote">Note (optional)</label><input id="qNote" placeholder="Batch / printer name">
       <button class="btn outline block" id="qTag" style="margin-top:14px">Print QR price tags for this size</button>
+      <h2>Piece-by-piece history</h2><div id="qHist" class="card"><div class="muted">Loading…</div></div>
       <h2>Damaged or missing piece?</h2>
       <p class="muted">Removing stock needs all ${partners().length} partners to approve.</p>
       <button class="btn outline block" id="qWo" style="color:var(--pink)">Report damaged stock</button>`);
@@ -953,6 +1099,11 @@
     };
     body.querySelectorAll('[data-q]').forEach((b) => { b.onclick = () => add(Number(b.dataset.q)); });
     body.querySelector('#qAdd').onclick = () => { const n = Number(body.querySelector('#qCustom').value); if (n > 0) add(n); else toast('Enter a number', true); };
+    q(sb.from('stock_history').select('*').eq('variant_id', vid).order('id', { ascending: false }).limit(50)).then((h) => {
+      const RS = { opening: 'Opening stock', production: 'Printed / added', sale: 'Sold', cancel: 'Order cancelled', rto: 'RTO back', return: 'Returned', replacement_out: 'Exchange sent', writeoff: 'Written off' };
+      body.querySelector('#qHist').innerHTML = h.length ? h.map((x) => `<div class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc(RS[x.reason] || x.reason)}${x.order_no ? ` · ${esc(x.order_no)}` : ''}${x.note ? ` · ${esc(x.note)}` : ''}
+        <div class="muted">${esc(when(x.at))}${x.by_name ? ` · ${esc(x.by_name)}` : ''}</div></span><b class="${x.qty > 0 ? 'pos' : 'neg'}">${x.qty > 0 ? '+' : ''}${x.qty}</b></div>`).join('') : '<div class="muted">No movement yet.</div>';
+    }).catch(() => {});
     body.querySelector('#qTag').onclick = async () => {
       const r = await ask({ title: 'How many tags?', fields: [{ name: 'n', label: 'Tags to print', type: 'number', required: true, value: Math.max(1, v.stock) }], ok: 'Print' });
       if (r) printTags([{ v, n: Math.min(200, Math.max(1, Number(r.n) || 1)) }]);
@@ -1126,7 +1277,7 @@
       ['returns', 'Returns & exchanges', 'Replacement and return requests from customers', c.svc],
       isPartner() && ['approvals', 'Approvals', 'Expenses, payouts, price changes, damaged stock', c.approvals],
       ['requests', isPartner() ? 'New money entry' : 'Expenses', isPartner() ? 'Expense, income, capital, payout' : 'Record an expense with the bill photo'],
-      ['cash', 'Daily cash close', 'Count the cash drawer, photo, done'],
+      ['cash', 'Cash counter', 'Cash in / out of the drawer and daily close'],
       ['production', 'Production tracker', 'Batches from blanks to ready stock'],
       ['hr', isPartner() ? 'Team & HR' : 'My attendance', isPartner() ? 'Attendance, leave, salary, HR rules' : 'Check in, leave, my salary'],
       ['coupons', 'Coupons & combos', 'Online and store codes, combo offers'],
@@ -1137,7 +1288,7 @@
       isPartner() && ['partners', 'Partners', 'Each partner\'s investment and share'],
       isPartner() && ['close', 'Month close', 'Check the bank and lock the month'],
       isPartner() && ['log', 'Activity log', 'Who did what, when'],
-      ['settings', 'Shop settings', 'Delivery, COD, discounts, limits'],
+      ['settings', 'Settings', 'Everything partners can change: shop, money, HR, targets, codes'],
       ['password', 'My password', 'Change your login password'],
     ].filter(Boolean);
     view.innerHTML = `
@@ -1226,7 +1377,10 @@
   VIEWS.settings = async (view) => {
     await loadSettings();
     view.innerHTML = `${backBtn}
-      <h1>Shop settings</h1>
+      <h1>Settings</h1>
+      ${isPartner() ? `<div class="chipset" style="margin-bottom:14px">${[['hr', 'HR rules & salary'], ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['production', 'Production'], ['cash', 'Cash counter'], ['partners', 'Profit split'], ['decisions', 'Partner voting']]
+        .map(([k, l]) => `<button data-hub="${k}">${l}</button>`).join('')}<button id="hubTargets">Monthly targets</button></div>` : ''}
+      <h2>Shop & money</h2>
       <p class="sub">${isPartner() ? `Changing any of these needs all ${partners().length} partners.` : 'Partners can change these.'}</p>
       <div class="card">${Object.keys(SETTING_LABEL).filter((k) => k in state.settings).map((k) => `
         <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span>${esc(SETTING_LABEL[k])}</span>
@@ -1237,6 +1391,8 @@
       <div id="codPins"></div>`;
     wireBack(view);
     codPins(view.querySelector('#codPins')).catch(() => {});
+    view.querySelectorAll('[data-hub]').forEach((b) => { b.onclick = () => go('more', b.dataset.hub); });
+    const ht = view.querySelector('#hubTargets'); if (ht) ht.onclick = async () => targetsDialog(await q(sb.rpc('target_progress', { p_month: monthKey() })), () => {});
     view.querySelectorAll('[data-k]').forEach((b) => {
       b.onclick = async () => {
         const k = b.dataset.k;
@@ -1564,6 +1720,7 @@
     shift_start: 'Shift starts', shift_end: 'Shift ends', grace_min: 'Grace (minutes late allowed)', lates_per_half_day: 'Late marks = half day',
     weekly_off: 'Weekly off', paid_leaves_per_month: 'Paid leaves per month', ot_after: 'Overtime after', ot_multiplier: 'Overtime pay × day rate',
     office_lat: 'Store latitude', office_lng: 'Store longitude', office_radius_m: 'Attendance radius (metres)',
+    lunch_min: 'Lunch break (minutes)', half_day_allowed: 'Half day allowed',
   };
   const monthKey = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7) + '-01';
   const shortMonth = (s) => new Date(`${s}T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
@@ -1698,55 +1855,130 @@
     w.document.close();
   }
 
+
+  // ---------------- attendance punch card (Home + HR): check in → lunch → back → check out
+  function punchHtml(a, pol) {
+    const step = !a ? 'in' : a.out_at ? 'done' : !a.lunch_out_at ? 'lunch_or_out' : !a.lunch_in_at ? 'lunch_in' : 'out';
+    const lunchMins = a && a.lunch_out_at && !a.lunch_in_at ? Math.floor((Date.now() - new Date(a.lunch_out_at)) / 6e4) : null;
+    const cell = (k, v, extra = '') => `<div class="stat"><div class="k">${k}</div><div class="v" style="font-size:16px">${esc(v)}</div>${extra}</div>`;
+    return `<div class="card punch-card">
+      <div class="row"><b>Today · ${esc(new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><span class="muted">Shift ${esc(pol.shift_start)}–${esc(pol.shift_end)} · lunch ${esc(pol.lunch_min || 30)} min</span></div>
+      <div class="punch-grid">
+        ${cell('In', timeOf(a && a.in_at), a && a.late_min ? `<div class="neg" style="font-size:11px">${a.late_min} min late</div>` : '')}
+        ${cell('Lunch', timeOf(a && a.lunch_out_at))}
+        ${cell('Back', timeOf(a && a.lunch_in_at), a && a.lunch_over_min ? `<div class="neg" style="font-size:11px">${a.lunch_over_min} min over</div>` : '')}
+        ${cell('Out', timeOf(a && a.out_at))}
+      </div>
+      ${step === 'in' ? '<label class="btn block punch-btn" for="selfie">Check in · take selfie</label>' : ''}
+      ${step === 'lunch_or_out' ? '<div class="actions"><button class="btn cyan" data-punch="lunch_out">Start lunch</button><label class="btn outline punch-btn" for="selfie">Check out · selfie</label></div>' : ''}
+      ${step === 'lunch_in' ? `<button class="btn block ${lunchMins > (pol.lunch_min || 30) ? 'bad' : 'cyan'}" data-punch="lunch_in" style="margin-top:12px">Back from lunch · ${lunchMins} min</button>` : ''}
+      ${step === 'out' ? '<label class="btn block outline punch-btn" for="selfie">Check out · take selfie</label>' : ''}
+      ${step === 'done' ? '<div class="all-clear" style="margin-top:12px"><b>Done for today ✓</b>See you tomorrow.</div>' : '<input id="selfie" type="file" accept="image/*" capture="user" hidden>'}
+    </div>`;
+  }
+  function wirePunch(root, a, reload) {
+    const selfie = root.querySelector('#selfie');
+    if (selfie) selfie.onchange = async () => {
+      const file = selfie.files[0];
+      if (!file) return;
+      toast('Saving attendance…');
+      try {
+        const [path, loc] = await Promise.all([uploadProof(file, 'hr'), locate()]);
+        const r = await q(sb.rpc('punch', { p_kind: a ? 'out' : 'in', p_photo: path, p_lat: loc && loc.lat, p_lng: loc && loc.lng }));
+        if (!a) { if (r.late_min) toast(`Checked in · ${r.late_min} min late`); else { C.confetti(0.4); toast('Checked in on time. Have a great day!'); } } else toast('Checked out. Good work today!');
+        reload();
+      } catch (e) { toast(errText(e), true); }
+    };
+    root.querySelectorAll('[data-punch]').forEach((b) => {
+      b.onclick = async () => {
+        try {
+          const loc = await locate();
+          await q(sb.rpc('punch', { p_kind: b.dataset.punch, p_photo: null, p_lat: loc && loc.lat, p_lng: loc && loc.lng }));
+          toast(b.dataset.punch === 'lunch_out' ? 'Enjoy your lunch' : 'Welcome back');
+          reload();
+        } catch (e) { toast(errText(e), true); }
+      };
+    });
+  }
+
   // ================================================================ DAILY CASH CLOSE
   VIEWS.cash = async (view) => {
-    const [pv, rows] = await Promise.all([q(sb.rpc('cash_day_preview', { p_day: null })), q(sb.from('cash_closes').select('*').order('day', { ascending: false }).limit(31))]);
-    const expected = (o) => num(pv.opening) + num(pv.cash_sales) - num(pv.cash_refunds) - (o || 0);
+    const [pv, rows, moves] = await Promise.all([
+      q(sb.rpc('cash_day_preview', { p_day: null })),
+      q(sb.from('cash_closes').select('*').order('day', { ascending: false }).limit(31)),
+      q(sb.from('cash_moves').select('*').order('id', { ascending: false }).limit(60)),
+    ]);
+    const today = moves.filter((m) => m.day === pv.day);
     view.innerHTML = `${backBtn}
-      <h1>Daily cash close</h1>
-      <p class="sub">Count the cash drawer at closing time. Any difference goes straight to all partners.</p>
-      ${pv.closed ? `<div class="all-clear"><b>Today is closed ✓</b>See the history below.</div>` : `
+      <h1>Cash counter</h1>
+      <p class="sub">Every rupee that goes into or out of the drawer is punched here. Cash sales come in by themselves.</p>
+      <div class="card cash-hero">
+        <div class="k">Cash that should be in the drawer now</div>
+        <div class="v">${esc(inr(pv.expected))}</div>
+        <div class="cash-flow"><span>Opening ${esc(inr(pv.opening))}</span><span class="pos">+ sales ${esc(inr(pv.cash_sales))}</span><span class="pos">+ in ${esc(inr(pv.cash_in))}</span>
+          <span class="neg">− out ${esc(inr(pv.cash_out))}</span>${Number(pv.cash_refunds) ? `<span class="neg">− refunds ${esc(inr(pv.cash_refunds))}</span>` : ''}</div>
+        ${pv.closed ? '<div class="all-clear" style="margin-top:12px"><b>Today is closed ✓</b>New punches go into tomorrow.</div>' : `
+        <div class="actions"><button class="btn good" data-cash="in">+ Cash in</button><button class="btn bad" data-cash="out">− Cash out</button></div>`}
+      </div>
+      ${today.length ? `<h2>Today's punches</h2><div class="card">${today.map((m) => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
+        <span>${esc(m.reason)}<div class="muted">${esc(timeOf(m.created_at))} · ${esc(memberName(m.by_member))}${m.photo_path ? ` · <button class="linkish" data-ph="${esc(m.photo_path)}">bill</button>` : ''}</div></span>
+        <b class="${m.kind === 'in' ? 'pos' : 'neg'}">${m.kind === 'in' ? '+' : '−'} ${esc(inr(m.amount))}</b></div>`).join('')}</div>` : ''}
+      ${pv.closed ? '' : `<h2>Close the day</h2>
       <form class="card" id="ccForm">
-        <div class="row"><span class="muted">Opening cash (yesterday's count)</span><b>${esc(inr(pv.opening))}</b></div>
-        <div class="row"><span class="muted">+ Cash sales today</span><b class="pos">${esc(inr(pv.cash_sales))}</b></div>
-        <div class="row"><span class="muted">− Cash refunds today</span><b class="neg">${esc(inr(pv.cash_refunds))}</b></div>
-        <label for="ccOut">Cash taken out today (bank deposit, petty expense)</label><input id="ccOut" type="number" inputmode="decimal" value="0" min="0">
-        <label for="ccNote">Where did it go?</label><input id="ccNote" placeholder="e.g. ₹5,000 deposited in HDFC">
-        <div class="rule-box" id="ccExp"></div>
-        <label for="ccCount">Cash you counted in the drawer</label><input id="ccCount" type="number" inputmode="decimal" required>
+        <label for="ccCount" style="margin-top:0">Cash you counted in the drawer</label><input id="ccCount" type="number" inputmode="decimal" required>
         <label for="ccPhoto">Photo of the counted cash</label><input id="ccPhoto" type="file" accept="image/*" capture="environment" required>
+        <label for="ccNote">Note (optional)</label><input id="ccNote">
         <div class="hint" id="ccDiff"></div>
         <button class="btn block" type="submit" id="ccBtn">Close today</button>
       </form>`}
       <h2>History</h2>
       ${rows.length ? `<div class="card table-wrap"><table><thead><tr><th>Day</th><th class="r">Expected</th><th class="r">Counted</th><th class="r">Diff</th></tr></thead><tbody>
-        ${rows.map((r) => `<tr><td>${esc(day(r.day))}<div class="muted">${esc(memberName(r.by_member))}${r.note ? ` · ${esc(r.note)}` : ''}</div></td><td class="r">${esc(inr(r.expected))}</td><td class="r">${esc(inr(r.counted))}</td>
+        ${rows.map((r) => `<tr><td>${esc(day(r.day))}<div class="muted">${esc(memberName(r.by_member))} · in ${esc(inr(r.cash_in))} · out ${esc(inr(r.cash_out))}</div></td><td class="r">${esc(inr(r.expected))}</td><td class="r">${esc(inr(r.counted))}</td>
           <td class="r">${Number(r.difference) ? signed(r.difference) : '<span class="pos">✓</span>'} <button class="linkish" data-ph="${esc(r.photo_path)}">photo</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No closes yet.</div>'}`;
     wireBack(view);
     view.querySelectorAll('[data-ph]').forEach((b) => { b.onclick = () => showProof(b.dataset.ph); });
+    view.querySelectorAll('[data-cash]').forEach((b) => { b.onclick = () => cashPunch(b.dataset.cash, () => VIEWS.cash(view)); });
     const f = view.querySelector('#ccForm');
     if (!f) return;
-    const upd = () => {
-      const out = num(view.querySelector('#ccOut').value) || 0;
-      view.querySelector('#ccExp').innerHTML = `Should be in the drawer: <b>${esc(inr(expected(out)))}</b>`;
-      const c = num(view.querySelector('#ccCount').value);
-      const d = c === null ? null : c - expected(out);
+    view.querySelector('#ccCount').oninput = (e) => {
+      const d = num(e.target.value) === null ? null : num(e.target.value) - num(pv.expected);
       view.querySelector('#ccDiff').innerHTML = d === null ? '' : d === 0 ? '<b class="pos">Matches exactly. Nice.</b>' : `<b class="neg">${d < 0 ? 'Short' : 'Extra'} by ${esc(inr(Math.abs(d)))}</b> — partners will be told.`;
     };
-    ['#ccOut', '#ccCount'].forEach((id) => { view.querySelector(id).oninput = upd; });
-    upd();
     f.onsubmit = async (e) => {
       e.preventDefault();
       const btn = view.querySelector('#ccBtn'); btn.disabled = true; btn.textContent = 'Saving…';
       try {
         const path = await uploadProof(view.querySelector('#ccPhoto').files[0], 'cash');
-        const r = await q(sb.rpc('close_cash_day', { p_counted: num(view.querySelector('#ccCount').value), p_cash_out: num(view.querySelector('#ccOut').value) || 0,
-          p_note: view.querySelector('#ccNote').value || null, p_photo: path, p_day: null }));
+        const r = await q(sb.rpc('close_cash_day', { p_counted: num(view.querySelector('#ccCount').value), p_cash_out: 0, p_note: view.querySelector('#ccNote').value || null, p_photo: path, p_day: null }));
         if (Number(r.difference) === 0) { C.confetti(0.5); toast('Cash matches. Day closed.'); } else toast('Day closed. Partners were told about the difference.');
         VIEWS.cash(view);
       } catch (err) { btn.disabled = false; btn.textContent = 'Close today'; toast(errText(err), true); }
     };
   };
+
+  // Punch cash in / out of the drawer (like the cash counter in the Jayesh Fasteners app)
+  function cashPunch(kind, done) {
+    const cats = kind === 'in' ? [['float', 'Opening / change money'], ['from_partner', 'Given by a partner'], ['other', 'Other']]
+      : [['bank', 'Deposited in bank'], ['petty', 'Small expense (tea, courier, bags)'], ['to_partner', 'Given to a partner'], ['other', 'Other']];
+    const body = panel(`<h1 style="margin-top:14px">${kind === 'in' ? 'Cash in' : 'Cash out'}</h1>
+      <label for="cpAmt">Amount (₹)</label><input id="cpAmt" type="number" inputmode="decimal" required>
+      <label for="cpCat">Type</label><select id="cpCat">${cats.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
+      <label for="cpWhy">Details</label><input id="cpWhy" placeholder="${kind === 'in' ? 'e.g. ₹500 change from Aaryak' : 'e.g. 50 courier bags'}">
+      <label for="cpPhoto">${kind === 'out' ? 'Photo of the bill / deposit slip' : 'Photo (optional)'}</label><input id="cpPhoto" type="file" accept="image/*" capture="environment">
+      ${kind === 'out' && state.me.role === 'employee' ? `<div class="hint">Up to ${esc(inr(state.settings.employee_petty_limit))} at a time. Partners are told about every cash out.</div>` : ''}
+      <button class="btn block ${kind === 'in' ? 'good' : 'bad'}" id="cpGo" style="margin-top:16px">${kind === 'in' ? 'Add to drawer' : 'Take out of drawer'}</button>`);
+    body.querySelector('#cpGo').onclick = async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try {
+        const file = body.querySelector('#cpPhoto').files[0];
+        const path = file ? await uploadProof(file, 'cash') : null;
+        const cat = body.querySelector('#cpCat');
+        await q(sb.rpc('cash_punch', { p_kind: kind, p_amount: num(body.querySelector('#cpAmt').value), p_reason: [cat.options[cat.selectedIndex].text, body.querySelector('#cpWhy').value].filter(Boolean).join(' · '),
+          p_photo: path, p_category: cat.value }));
+        closePanel(); toast(kind === 'in' ? 'Cash added' : 'Cash out recorded'); done();
+      } catch (err) { btn.disabled = false; toast(errText(err), true); }
+    };
+  }
 
   // ================================================================ PRODUCTION TRACKER
   VIEWS.production = async (view) => {
@@ -1876,19 +2108,11 @@
     view.innerHTML = `${backBtn}
       <h1>${isPartner() ? 'Team & HR' : 'My attendance'}</h1>
       ${state.me.role === 'employee' ? `
-        <div class="card punch-card">
-          <div class="row"><b>Today · ${esc(new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }))}</b><span class="muted">Shift ${esc(pol.shift_start)}–${esc(pol.shift_end)}</span></div>
-          <div class="today" style="grid-template-columns:1fr 1fr;margin-top:10px">
-            <div class="stat"><div class="k">Check in</div><div class="v">${esc(timeOf(mineToday && mineToday.in_at))}</div>${mineToday && mineToday.late_min ? `<div class="neg" style="font-size:12px">${mineToday.late_min} min late</div>` : ''}</div>
-            <div class="stat"><div class="k">Check out</div><div class="v">${esc(timeOf(mineToday && mineToday.out_at))}</div></div></div>
-          ${!mineToday || !mineToday.out_at ? `<label class="btn block punch-btn ${mineToday ? 'cyan' : ''}" for="selfie" style="margin-top:14px">${mineToday ? 'Check out · take selfie' : 'Check in · take selfie'}</label>
-            <input id="selfie" type="file" accept="image/*" capture="user" hidden>
-            <div class="hint">Selfie${pol.office_lat ? ' and location (must be at the store)' : ''} is saved with the time. Partners can see it.</div>` : '<div class="all-clear" style="margin-top:12px"><b>Done for today ✓</b>See you tomorrow.</div>'}
-        </div>
+        ${punchHtml(mineToday, pol)}
         <h2>Ask for leave</h2>
         <form class="card" id="lvForm">
           <div class="row2"><div><label for="lvFrom" style="margin-top:0">From</label><input id="lvFrom" type="date" required min="${today}"></div><div><label for="lvTo" style="margin-top:0">To</label><input id="lvTo" type="date" required min="${today}"></div></div>
-          <label for="lvKind">Type</label><select id="lvKind"><option value="paid">Paid leave (${esc(pol.paid_leaves_per_month)} per month)</option><option value="unpaid">Unpaid leave</option><option value="half_day">Half day</option></select>
+          <label for="lvKind">Type</label><select id="lvKind">${Number(pol.paid_leaves_per_month) ? `<option value="paid">Paid leave (${esc(pol.paid_leaves_per_month)} per month)</option>` : ''}<option value="unpaid">Unpaid leave (salary cut for those days)</option>${pol.half_day_allowed === false ? '' : '<option value="half_day">Half day</option>'}</select>
           <label for="lvWhy">Reason</label><input id="lvWhy" required placeholder="e.g. Family function">
           <button class="btn block" type="submit">Send to partners</button>
         </form>` : ''}
@@ -1913,18 +2137,7 @@
     wireBack(view);
     view.querySelector('#hrMonth').onchange = (e) => { state.hrMonth = e.target.value; VIEWS.hr(view); };
     view.querySelectorAll('[data-ph]').forEach((b) => { b.onclick = () => showProof(b.dataset.ph); });
-    const selfie = view.querySelector('#selfie');
-    if (selfie) selfie.onchange = async () => {
-      const file = selfie.files[0];
-      if (!file) return;
-      toast('Saving attendance…');
-      try {
-        const [path, loc] = await Promise.all([uploadProof(file, 'hr'), locate()]);
-        const a = await q(sb.rpc('punch', { p_kind: mineToday ? 'out' : 'in', p_photo: path, p_lat: loc && loc.lat, p_lng: loc && loc.lng }));
-        if (!mineToday) { if (a.late_min) toast(`Checked in · ${a.late_min} min late`); else { C.confetti(0.4); toast('Checked in on time. Have a great day!'); } } else toast('Checked out. Good work today!');
-        VIEWS.hr(view);
-      } catch (e) { toast(errText(e), true); }
-    };
+    wirePunch(view, mineToday, () => VIEWS.hr(view));
     const lf = view.querySelector('#lvForm');
     if (lf) lf.onsubmit = async (e) => {
       e.preventDefault();
@@ -1955,11 +2168,12 @@
     if (hrules) hrules.onclick = async () => {
       const keys = Object.keys(HR_LABEL).filter((k) => !['office_lat', 'office_lng'].includes(k));
       const v = await ask({ title: 'Change HR rules', html: `<p class="muted">Only changed rules are sent. All ${partners().length} partners must approve.</p>`,
-        fields: keys.map((k) => (k === 'weekly_off' ? { name: k, label: HR_LABEL[k], type: 'select', value: pol[k], options: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d) => [d, d]) }
+        fields: keys.map((k) => (k === 'weekly_off' ? { name: k, label: HR_LABEL[k], type: 'select', value: pol[k], options: ['None', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d) => [d, d]) }
+          : k === 'half_day_allowed' ? { name: k, label: HR_LABEL[k], type: 'select', value: String(!!pol[k]), options: [['false', 'No'], ['true', 'Yes']] }
           : { name: k, label: HR_LABEL[k], type: /_start|_end|ot_after/.test(k) ? 'time' : 'number', value: pol[k] ?? '' })).concat([{ name: 'why', label: 'Why?', required: true }]), ok: 'Send for approval' });
       if (!v) return;
       const changed = {};
-      keys.forEach((k) => { const nv = /_start|_end|ot_after|weekly_off/.test(k) ? v[k] : num(v[k]); if (String(nv ?? '') !== String(pol[k] ?? '')) changed[k] = nv; });
+      keys.forEach((k) => { const nv = k === 'half_day_allowed' ? v[k] === 'true' : /_start|_end|ot_after|weekly_off/.test(k) ? v[k] : num(v[k]); if (String(nv ?? '') !== String(pol[k] ?? '')) changed[k] = nv; });
       if (!Object.keys(changed).length) return toast('Nothing changed');
       try { await q(sb.rpc('raise_request', { p_type: 'hr_policy', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { policy: changed } })); toast('Sent to partners'); } catch (e) { toast(errText(e), true); }
     };
@@ -1987,16 +2201,17 @@
       q(sb.from('influencers').select('id,name').eq('active', true).order('name')),
     ]);
     const products = [...new Map(state.stock.map((v) => [v.product_id, v.product_name])).entries()];
-    const chLabel = { online: 'Online only', store: 'Store only', both: 'Online + store' };
+    const chLabel = { online: 'Online only', store: 'In person only (store, events, stalls)', both: 'Online + in person' };
     const live = (c) => c.active && (!c.ends_at || new Date(c.ends_at) > Date.now()) && (!c.usage_limit || c.uses < c.usage_limit);
     view.innerHTML = `${backBtn}
       <h1>Coupons & combos</h1>
       <p class="sub">Customers type coupons at checkout; Mahendra types them in Sell. Combos apply on their own in the bag. One coupon per order.</p>
-      ${isPartner() ? '<div class="actions" style="margin:0 0 12px"><button class="btn" id="newCoupon">+ New coupon</button><button class="btn outline" id="newBundle">+ New combo</button></div>' : ''}
+      ${isPartner() ? '<div class="actions" style="margin:0 0 12px"><button class="btn" id="newCoupon">+ New coupon</button><button class="btn outline" id="newBundle">+ New combo</button><button class="btn outline" id="teamCodes">Codes for every partner + Mahendra</button></div>' : ''}
       <h2>Coupons</h2>
       ${coupons.length ? coupons.map((c) => `<div class="card">
         <div class="row"><div><span class="code-tag">${esc(c.code)}</span> <span class="pill ${live(c) ? 'approved' : 'cancelled'}">${live(c) ? 'Live' : 'Off'}</span></div>
           <b class="amt">${c.kind === 'percent' ? `${Number(c.value)}% off` : `${esc(inr(c.value))} off`}</b></div>
+        ${c.owner_name ? `<div style="margin-top:4px;color:var(--lime);font-weight:600;font-size:13px">${esc(c.owner_name)}'s personal code</div>` : ''}
         <div class="muted" style="margin-top:6px">${esc(chLabel[c.channel])}${Number(c.min_order) ? ` · min ${esc(inr(c.min_order))}` : ''}${c.max_discount ? ` · max ${esc(inr(c.max_discount))}` : ''}${c.first_order_only ? ' · first order only' : ''}
           · ${c.per_customer_limit}× per customer${c.usage_limit ? ` · ${c.usage_limit} total` : ''}${c.ends_at ? ` · ends ${esc(day(c.ends_at))}` : ''}${c.influencer_name ? ` · <b>${esc(c.influencer_name)}</b>` : ''}</div>
         ${c.description ? `<div class="muted">${esc(c.description)}</div>` : ''}
@@ -2019,6 +2234,21 @@
     view.querySelectorAll('[data-btog]').forEach((b) => {
       b.onclick = async () => { const x = bundles.find((y) => y.id === Number(b.dataset.btog)); try { await q(sb.rpc('save_bundle', { p: { ...x, product_ids: x.product_ids || [], active: !x.active } })); VIEWS.coupons(view); } catch (e) { toast(errText(e), true); } };
     });
+    const tc = view.querySelector('#teamCodes');
+    if (tc) tc.onclick = async () => {
+      const team = state.members.filter((m) => m.active && !coupons.some((c) => c.member_id === m.id));
+      if (!team.length) return toast('Everyone already has a personal code');
+      const v = await ask({ title: 'Personal codes for the team', html: `<p class="muted">Creates one code for ${team.map((m) => esc(m.name.split(' ')[0])).join(', ')}. Customers get the discount; the sale is credited to that person (online and at the store).</p>`,
+        fields: [{ name: 'value', label: 'Discount %', type: 'number', value: 10, required: true }, { name: 'per', label: 'Uses per customer', type: 'number', value: 1 }], ok: 'Create codes' });
+      if (!v) return;
+      let made = [];
+      for (const m of team) {
+        const code = `${m.name.split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12)}${Number(v.value)}`;
+        try { await q(sb.rpc('save_coupon', { p: { code, kind: 'percent', value: num(v.value), channel: 'both', per_customer_limit: num(v.per) || 1, member_id: m.id, description: `${m.name}'s personal code` } })); made.push(code); } catch (e) { toast(`${code}: ${errText(e)}`, true); }
+      }
+      if (made.length) { C.confetti(0.6); toast(`Created ${made.join(', ')}`); }
+      VIEWS.coupons(view);
+    };
     const nc = view.querySelector('#newCoupon');
     if (nc) nc.onclick = () => couponDialog({}, infl, () => VIEWS.coupons(view));
     const nb = view.querySelector('#newBundle');
@@ -2041,20 +2271,21 @@
       { name: 'code', label: 'Code', required: true, value: pre.code || '', placeholder: 'e.g. DIWALI15' },
       { name: 'kind', label: 'Type', type: 'select', value: 'percent', options: [['percent', '% off'], ['flat', '₹ off']] },
       { name: 'value', label: 'Value', type: 'number', required: true, placeholder: '15' },
-      { name: 'channel', label: 'Where it works', type: 'select', value: pre.channel || 'both', options: [['both', 'Online + store'], ['online', 'Online only'], ['store', 'Store only']] },
+      { name: 'channel', label: 'Where it works', type: 'select', value: pre.channel || 'both', options: [['both', 'Online + in person'], ['online', 'Online only'], ['store', 'In person only (store, events, stalls)']] },
       { name: 'min_order', label: 'Minimum order (₹)', type: 'number', value: 0 },
       { name: 'max_discount', label: 'Maximum discount (₹, optional)', type: 'number' },
       { name: 'per', label: 'Uses per customer', type: 'number', value: 1 },
       { name: 'limit', label: 'Total uses (optional)', type: 'number' },
       { name: 'ends', label: 'Ends on (optional)', type: 'date' },
       { name: 'first', label: 'Only for a first order?', type: 'select', value: 'no', options: [['no', 'No'], ['yes', 'Yes']] },
-      { name: 'inf', label: 'Influencer (tracks their sales)', type: 'select', value: pre.influencer_id || '', options: [['', '—']].concat(infl.map((i) => [i.id, i.name])) },
+      { name: 'inf', label: 'Influencer (special influencer discount)', type: 'select', value: pre.influencer_id || '', options: [['', '—']].concat(infl.map((i) => [i.id, i.name])) },
+      { name: 'owner', label: 'Personal code of (sales are credited to them)', type: 'select', value: pre.member_id || '', options: [['', '—']].concat(state.members.filter((m) => m.active).map((m) => [m.id, m.name])) },
       { name: 'desc', label: 'Note (optional)', placeholder: 'e.g. Diwali Instagram post' }], ok: 'Create coupon' });
     if (!v) return;
     try {
       await q(sb.rpc('save_coupon', { p: { code: v.code, kind: v.kind, value: num(v.value), channel: v.channel, min_order: num(v.min_order) || 0, max_discount: num(v.max_discount),
         per_customer_limit: num(v.per) || 1, usage_limit: num(v.limit), ends_at: v.ends ? new Date(`${v.ends}T23:59:59+05:30`).toISOString() : null,
-        first_order_only: v.first === 'yes', influencer_id: v.inf ? Number(v.inf) : null, description: v.desc || null } }));
+        first_order_only: v.first === 'yes', influencer_id: v.inf ? Number(v.inf) : null, member_id: v.owner || null, description: v.desc || null } }));
       C.confetti(0.5); toast(`${v.code.toUpperCase()} is live`); done();
     } catch (e) { toast(errText(e), true); }
   }
@@ -2163,7 +2394,7 @@
       const end = new Date(`${m}T00:00:00`); end.setMonth(end.getMonth() + 1);
       const [ledger, top] = await Promise.all([
         q(sb.from('ledger').select('kind,amount,category,description').gte('entry_date', m).lt('entry_date', end.toISOString().slice(0, 10))),
-        q(sb.from('order_board').select('items,status,created_at').gte('created_at', `${m}T00:00:00+05:30`).lt('created_at', `${end.toISOString().slice(0, 10)}T00:00:00+05:30`).neq('status', 'cancelled')),
+        q(sb.from('order_board').select('items,status,created_at').gte('created_at', istStart(m)).lt('created_at', istStart(end.toISOString().slice(0, 10))).neq('status', 'cancelled')),
       ]);
       const byCat = {};
       ledger.filter((x) => x.kind === 'expense').forEach((x) => { const k = x.category || 'other'; byCat[k] = (byCat[k] || 0) - Number(x.amount); });
