@@ -347,3 +347,16 @@ nav.tabs button .ico svg { width: 21px; height: 21px; }
 .compliance td.r { text-align: right; color: var(--cyan); white-space: nowrap; }
 .store-day { border-color: rgba(0,229,255,.4); }
 .stat.hero .muted { color: rgba(0,0,0,.65); }
+
+/* ---------- phase 7: settings hub, targets grid, discount warning ---------- */
+.hub { display: grid; gap: 8px; margin-bottom: 8px; }
+.hub button { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-weight: 600; text-align: left; }
+.hub .go { color: var(--muted); font-size: 18px; }
+.set-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.set-row:last-child { border-bottom: 0; }
+.set-row > span:last-child { text-align: right; white-space: nowrap; }
+.tgt-grid { display: grid; grid-template-columns: 70px 1fr 1fr 64px; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; }
+.tgt-grid input { height: 42px; padding: 0 10px; }
+.tgt-now { font-size: 12px; text-align: right; line-height: 1.2; }
+.tgt-now small { color: var(--muted); }
+.disc-warn { margin-top: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,46,136,.45); background: rgba(255,46,136,.08); font-size: 14px; }

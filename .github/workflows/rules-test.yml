@@ -18,4 +18,4 @@ jobs:
         env:
           PGHOST: localhost
           PGPORT: 5432
-        run: bash supabase/tests/run_tests.sh | tee result.txt && grep -q "ALL RULES PASSED" result.txt && grep -q "ALL COMMERCE RULES PASSED" result.txt && grep -q "ALL GROWTH RULES PASSED" result.txt && grep -q "ALL PEOPLE RULES PASSED" result.txt && grep -q "ALL WELCOME + DEMAND RULES PASSED" result.txt && grep -q "ALL FINANCE RULES PASSED" result.txt
+        run: bash supabase/tests/run_tests.sh | tee result.txt && grep -q "ALL RULES PASSED" result.txt && grep -q "ALL COMMERCE RULES PASSED" result.txt && grep -q "ALL GROWTH RULES PASSED" result.txt && grep -q "ALL PEOPLE RULES PASSED" result.txt && grep -q "ALL WELCOME + DEMAND RULES PASSED" result.txt && grep -q "ALL FINANCE RULES PASSED" result.txt && grep -q "ALL SETTINGS + DISCOUNT RULES PASSED" result.txt

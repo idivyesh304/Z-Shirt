@@ -54,7 +54,7 @@
   const TYPE = {
     expense: 'Expense', income: 'Income', capital_in: 'Capital in', partner_payout: 'Partner payout', reversal: 'Reversal',
     setting_change: 'Change setting', share_rule: 'Profit / loss split', price_change: 'Price change', stock_writeoff: 'Damaged stock',
-    hr_policy: 'HR rules', salary_change: 'Salary', decision: 'Partner decision',
+    hr_policy: 'HR rules', salary_change: 'Salary', decision: 'Partner decision', discount: 'Big discount',
   };
   const EXP_CAT = [['production', 'Production / blanks / printing'], ['ads', 'Ads (Instagram / Meta / Google)'], ['influencer', 'Influencer'], ['packaging', 'Packaging'],
     ['shipping', 'Courier / shipping'], ['rent', 'Rent & bills'], ['salary', 'Salary'], ['software', 'Apps & software'], ['equipment', 'Equipment (printer, heat press, furniture)'],
@@ -100,6 +100,8 @@
     toastTimer = setTimeout(() => { el.className = ''; }, isErr ? 6000 : 2800);
   }
   const errText = (e) => (e && (e.message || e.error_description)) || String(e);
+  const biz = () => ({ name: (state.settings && state.settings.business_name) || cfg.BUSINESS_NAME || 'Z-SHIRTS', address: (state.settings && state.settings.business_address) || cfg.BUSINESS_ADDRESS || '',
+    gstin: (state.settings && state.settings.gstin) || cfg.GSTIN || '' });
 
   // Small form dialog
   function ask({ title, html = '', fields = [], ok = 'Confirm', okClass = '' }) {
@@ -243,6 +245,7 @@
   async function loadSettings() {
     const rows = await q(sb.from('settings').select('*'));
     state.settings = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    state.settingRows = rows;
   }
   async function loadStock() {
     const [stock, cats] = await Promise.all([
@@ -388,7 +391,7 @@
     const m0 = monthKey();
     const none = Promise.resolve(null);
     const safe = (p) => p.catch(() => null);
-    const [daily, active, svc, summary, reqs, att, pv, leaves, targets, pos, months, mstat, monthOrders, myToday, blanks, pol, held] = await Promise.all([
+    const [daily, active, svc, summary, reqs, att, pv, leaves, targets, pos, months, mstat, monthOrders, myToday, blanks, pol, held, tDay, tWeek] = await Promise.all([
       q(sb.from('sales_daily').select('*').gte('day', since)),
       q(sb.from('orders').select('id,status,payment_method,payment_status').in('status', ['placed', 'confirmed', 'packed'])),
       q(sb.from('service_requests').select('id,status').in('status', ['open', 'approved'])),
@@ -407,6 +410,8 @@
       safe(q(sb.from('blank_stock').select('*'))),
       emp ? safe(q(sb.rpc('hr_policy'))) : none,
       P ? safe(q(sb.from('cash_with_partners').select('*'))) : none,
+      safe(q(sb.rpc('target_now', { p_period: 'day' }))),
+      safe(q(sb.rpc('target_now', { p_period: 'week' }))),
     ]);
     const t = daily.find((d) => d.day === todayKey()) || { orders: 0, value: 0, pieces: 0 };
     const ready = active.filter((o) => !(o.payment_method === 'online' && o.payment_status === 'pending'));
@@ -505,15 +510,29 @@
       <h1>${hello}, ${esc(state.me.name.split(' ')[0])}</h1>
       <p class="sub">${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}</p>
       ${emp && pol ? `<div id="punchBox">${punchHtml(a, pol)}</div>` : ''}
-      ${emp ? `<h2>My sales</h2>${mineCard}${me ? `<div class="card">${meter(Number(me.pcs), Number(me.target_pcs), false)}<div class="muted">My target for ${esc(monthName(m0))}</div></div>` : ''}` : ''}
+      ${emp ? `<h2>My sales</h2>${mineCard}${(() => { const md = (tDay || []).find((x) => x.member_id === state.me.id) || {}; const mw = (tWeek || []).find((x) => x.member_id === state.me.id) || {};
+        return `<div class="card">${md.target_pcs || md.target_amount ? `<div class="muted">Today</div>${md.target_pcs ? meter(Number(md.pcs), Number(md.target_pcs), false) : ''}${md.target_amount ? meter(Number(md.amount), Number(md.target_amount), true) : ''}` : ''}
+          ${mw.target_pcs ? `<div class="muted" style="margin-top:8px">This week</div>${meter(Number(mw.pcs), Number(mw.target_pcs), false)}` : ''}
+          ${me ? `<div class="muted" style="margin-top:8px">${esc(monthName(m0))}</div>${meter(Number(me.pcs), Number(me.target_pcs), false)}` : ''}</div>`; })()}` : ''}
       <h2>Today · whole business</h2>
       <div class="today">
         <div class="stat"><div class="k">Sold today</div><div class="v">${esc(inr(t.value))}</div></div>
         <div class="stat"><div class="k">Orders</div><div class="v">${t.orders}</div></div>
         <div class="stat"><div class="k">Pieces</div><div class="v">${t.pieces}</div></div>
       </div>
-      ${biz.target_pcs || biz.target_amount ? `<div class="card"><div class="row"><b>Today's target</b><span class="muted">monthly target ÷ ${lastDay} days</span></div>
-        ${biz.target_pcs ? meter(Number(t.pieces), Math.ceil(biz.target_pcs / lastDay), false) : ''}${biz.target_amount ? meter(Number(t.value), Math.ceil(biz.target_amount / lastDay), true) : ''}</div>` : ''}
+      ${(() => {
+        const d = (tDay || []).find((x) => !x.member_id) || {};
+        const w = (tWeek || []).find((x) => !x.member_id) || {};
+        const dp = Number(d.target_pcs) || (biz.target_pcs ? Math.ceil(biz.target_pcs / lastDay) : 0);
+        const da = Number(d.target_amount) || (biz.target_amount ? Math.ceil(biz.target_amount / lastDay) : 0);
+        const people = (tDay || []).filter((x) => x.member_id && (Number(x.target_pcs) || Number(x.target_amount)));
+        if (!dp && !da && !w.target_pcs && !people.length) return P ? '<div class="card"><div class="row"><b>No daily target yet</b><button class="linkish" data-more2="targets">Set targets ›</button></div></div>' : '';
+        return `<div class="card"><div class="row"><b>Today's target</b>${P ? '<button class="linkish" data-more2="targets">Edit ›</button>' : ''}</div>
+          ${dp ? meter(Number(t.pieces), dp, false) : ''}${da ? meter(Number(t.value), da, true) : ''}
+          ${w.target_pcs || w.target_amount ? `<div class="muted" style="margin-top:10px">This week</div>${w.target_pcs ? meter(Number(w.pcs), Number(w.target_pcs), false) : ''}${w.target_amount ? meter(Number(w.amount), Number(w.target_amount), true) : ''}` : ''}
+          ${people.length ? `<div class="muted" style="margin-top:10px">Each person today</div>${people.map((x) => `<div class="lb-row${x.member_id === state.me.id ? ' me' : ''}" style="grid-template-columns:1fr 70px auto"><span class="lb-name">${esc(x.name)}<small>${esc(inr(x.amount))}${Number(x.target_amount) ? ` of ${esc(inr(x.target_amount))}` : ''}</small></span>
+            <span class="lb-bar"><span style="width:${x.target_pcs ? Math.min(100, (x.pcs / x.target_pcs) * 100) : 0}%"></span></span><b>${x.pcs}${x.target_pcs ? `<small>/${x.target_pcs}</small>` : ''}</b></div>`).join('')}` : ''}</div>`;
+      })()}
       <button class="btn block" data-goto="sell" style="margin:4px 0 6px">+ New bill</button>
       ${cashCard}
       <h2>Do next</h2>
@@ -548,11 +567,12 @@
     view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('reports'); }; });
     view.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => go('more', b.dataset.go); });
     view.querySelectorAll('[data-goto]').forEach((b) => { b.onclick = () => go(b.dataset.goto); });
+    view.querySelectorAll('[data-more2]').forEach((b) => { b.onclick = () => go('more', b.dataset.more2); });
     view.querySelectorAll('[data-hand]').forEach((b) => { b.onclick = () => cashHandover(() => VIEWS.home(view)); });
     const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('store');
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
     demandCard(view.querySelector('#demandBox'));
-    const st = view.querySelector('#setTargets'); if (st) st.onclick = () => targetsDialog(targets || [], () => VIEWS.home(view));
+    const st = view.querySelector('#setTargets'); if (st) st.onclick = () => go('more', 'targets');
   };
 
   function partnerFinanceHtml(pos, held) {
@@ -790,12 +810,13 @@
   // In the phone app (no printer): the invoice goes to the customer as a WhatsApp message.
   function shareInvoice(o) {
     const lines = [
-      `*${cfg.BUSINESS_NAME || 'Z-SHIRTS'} · Invoice ${o.order_no}*`, day(o.created_at), '',
+      `*${biz().name} · Invoice ${o.order_no}*`, day(o.created_at), '',
       ...(o.items || []).map((i) => `${i.qty} × ${i.name} (${i.variant}) — ${inr(i.price * i.qty)}`), '',
       Number(o.discount) ? `Discount: − ${inr(o.discount)}` : '', Number(o.shipping) ? `Delivery: ${inr(o.shipping)}` : '',
+      `HSN ${state.settings.hsn_cotton || '61091000'} · GST ${(o.items || []).some((i) => Number(i.gst) > (num(state.settings.gst_rate_low) || 5)) ? 'incl. as per slab' : `${num(state.settings.gst_rate_low) || 5}% included`}`,
       `*Total: ${inr(o.total)}* (inclusive of all taxes)`,
       o.payment_method === 'cod' && o.payment_status !== 'paid' ? `Cash on delivery: ${inr(o.total)}` : 'Paid — thank you!',
-      cfg.GSTIN ? `GSTIN: ${cfg.GSTIN}` : '',
+      biz().gstin ? `GSTIN: ${biz().gstin}` : '',
     ].filter((l, i, a) => l !== '' || a[i - 1] !== '');
     const text = encodeURIComponent(lines.join('\n'));
     openExternal(o.customer_phone ? `https://wa.me/91${o.customer_phone}?text=${text}` : `https://wa.me/?text=${text}`);
@@ -805,23 +826,33 @@
     const a = o.address || {};
     const w = window.open('', '_blank');
     if (!w) return toast('Allow pop-ups to print', true);
-    const rows = (o.items || []).map((i) => `<tr><td>${esc(i.name)}<br><small>${esc(i.variant)}</small></td><td>${i.qty}</td><td>${esc(inr(i.price))}</td><td>${esc(inr(i.price * i.qty))}</td></tr>`).join('');
+    // prices include GST; split each line into taxable value + GST for the invoice
+    const factor = Number(o.subtotal) ? (Number(o.total) - Number(o.shipping)) / Number(o.subtotal) : 1;
+    let taxable = 0, gstSum = 0;
+    const rows = (o.items || []).map((i) => {
+      const rate = Number(i.gst || (i.price > (num(state.settings.gst_threshold) || 2500) ? num(state.settings.gst_rate_high) || 18 : num(state.settings.gst_rate_low) || 5));
+      const gross = i.price * i.qty * factor;
+      const tv = gross / (1 + rate / 100);
+      taxable += tv; gstSum += gross - tv;
+      return `<tr><td>${esc(i.name)}<br><small>${esc(i.variant)} · HSN ${esc(i.hsn || state.settings.hsn_cotton || '61091000')}</small></td><td>${i.qty}</td><td>${esc(inr(i.price))}</td><td>${rate}%</td><td>${esc(inr(i.price * i.qty))}</td></tr>`;
+    }).join('');
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.order_no)}</title>
       <style>body{font-family:system-ui,sans-serif;color:#000;margin:24px;font-size:13px}h1{margin:0;font-size:22px}table{width:100%;border-collapse:collapse;margin-top:14px}
       td,th{border-bottom:1px solid #ddd;padding:8px 4px;text-align:left}th:nth-child(n+2),td:nth-child(n+2){text-align:right}.tot td{border:0;font-weight:700}
       .label{border:2px dashed #000;padding:16px;margin-top:28px;font-size:15px;page-break-inside:avoid}.big{font-size:20px;font-weight:800}small{color:#555}</style></head><body>
-      <h1>${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')}</h1>
-      <div>${esc(cfg.BUSINESS_ADDRESS || '')}${cfg.GSTIN ? `<br>GSTIN: ${esc(cfg.GSTIN)}` : ''}</div>
+      <h1>${esc(biz().name)}</h1>
+      <div>${esc(biz().address || '')}${biz().gstin ? `<br>GSTIN: ${esc(biz().gstin)}` : ''}</div>
       <p><b>Invoice ${esc(o.order_no)}</b> · ${esc(day(o.created_at))}<br>Bill to: ${esc(o.customer_name)}${o.customer_phone ? ` · +91 ${esc(o.customer_phone)}` : ''}</p>
-      <table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody>
-      <tfoot>${Number(o.discount) ? `<tr class="tot"><td colspan="3">Discount</td><td>− ${esc(inr(o.discount))}</td></tr>` : ''}
-      ${Number(o.shipping) ? `<tr class="tot"><td colspan="3">Delivery</td><td>${esc(inr(o.shipping))}</td></tr>` : ''}
-      <tr class="tot"><td colspan="3">Total (inclusive of all taxes)</td><td>${esc(inr(o.total))}</td></tr></tfoot></table>
+      <table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>GST</th><th>Amount</th></tr></thead><tbody>${rows}</tbody>
+      <tfoot>${Number(o.discount) ? `<tr class="tot"><td colspan="4">Discount</td><td>− ${esc(inr(o.discount))}</td></tr>` : ''}
+      ${Number(o.shipping) ? `<tr class="tot"><td colspan="4">Delivery</td><td>${esc(inr(o.shipping))}</td></tr>` : ''}
+      <tr class="tot"><td colspan="4">Total (inclusive of all taxes)</td><td>${esc(inr(o.total))}</td></tr>
+      <tr><td colspan="4"><small>Taxable value ${esc(inr(Math.round(taxable * 100) / 100))} · CGST ${esc(inr(Math.round(gstSum * 50) / 100))} · SGST ${esc(inr(Math.round(gstSum * 50) / 100))} (IGST ${esc(inr(Math.round(gstSum * 100) / 100))} if outside the state)</small></td><td></td></tr></tfoot></table>
       <p>Payment: ${o.payment_method === 'cod' ? `<b>CASH ON DELIVERY · collect ${esc(inr(o.total))}</b>` : 'Paid'}</p>
       ${o.channel !== 'store' ? `<div class="label"><div><small>SHIP TO</small></div><div class="big">${esc(o.customer_name)}</div>
         <div>${esc([a.line1, a.line2].filter(Boolean).join(', '))}</div><div>${esc(a.city || '')}, ${esc(a.state || '')} - <b>${esc(a.pincode || '')}</b></div>
         <div>Phone: +91 ${esc(o.customer_phone || '')}</div><div style="margin-top:8px"><b>${esc(o.order_no)}</b>${o.payment_method === 'cod' ? ` · COD ${esc(inr(o.total))}` : ' · PREPAID'}</div>
-        <div style="margin-top:8px"><small>FROM</small> ${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')}${cfg.BUSINESS_ADDRESS ? `, ${esc(cfg.BUSINESS_ADDRESS)}` : ''}</div></div>` : ''}
+        <div style="margin-top:8px"><small>FROM</small> ${esc(biz().name)}${biz().address ? `, ${esc(biz().address)}` : ''}</div></div>` : ''}
       <script>window.onload=()=>window.print()<\/script></body></html>`);
     w.document.close();
   }
@@ -830,7 +861,11 @@
   VIEWS.sell = async (view) => {
     await loadStock();
     const s = state.sell;
-    const maxDisc = num(state.settings.max_store_discount_pct) || 0;
+    const maxDisc = isPartner() ? num(state.settings.max_partner_discount_pct) || 50 : num(state.settings.max_store_discount_pct) || 0;
+    const freeDisc = num(state.settings.discount_free_pct) || 10;
+    if (isPartner() && s.discount > freeDisc && !state.discReqs) {
+      state.discReqs = (await q(sb.from('request_board').select('id,status,payload,description,raised_by').eq('type', 'discount').eq('raised_by', state.me.id).order('id', { ascending: false }).limit(20)).catch(() => []));
+    }
     const products = [...new Map(state.stock.filter((v) => v.published && v.product_active && v.active).map((v) => [v.product_id, v])).values()];
     const term = s.search.trim().toLowerCase();
     const shown = products.filter((p) => !term || `${p.product_name}`.toLowerCase().includes(term) ||
@@ -863,7 +898,17 @@
         ${cart.length ? cart.map((l) => `<div class="cart-line"><div class="grow"><b>${esc(l.v.product_name)}</b><div class="muted">${esc(l.v.colour)} / ${esc(l.v.size)}</div></div>
           <div class="stepper"><button data-dec="${l.variant_id}" aria-label="One less">−</button><span>${l.qty}</span><button data-inc="${l.variant_id}" aria-label="One more">+</button></div>
           <span class="amt" style="min-width:72px;text-align:right">${esc(inr(l.v.price * l.qty))}</span></div>`).join('') : '<div class="muted">Tap a size above to add it.</div>'}
-        ${maxDisc && !s.coupon ? `<label>Discount</label><div class="chipset">${[0, 5, 10, 15, 20, 25, 30].filter((d) => d <= maxDisc).map((d) => `<button data-disc="${d}" class="${s.discount === d ? 'on' : ''}">${d ? `${d}%` : 'None'}</button>`).join('')}</div>` : ''}
+        ${maxDisc && !s.coupon ? `<label>Discount</label><div class="chipset">${[0, 5, 10, 15, 20, 25, 30, 40, 50].filter((d) => d <= maxDisc).map((d) => `<button data-disc="${d}" class="${s.discount === d ? 'on' : ''}">${d ? `${d}%` : 'None'}</button>`).join('')}</div>` : ''}
+        ${isPartner() && s.discount > freeDisc ? (() => {
+          const ok = (state.discReqs || []).filter((r) => r.status === 'approved' && !(r.payload || {}).used_order && Number((r.payload || {}).pct) >= s.discount);
+          const waiting = (state.discReqs || []).filter((r) => r.status === 'pending');
+          return `<div class="disc-warn">
+            ${ok.length ? `<label for="sDiscReq" style="margin-top:0">Use an approved discount</label><select id="sDiscReq"><option value="">No, charge the extra to me</option>${ok.map((r) => `<option value="${r.id}" ${s.discReq === r.id ? 'selected' : ''}>#${r.id} · ${r.payload.pct}% · ${esc(r.description)}</option>`).join('')}</select>` : ''}
+            ${!s.discReq ? `<b>Above ${freeDisc}% is on you.</b> The extra ${s.discount - freeDisc}% of this bill goes to your personal account, not the other partners'.
+              <div class="muted" style="margin-top:4px">For a deal of ${num(state.settings.discount_bulk_pcs) || 25}+ tees, or any special case, ask all partners first.</div>
+              <button class="btn small outline" id="askDisc" style="margin-top:8px">Ask partners to approve ${s.discount}%</button>${waiting.length ? `<div class="muted" style="margin-top:6px">${waiting.length} request(s) waiting for votes</div>` : ''}`
+              : '<b class="pos">Approved by all partners. The business carries this discount.</b>'}</div>`;
+        })() : ''}
         <label for="sCoupon">Coupon code</label>
         <div class="row2" style="grid-template-columns:1fr auto"><input id="sCoupon" value="${esc(s.coupon)}" placeholder="e.g. STORE100" style="text-transform:uppercase">
           <button class="btn small outline" id="sCouponBtn">${s.coupon ? 'Remove' : 'Apply'}</button></div>
@@ -931,7 +976,15 @@
     view.querySelectorAll('[data-dec]').forEach((b) => {
       b.onclick = () => { const l = s.cart.find((x) => x.variant_id === Number(b.dataset.dec)); l.qty--; s.cart = s.cart.filter((x) => x.qty > 0); redraw(); };
     });
-    view.querySelectorAll('[data-disc]').forEach((b) => { b.onclick = () => { s.discount = Number(b.dataset.disc); redraw(); }; });
+    view.querySelectorAll('[data-disc]').forEach((b) => { b.onclick = () => { s.discount = Number(b.dataset.disc); s.discReq = null; state.discReqs = null; redraw(); }; });
+    if (view.querySelector('#sDiscReq')) view.querySelector('#sDiscReq').onchange = (e) => { s.discReq = e.target.value ? Number(e.target.value) : null; redraw(); };
+    if (view.querySelector('#askDisc')) view.querySelector('#askDisc').onclick = async () => {
+      const pcs = s.cart.reduce((t, x) => t + x.qty, 0);
+      const v = await ask({ title: `Ask partners for ${s.discount}% off`, html: `<p class="muted">All ${partners().length} partners must approve. Once approved, the business carries the whole discount on one bill.</p>`,
+        fields: [{ name: 'pieces', label: 'Tees in this deal', type: 'number', value: pcs || 25, required: true }, { name: 'why', label: 'Who is it for and why?', required: true, placeholder: 'College fest, 40 tees' }], ok: 'Send' });
+      if (!v) return;
+      try { await q(sb.rpc('raise_request', { p_type: 'discount', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { pct: s.discount, pieces: Number(v.pieces) } })); state.discReqs = null; toast('Sent. You will get an alert when all partners approve.'); redraw(); } catch (e) { toast(errText(e), true); }
+    };
     view.querySelectorAll('[data-pay]').forEach((b) => { b.onclick = () => { s.method = b.dataset.pay; redraw(); }; });
     view.querySelectorAll('[data-sold]').forEach((b) => { b.onclick = () => { s.soldBy = b.dataset.sold; redraw(); }; });
     if (view.querySelector('#sSoldName')) view.querySelector('#sSoldName').oninput = (e) => { s.soldName = e.target.value; };
@@ -1005,6 +1058,7 @@
           p_channel: s.channel, p_customer: cust, p_items: s.cart.map((x) => ({ variant_id: x.variant_id, qty: x.qty })),
           p_method: s.method, p_discount_pct: s.discount, p_note: view.querySelector('#sNote').value || null, p_coupon: s.coupon || null,
           p_sold_by: s.soldBy && s.soldBy !== 'other' ? s.soldBy : null, p_sold_by_name: s.soldBy === 'other' ? (s.soldName || '').trim() || null : null,
+          p_discount_request: s.discReq || null,
         }));
         if (s.soldBy === 'other' && !(s.soldName || '').trim()) toast('Tip: write the seller name next time');
         C.confetti(0.5); C.chime();
@@ -1217,6 +1271,8 @@
           <label for="pDropAt">Goes on sale at (leave empty = now)</label><input id="pDropAt" type="datetime-local" value="${prod && prod.drop_at ? new Date(new Date(prod.drop_at).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : ''}">
           <label for="pLimited">Limited to (pieces, optional)</label><input id="pLimited" type="number" inputmode="numeric" value="${prod && prod.limited_qty || ''}" placeholder="e.g. 50">
           <label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" id="pPre" style="width:auto" ${prod && prod.is_preorder ? 'checked' : ''}> Made to order (customers can buy with 0 stock; you update making status)</label>
+          <label for="pFab">Fabric (decides HSN code for GST)</label><select id="pFab"><option value="cotton" ${!prod || prod.fabric_type !== 'synthetic' ? 'selected' : ''}>Cotton · HSN ${esc(state.settings.hsn_cotton || '61091000')}</option><option value="synthetic" ${prod && prod.fabric_type === 'synthetic' ? 'selected' : ''}>Synthetic / silk / wool · HSN ${esc(state.settings.hsn_synthetic || '610990')}</option></select>
+          <div class="hint">GST is set by price: up to ${esc(inr(state.settings.gst_threshold || 2500))} a piece ${esc(state.settings.gst_rate_low || 5)}%, above that ${esc(state.settings.gst_rate_high || 18)}%.</div>
           <label for="pCost">Cost per piece (₹) · only partners see this</label><input id="pCost" type="number" inputmode="decimal" value="${prod && Number(prod.cost_price) ? prod.cost_price : ''}" placeholder="Blank + print + packing">
           <div class="hint">Production batches update the cost automatically. Shop shows a countdown until the drop time.</div>
         </div>` : ''}
@@ -1242,6 +1298,7 @@
         limited: body.querySelector('#pLimited') ? body.querySelector('#pLimited').value : null,
         pre: body.querySelector('#pPre') ? body.querySelector('#pPre').checked : false,
         cost: body.querySelector('#pCost') ? body.querySelector('#pCost').value : null,
+        fab: body.querySelector('#pFab') ? body.querySelector('#pFab').value : null,
       });
       const restore = (k) => {
         const b2 = panelEl.p;
@@ -1249,7 +1306,7 @@
         b2.querySelector('#pMrp').value = k.mrp; b2.querySelector('#pPrice').value = k.price; b2.querySelector('#pFabric').value = k.fabric;
         b2.querySelector('#pGsm').value = k.gsm; b2.querySelector('#pDesc').value = k.desc; b2.querySelector('#pFeat').checked = k.feat;
         if (b2.querySelector('#pActive')) b2.querySelector('#pActive').checked = k.active;
-        if (b2.querySelector('#pDrop')) { b2.querySelector('#pDrop').value = k.drop; b2.querySelector('#pDropAt').value = k.dropAt; b2.querySelector('#pLimited').value = k.limited; b2.querySelector('#pPre').checked = k.pre; b2.querySelector('#pCost').value = k.cost; }
+        if (b2.querySelector('#pDrop')) { b2.querySelector('#pDrop').value = k.drop; b2.querySelector('#pDropAt').value = k.dropAt; b2.querySelector('#pLimited').value = k.limited; b2.querySelector('#pPre').checked = k.pre; b2.querySelector('#pCost').value = k.cost; b2.querySelector('#pFab').value = k.fab; }
       };
       const redraw = () => { const k = keep(); const y = panelEl.p.scrollTop; draw(); restore(k); panelEl.p.scrollTop = y; };
 
@@ -1306,6 +1363,7 @@
                 p_limited: k.limited ? Number(k.limited) : null, p_preorder: !!k.pre }));
             }
             if (k.cost !== null && k.cost !== '' && Number(k.cost) !== Number(prod && prod.cost_price)) await q(sb.rpc('set_cost_price', { p_product: id, p_cost: Number(k.cost) }));
+            if (k.fab && k.fab !== ((prod && prod.fabric_type) || 'cotton')) await q(sb.rpc('set_product_tax', { p_product: id, p_fabric_type: k.fab, p_hsn: null }));
           }
           closePanel();
           if (!prod && isPartner()) C.confetti(0.7);
@@ -1424,33 +1482,155 @@
   // ---------------- settings
   VIEWS.settings = async (view) => {
     await loadSettings();
+    const P = isPartner();
+    const rows = (state.settingRows || []).filter((r) => r.kind !== 'object' && !['custom_split', 'profit_rule', 'loss_rule'].includes(r.key));
+    const groups = ['Business', 'Selling', 'Tax & GST', 'Money & approvals', 'Z-Club', 'Shop'];
+    const show = (r) => {
+      const v = r.value;
+      if (r.kind === 'switch') return Number(v) ? 'On' : 'Off';
+      if (['employee_petty_limit', 'all_partner_limit', 'shipping_fee', 'free_shipping_above', 'gst_threshold'].includes(r.key)) return inr(v);
+      if (/_pct$|gst_rate/.test(r.key)) return `${v}%`;
+      return v === '' || v === null ? '—' : String(v);
+    };
+    const hub = [['targets', 'Sales targets (day / week / month)'], ['costs', 'Cost sheet per tee'], ['fininputs', 'Finance inputs'], ['hr', 'HR rules & salary'],
+      ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['partners', 'Profit / loss split'], ['changelog', 'Change log']];
     view.innerHTML = `${backBtn}
       <h1>Settings</h1>
-      ${isPartner() ? `<div class="chipset" style="margin-bottom:14px">${[['hr', 'HR rules & salary'], ['coupons', 'Coupons & combos'], ['influencers', 'Influencers'], ['production', 'Production'], ['partners', 'Profit split'], ['decisions', 'Partner voting']]
-        .map(([k, l]) => `<button data-hub="${k}">${l}</button>`).join('')}<button id="hubTargets">Monthly targets</button></div>` : ''}
-      <h2>Shop & money</h2>
-      <p class="sub">${isPartner() ? `Changing any of these needs all ${partners().length} partners.` : 'Partners can change these.'}</p>
-      <div class="card">${Object.keys(SETTING_LABEL).filter((k) => k in state.settings).map((k) => `
-        <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span>${esc(SETTING_LABEL[k])}</span>
-          <span><b>${k === 'cod_enabled' ? (Number(state.settings[k]) ? 'On' : 'Off') : MONEY_SETTINGS.includes(k) ? esc(inr(state.settings[k])) : esc(state.settings[k])}</b>
-          ${isPartner() ? ` <button class="linkish" data-k="${k}">Change</button>` : ''}</span></div>`).join('')}</div>
-      <div class="card"><div class="row"><span>Profit split</span><b>${esc(RULE[state.settings.profit_rule] || '—')}</b></div><div class="row"><span>Loss split</span><b>${esc(RULE[state.settings.loss_rule] || '—')}</b></div>
-        ${isPartner() ? '<button class="btn small outline" id="chgSplit" style="margin-top:10px">Change split</button>' : ''}</div>
+      <p class="sub">${P ? 'Everything that can change lives here. Changes apply straight away, are logged with your name, and all partners get an alert. Rules marked <b>all partners</b> protect you from each other, so they go for approval.' : 'Partners change these.'}</p>
+      ${P ? `<div class="hub">${hub.map(([k, l]) => `<button data-hub="${k}"><span>${esc(l)}</span><span class="go">›</span></button>`).join('')}</div>` : ''}
+      ${groups.map((g) => { const list = rows.filter((r) => (r.grp || 'Shop') === g); return list.length ? `<h2>${esc(g)}</h2><div class="card">${list.map((r) => `
+        <div class="set-row"><span>${esc(r.label)}${r.protected ? ' <span class="pill pending">all partners</span>' : ''}</span>
+          <span><b>${esc(show(r))}</b>${P ? ` <button class="linkish" data-k="${esc(r.key)}">Change</button>` : ''}</span></div>`).join('')}</div>` : ''; }).join('')}
       <div id="codPins"></div>`;
     wireBack(view);
     codPins(view.querySelector('#codPins')).catch(() => {});
-    view.querySelectorAll('[data-hub]').forEach((b) => { b.onclick = () => go('more', b.dataset.hub); });
-    const ht = view.querySelector('#hubTargets'); if (ht) ht.onclick = async () => targetsDialog(await q(sb.rpc('target_progress', { p_month: monthKey() })), () => {});
-    view.querySelectorAll('[data-k]').forEach((b) => {
-      b.onclick = async () => {
-        const k = b.dataset.k;
-        const v = await ask({ title: SETTING_LABEL[k], fields: [{ name: 'value', label: 'New value', type: 'number', required: true, value: state.settings[k] }, { name: 'why', label: 'Why?', required: true }], ok: 'Send for approval' });
-        if (!v) return;
-        try { await q(sb.rpc('raise_request', { p_type: 'setting_change', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { key: k, value: num(v.value) } })); toast('Sent to partners'); } catch (e) { toast(errText(e), true); }
+    view.querySelectorAll('[data-hub]').forEach((b) => {
+      b.onclick = () => {
+        const k = b.dataset.hub;
+        if (k === 'partners') return splitDialog();
+        go('more', k);
       };
     });
-    const cs = view.querySelector('#chgSplit');
-    if (cs) cs.onclick = splitDialog;
+    view.querySelectorAll('[data-k]').forEach((b) => {
+      b.onclick = async () => {
+        const r = state.settingRows.find((x) => x.key === b.dataset.k);
+        const field = r.kind === 'switch' ? { name: 'value', label: r.label, type: 'select', value: String(Number(r.value)), options: [['1', 'On'], ['0', 'Off']] }
+          : { name: 'value', label: r.label, type: r.kind === 'number' ? 'number' : r.kind === 'time' ? 'time' : 'text', required: r.kind === 'number', value: r.value };
+        const v = await ask({ title: r.label, html: r.protected ? `<p class="muted">This protects every partner, so all ${partners().length} must approve.</p>` : '<p class="muted">Applies straight away. Logged and all partners are told.</p>',
+          fields: r.protected ? [field, { name: 'why', label: 'Why?', required: true }] : [field], ok: r.protected ? 'Send for approval' : 'Save' });
+        if (!v) return;
+        try {
+          if (r.protected) {
+            await q(sb.rpc('raise_request', { p_type: 'setting_change', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { key: r.key, value: num(v.value) } }));
+            toast('Sent to partners for approval');
+          } else {
+            const val = r.kind === 'number' || r.kind === 'switch' ? num(v.value) : v.value;
+            await q(sb.rpc('update_setting', { p_key: r.key, p_value: val }));
+            toast('Saved'); VIEWS.settings(view);
+          }
+        } catch (e) { toast(errText(e), true); }
+      };
+    });
+  };
+
+  // ---------------- targets: day / week / month for the business and every person
+  VIEWS.targets = async (view) => {
+    const [rows, nowD, nowW, nowM] = await Promise.all([q(sb.from('standing_targets').select('*')), q(sb.rpc('target_now', { p_period: 'day' })), q(sb.rpc('target_now', { p_period: 'week' })), q(sb.rpc('target_now', { p_period: 'month' }))]);
+    const people = [{ id: null, name: 'Whole business' }].concat(state.members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })));
+    const cur = (id, per) => rows.find((r) => (r.member_id || null) === id && r.period === per) || {};
+    const prog = (id, per) => ({ day: nowD, week: nowW, month: nowM }[per].find((r) => (r.member_id || null) === id) || {});
+    view.innerHTML = `${backBtn}
+      <h1>Sales targets</h1>
+      <p class="sub">Set pieces and ₹ for each person, per day, week (Mon–Sun) and month. They repeat until you change them. Sales count for the person chosen in "Sold by" on the bill.</p>
+      ${people.map((p) => `<div class="card tgt-card"><b>${esc(p.name)}</b>
+        <div class="tgt-grid"><span></span><span class="muted">Pieces</span><span class="muted">Sales ₹</span><span class="muted">Now</span>
+        ${['day', 'week', 'month'].map((per) => { const c = cur(p.id, per); const g = prog(p.id, per); return `<span class="muted">${{ day: 'Daily', week: 'Weekly', month: 'Monthly' }[per]}</span>
+          <input type="number" inputmode="numeric" min="0" data-t="${p.id || 'biz'}|${per}|pcs" value="${c.target_pcs || ''}" placeholder="0" ${isPartner() ? '' : 'disabled'}>
+          <input type="number" inputmode="numeric" min="0" data-t="${p.id || 'biz'}|${per}|amt" value="${c.target_amount ? Number(c.target_amount) : ''}" placeholder="0" ${isPartner() ? '' : 'disabled'}>
+          <span class="tgt-now">${g.pcs || 0} pcs<br><small>${esc(inr(g.amount || 0))}</small></span>`; }).join('')}</div></div>`).join('')}
+      ${isPartner() ? '<button class="btn block" id="saveT">Save targets</button>' : ''}`;
+    wireBack(view);
+    const sv = view.querySelector('#saveT');
+    if (sv) sv.onclick = async () => {
+      sv.disabled = true;
+      try {
+        for (const p of people) for (const per of ['day', 'week', 'month']) {
+          const pcs = Number(view.querySelector(`[data-t="${p.id || 'biz'}|${per}|pcs"]`).value) || 0;
+          const amt = num(view.querySelector(`[data-t="${p.id || 'biz'}|${per}|amt"]`).value) || 0;
+          const c = cur(p.id, per);
+          if ((c.target_pcs || 0) !== pcs || Number(c.target_amount || 0) !== amt) await q(sb.rpc('set_standing_target', { p_member: p.id, p_period: per, p_pcs: pcs, p_amount: amt }));
+        }
+        C.confetti(0.5); toast('Targets saved'); VIEWS.targets(view);
+      } catch (e) { sv.disabled = false; toast(errText(e), true); }
+    };
+  };
+
+  // ---------------- cost sheet per tee (partners), feeds cost price + per-tee profit
+  VIEWS.costs = async (view) => {
+    await loadStock();
+    const rows = await q(sb.from('product_costs').select('*'));
+    const prods = [...new Map(state.stock.map((v) => [v.product_id, v])).values()].sort((a, b) => a.product_name.localeCompare(b.product_name));
+    const F = [['blank', 'Blank tee'], ['dtf', 'DTF print'], ['printing', 'Pressing / printing'], ['packing', 'Packing'], ['tag_label', 'Tag & label'], ['other', 'Other'], ['shipping', 'Shipping (online, not in cost price)']];
+    view.innerHTML = `${backBtn}
+      <h1>Cost sheet</h1>
+      <p class="sub">What one tee costs you. Saving updates the cost price used for profit per tee. Every change is logged.</p>
+      ${prods.map((p) => { const c = rows.find((r) => r.product_id === p.product_id) || {}; const tot = F.slice(0, 6).reduce((t, [k]) => t + Number(c[k] || 0), 0);
+        return `<div class="card"><div class="row"><b>${esc(p.product_name)}</b><span class="amt">${esc(inr(tot || p.cost_price || 0))}<small class="muted"> / tee</small></span></div>
+          <div class="muted">Sells at ${esc(inr(p.price))} · margin ${Number(p.price) ? Math.round((1 - (tot || p.cost_price || 0) / (Number(p.price) / 1.05)) * 100) : 0}% after GST</div>
+          <button class="btn small outline" data-cost="${p.product_id}" style="margin-top:8px">Edit costs</button></div>`; }).join('') || '<div class="empty">No products yet.</div>'}`;
+    wireBack(view);
+    view.querySelectorAll('[data-cost]').forEach((b) => {
+      b.onclick = async () => {
+        const pid = Number(b.dataset.cost); const c = rows.find((r) => r.product_id === pid) || {};
+        const v = await ask({ title: `Cost of one ${productName(pid)}`, fields: F.map(([k, l]) => ({ name: k, label: `${l} (₹)`, type: 'number', value: c[k] ? Number(c[k]) : '' })).concat([{ name: 'notes', label: 'Notes', value: c.notes || '' }]), ok: 'Save' });
+        if (!v) return;
+        try { const cp = await q(sb.rpc('save_product_costs', { p_product: pid, p: Object.fromEntries(F.map(([k]) => [k, num(v[k]) || 0]).concat([['notes', v.notes || null]])) })); toast(`Cost price now ${inr(cp)}`); VIEWS.costs(view); } catch (e) { toast(errText(e), true); }
+      };
+    });
+  };
+
+  // ---------------- finance inputs (partners add / edit / remove; logged)
+  const FIN_KIND = [['depreciation', 'Depreciation (equipment spread over months)'], ['overhead', 'Other running cost not in the books'], ['interest', 'Interest'], ['other_income', 'Other income'], ['tax_paid', 'Tax paid']];
+  VIEWS.fininputs = async (view) => {
+    const rows = await q(sb.from('finance_inputs').select('*').order('month', { ascending: false }).order('id', { ascending: false }));
+    view.innerHTML = `${backBtn}
+      <h1>Finance inputs</h1>
+      <p class="sub">Numbers the books can't know, like depreciation of a heat press or a yearly cost split by month. They flow into EBITDA, EBIT, PBT and PAT. Any partner can add, edit or remove; every change is logged and everyone is told.</p>
+      <button class="btn block" id="addFi" style="margin-bottom:12px">+ Add finance input</button>
+      ${rows.length ? `<div class="card">${rows.map((r) => `<div class="set-row"><span>${esc(r.note)}<div class="muted">${esc(monthName(r.month))} · ${esc((FIN_KIND.find((k) => k[0] === r.kind) || [0, r.kind])[1])}</div></span>
+        <span><b>${esc(inr(r.amount))}</b> <button class="linkish" data-fe="${r.id}">Edit</button> <button class="linkish" data-fd="${r.id}" style="color:var(--pink)">Remove</button></span></div>`).join('')}</div>` : '<div class="empty">Nothing added yet.</div>'}`;
+    wireBack(view);
+    const form = async (r = {}) => {
+      const v = await ask({ title: r.id ? 'Edit finance input' : 'Add finance input', fields: [
+        { name: 'kind', label: 'Type', type: 'select', value: r.kind || 'depreciation', options: FIN_KIND }, { name: 'month', label: 'Month', type: 'month', value: (r.month || monthKey()).slice(0, 7), required: true },
+        { name: 'amount', label: 'Amount (₹)', type: 'number', value: r.amount || '', required: true }, { name: 'note', label: 'What is it?', value: r.note || '', required: true, placeholder: 'Heat press ₹36,000 ÷ 36 months' }], ok: 'Save' });
+      if (!v) return;
+      try { await q(sb.rpc('save_finance_input', { p: { id: r.id || null, kind: v.kind, month: `${v.month}-01`, amount: num(v.amount), note: v.note } })); toast('Saved'); VIEWS.fininputs(view); } catch (e) { toast(errText(e), true); }
+    };
+    view.querySelector('#addFi').onclick = () => form();
+    view.querySelectorAll('[data-fe]').forEach((b) => { b.onclick = () => form(rows.find((r) => r.id === Number(b.dataset.fe))); });
+    view.querySelectorAll('[data-fd]').forEach((b) => {
+      b.onclick = async () => { const r = rows.find((x) => x.id === Number(b.dataset.fd)); if (!(await ask({ title: 'Remove this entry?', html: `<p class="muted">${esc(r.note)} · ${esc(inr(r.amount))}. The removal is logged.</p>`, ok: 'Remove', okClass: 'bad' }))) return;
+        try { await q(sb.rpc('save_finance_input', { p: { id: r.id, note: r.note, delete: true } })); VIEWS.fininputs(view); } catch (e) { toast(errText(e), true); } };
+    });
+  };
+
+  // ---------------- change log: every change to settings, costs, targets, finance inputs, coupons, products, salary
+  VIEWS.changelog = async (view) => {
+    const rows = await q(sb.from('change_log').select('*').order('id', { ascending: false }).limit(300));
+    const T = { settings: 'Setting', product_costs: 'Cost sheet', standing_targets: 'Target', sales_targets: 'Monthly target', finance_inputs: 'Finance input', coupons: 'Coupon', bundles: 'Combo', products: 'Product', employee_pay: 'Salary', members: 'Team member' };
+    const diff = (o, n) => {
+      if (!o || !n) return '';
+      return Object.keys(n).filter((k) => !['updated_at', 'updated_by'].includes(k) && JSON.stringify(o[k]) !== JSON.stringify(n[k]))
+        .map((k) => `${esc(k.replace(/_/g, ' '))}: <s>${esc(typeof o[k] === 'object' ? JSON.stringify(o[k]) : o[k] ?? '—')}</s> → <b>${esc(typeof n[k] === 'object' ? JSON.stringify(n[k]) : n[k] ?? '—')}</b>`).join('<br>');
+    };
+    view.innerHTML = `${backBtn}
+      <h1>Change log</h1>
+      <p class="sub">Who changed what and when. Nobody, not even a partner, can edit or delete this list.</p>
+      ${rows.map((r) => `<div class="card"><div class="row"><b>${esc(T[r.table_name] || r.table_name)} ${r.action === 'INSERT' ? 'added' : r.action === 'DELETE' ? 'removed' : 'changed'}${r.table_name === 'settings' ? ` · ${esc(r.row_ref)}` : ''}</b><span class="muted">${esc(ago(r.at))}</span></div>
+        <div class="muted">${esc(r.actor_name)} · ${esc(when(r.at))}</div>
+        ${r.action === 'UPDATE' ? `<div style="margin-top:6px;font-size:13px">${diff(r.old_data, r.new_data) || '—'}</div>` : ''}</div>`).join('') || '<div class="empty">No changes yet.</div>'}`;
+    wireBack(view);
   };
 
   async function splitDialog() {
@@ -1485,6 +1665,7 @@
     if (r.type === 'price_change') return `${esc(productName(p.product_id))} → <b>${esc(inr(p.price))}</b> (MRP ${esc(inr(p.mrp))})`;
     if (r.type === 'stock_writeoff') return `${esc(variantLabel(p.variant_id))} · <b>${esc(p.qty)} piece(s)</b>${p.influencer_id ? ' · gift to influencer' : ''}`;
     if (r.type === 'expense' && p.category) return `${esc((EXP_CAT.find((c) => c[0] === p.category) || [0, p.category])[1])}${p.campaign ? ` · campaign <b>${esc(p.campaign)}</b>` : ''}`;
+    if (r.type === 'discount') return `<b>${esc(p.pct)}% off</b> on ${esc(p.pieces)} tees${p.used_order ? ` · used on ${esc(p.used_order)}` : ''}`;
     if (r.type === 'salary_change') return `${esc(memberName(p.member_id))} → <b>${esc(inr(p.salary))}</b> / month`;
     if (r.type === 'hr_policy') return Object.entries(p.policy || {}).map(([k, v]) => `${esc(HR_LABEL[k] || k)}: <b>${esc(v ?? '—')}</b>`).join('<br>');
     if (r.type === 'decision') return `${p.rule === 'majority' ? `Majority (${Math.floor(partners().length / 2) + 1} of ${partners().length})` : `All ${partners().length} partners`}${p.details ? `<br>${esc(p.details)}` : ''}`;
@@ -2302,6 +2483,9 @@
       </div>
       <h2>Profit & loss</h2>
       <div class="card report">${pnl}<div class="actions"><button class="btn small outline" id="finPrint">${NATIVE ? 'Share' : 'Print / PDF'}</button></div></div>
+      <h2>Profit per tee</h2>
+      <div id="perTee" class="card"><div class="muted">Loading…</div></div>
+      <div class="chipset" style="margin-top:8px"><button data-more="costs">Edit cost sheet</button><button data-more="fininputs">Finance inputs (depreciation, overheads…)</button><button data-more="changelog">Change log</button></div>
       <h2>Partners · invested, profit & settle-up</h2>
       <div class="card"><div class="row"><span class="muted">Money in the business (books)</span><b class="amt">${esc(inr(summary.cash_balance))}</b></div>
         <div class="row"><span class="muted">Profit / loss since start</span>${signed(summary.business_result)}</div></div>
@@ -2327,9 +2511,17 @@
         return e.map(([c, v]) => `<div class="hbar"><span class="l">${esc(cat(c))}</span><span class="b"><i class="neg" style="width:${(v / mx) * 100}%"></i></span><span class="v">${esc(inr(v))}</span></div>`).join(''); })()}</div>` : '<div class="empty">No expenses in this period.</div>'}
       <div class="chipset" style="margin-top:14px">${[['books', 'Books'], ['partners', 'Partners'], ['close', 'Month close'], ['approvals', 'Approvals'], ['requests', 'Money entry']].map(([kk, l]) => `<button data-more="${kk}">${l}</button>`).join('')}</div>`;
     view.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => { state.finPeriod = b.dataset.p; VIEWS.finance(view); }; });
+    q(sb.rpc('product_finance', { p_from: from, p_to: to })).then((pf) => {
+      const el = view.querySelector('#perTee');
+      if (!el) return;
+      el.innerHTML = pf.length ? `<div class="table-wrap"><table class="pnl"><thead><tr><th>Tee</th><th class="r">Sold</th><th class="r">Revenue</th><th class="r">Gross</th><th class="r">EBITDA</th><th class="r">EBIT</th><th class="r">PBT</th><th class="r">Net</th><th class="r">Net / tee</th></tr></thead><tbody>
+        ${pf.map((r) => `<tr><td>${esc(r.name)}<div class="muted">cost ${esc(inr(r.cost_per_tee))} · ${r.gross_margin ?? '—'}% gross</div></td><td class="r">${r.units}</td><td class="r">${esc(inr(r.revenue))}</td><td class="r">${esc(inr(r.gross_profit))}</td>
+          <td class="r">${signed(r.ebitda)}</td><td class="r">${signed(r.ebit)}</td><td class="r">${signed(r.pbt)}</td><td class="r">${signed(r.net_profit)}</td><td class="r">${esc(inr(r.profit_per_tee))}</td></tr>`).join('')}</tbody></table></div>
+        <div class="hint">Each tee carries its share of running costs by its share of revenue. Fix costs in the cost sheet.</div>` : '<div class="muted">No sales in this period.</div>';
+    }).catch(() => {});
     view.querySelectorAll('[data-more]').forEach((b) => { b.onclick = () => go('more', b.dataset.more); });
     view.querySelector('#toClose').onclick = () => go('more', 'close');
-    view.querySelector('#finPrint').onclick = () => printDoc(`Z-SHIRTS P&L ${label}`, `<h1>${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')} · Profit & loss</h1><p class="muted">${esc(label)}: ${esc(day(from))} to ${esc(day(f.to))}</p>${pnl.replace('class="pnl"', '')}`);
+    view.querySelector('#finPrint').onclick = () => printDoc(`Z-SHIRTS P&L ${label}`, `<h1>${esc(biz().name)} · Profit & loss</h1><p class="muted">${esc(label)}: ${esc(day(from))} to ${esc(day(f.to))}</p>${pnl.replace('class="pnl"', '')}`);
     view.querySelector('#taxRate').onclick = async () => {
       const v = await ask({ title: 'Income tax on profit (%)', html: '<p class="muted">Partnership firm: 30% + 4% cess = 31.2% (more if profit crosses ₹1 crore). All partners approve.</p>', fields: [{ name: 'value', label: 'Rate %', type: 'number', value: f.tax_rate, required: true }, { name: 'why', label: 'Why?', required: true, placeholder: 'As advised by CA' }], ok: 'Send for approval' });
       if (!v) return;
@@ -2524,26 +2716,26 @@
     const hrules = view.querySelector('#hrRules');
     if (hrules) hrules.onclick = async () => {
       const keys = Object.keys(HR_LABEL).filter((k) => !['office_lat', 'office_lng'].includes(k));
-      const v = await ask({ title: 'Change HR rules', html: `<p class="muted">Only changed rules are sent. All ${partners().length} partners must approve.</p>`,
+      const v = await ask({ title: 'Change HR rules', html: '<p class="muted">Applies straight away. Logged, and all partners are told.</p>',
         fields: keys.map((k) => (k === 'weekly_off' ? { name: k, label: HR_LABEL[k], type: 'select', value: pol[k], options: ['None', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d) => [d, d]) }
           : k === 'half_day_allowed' ? { name: k, label: HR_LABEL[k], type: 'select', value: String(!!pol[k]), options: [['false', 'No'], ['true', 'Yes']] }
-          : { name: k, label: HR_LABEL[k], type: /_start|_end|ot_after/.test(k) ? 'time' : 'number', value: pol[k] ?? '' })).concat([{ name: 'why', label: 'Why?', required: true }]), ok: 'Send for approval' });
+          : { name: k, label: HR_LABEL[k], type: /_start|_end|ot_after/.test(k) ? 'time' : 'number', value: pol[k] ?? '' })), ok: 'Save' });
       if (!v) return;
       const changed = {};
       keys.forEach((k) => { const nv = k === 'half_day_allowed' ? v[k] === 'true' : /_start|_end|ot_after|weekly_off/.test(k) ? v[k] : num(v[k]); if (String(nv ?? '') !== String(pol[k] ?? '')) changed[k] = nv; });
       if (!Object.keys(changed).length) return toast('Nothing changed');
-      try { await q(sb.rpc('raise_request', { p_type: 'hr_policy', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { policy: changed } })); toast('Sent to partners'); } catch (e) { toast(errText(e), true); }
+      try { await q(sb.rpc('update_setting', { p_key: 'hr_policy', p_value: changed })); toast('HR rules saved'); VIEWS.hr(view); } catch (e) { toast(errText(e), true); }
     };
     const here = view.querySelector('#hrHere');
     if (here) here.onclick = async () => {
       const loc = await locate();
       if (!loc) return toast('Could not get location. Allow location and try at the store.', true);
-      const v = await ask({ title: 'Lock attendance to the store?', html: `<p class="muted">Check-in will only work within ${esc(pol.office_radius_m || 200)} m of this spot (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}). All partners approve.</p>`, ok: 'Send for approval' });
+      const v = await ask({ title: 'Lock attendance to the store?', html: `<p class="muted">Check-in will only work within ${esc(pol.office_radius_m || 200)} m of this spot (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}). Logged, and all partners are told.</p>`, ok: 'Lock to this spot' });
       if (!v) return;
-      try { await q(sb.rpc('raise_request', { p_type: 'hr_policy', p_amount: null, p_description: 'Store location for attendance', p_proof_path: null, p_payload: { policy: { office_lat: loc.lat, office_lng: loc.lng } } })); toast('Sent to partners'); } catch (e) { toast(errText(e), true); }
+      try { await q(sb.rpc('update_setting', { p_key: 'hr_policy', p_value: { office_lat: loc.lat, office_lng: loc.lng } })); toast('Attendance locked to the store'); VIEWS.hr(view); } catch (e) { toast(errText(e), true); }
     };
     const hp = view.querySelector('#hrPrint');
-    if (hp) hp.onclick = () => printDoc(`Payslips ${monthName(month)}`, pay.map((p) => `<h1>${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')} · Payslip</h1><p>${esc(p.name)} · ${esc(monthName(month))}</p>
+    if (hp) hp.onclick = () => printDoc(`Payslips ${monthName(month)}`, pay.map((p) => `<h1>${esc(biz().name)} · Payslip</h1><p>${esc(p.name)} · ${esc(monthName(month))}</p>
       <table>${[['Monthly salary', inr(p.monthly_salary)], ['Working days', p.working_days], ['Present', p.present_days], ['Paid leave', p.paid_leave], ['Unpaid leave', p.unpaid_leave], ['Absent', p.absent_days],
         ['Late marks', `${p.late_count} (${p.late_half_days} half-day cut)`], ['Overtime', `${p.ot_hours} h = ${inr(p.ot_pay)}`], ['Deductions', `− ${inr(p.deductions)}`]].map(([k, val]) => `<tr><td>${k}</td><td class="r">${esc(val)}</td></tr>`).join('')}
       <tr><td><b>Net pay</b></td><td class="r big">${esc(inr(p.net_pay))}</td></tr></table><div class="sig"><div>Employee</div><div>Partner</div><div>Partner</div><div>Date</div></div><div style="page-break-after:always"></div>`).join(''));
@@ -2825,7 +3017,7 @@
       const share = (p) => (rule === 'equal' ? 1 / pos.length : rule === 'investment' ? Number(p.investment_share) : Number(split[p.partner_id] || 0) / 100);
       const catName = (k) => (EXP_CAT.find((c) => c[0] === k) || [0, k])[1];
       const html = `
-        <h1>${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')} · ${esc(monthName(m))}</h1><p class="muted">Monthly partner report · made ${esc(day(new Date()))}</p>
+        <h1>${esc(biz().name)} · ${esc(monthName(m))}</h1><p class="muted">Monthly partner report · made ${esc(day(new Date()))}</p>
         <h2>Money</h2><table>
           <tr><td>Sales</td><td class="r">${esc(inr(r.sales))}</td></tr><tr><td>Refunds</td><td class="r">− ${esc(inr(r.refunds))}</td></tr>
           <tr><td>Other income</td><td class="r">${esc(inr(r.other_income))}</td></tr>
@@ -2922,7 +3114,7 @@
       const last = months.filter((m) => m.month < monthKey()).slice(-2);
       const growth = last.length === 2 && Number(last[0].sales) ? (last[1].sales - last[0].sales) / last[0].sales : null;
       const kpi = (k, v, note = '') => `<div class="kpi"><span>${k}</span><b>${v}</b>${note ? `<small>${note}</small>` : ''}</div>`;
-      const html = `<h1>${esc(cfg.BUSINESS_NAME || 'Z-SHIRTS')} · key numbers</h1><p class="muted">As of ${esc(day(new Date()))} · from the locked books and order history</p>
+      const html = `<h1>${esc(biz().name)} · key numbers</h1><p class="muted">As of ${esc(day(new Date()))} · from the locked books and order history</p>
         <div class="kpis">
           ${kpi('Net revenue', esc(inr(rev)))}${kpi('Orders', orders)}${kpi('Average order', esc(inr(Math.round(aov))))}
           ${kpi('Gross margin', `${Math.round(margin * 100)}%`, 'after discounts, on tees sold')}${kpi('Repeat customers', `${Math.round(repeat * 100)}%`, `${cust.length} customers`)}${kpi('Returns + RTO', `${orders ? Math.round((rto / orders) * 100) : 0}%`)}
