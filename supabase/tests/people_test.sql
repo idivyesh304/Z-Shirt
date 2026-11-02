@@ -108,3 +108,36 @@ select t.expect_error('select punch(''lunch_in'', null, null, null)', 'Start lun
 
 \o
 \echo '\nALL PEOPLE RULES PASSED ✅'
+
+\o /dev/null
+\echo '\n== 40. Welcome, moments, demand =='
+:as_aaryak
+select t.eq('first login not welcomed yet', (my_welcome())->>'welcomed_at', null::text);
+select t.eq('welcome knows his investment', ((my_welcome())->>'capital')::numeric > 0, true);
+select mark_welcomed();
+select t.eq('welcome shown only once', (my_welcome())->>'welcomed_at' is not null, true);
+:as_mahendra
+select (staff_create_order('store', '{"name":"Zoya","phone":"9877700011"}', jsonb_build_array(jsonb_build_object('variant_id', :bl, 'qty', 1)), 'cash'))->>'id' as zo \gset
+:as_server
+select t.eq('offline sale is its own moment', (select kind from notifications where order_id = :zo and kind in ('sale', 'order') limit 1), 'sale');
+select t.eq('new customer moment', (select count(*) from notifications where order_id = :zo and kind = 'client'), 1::bigint);
+:as_mahendra
+select (staff_create_order('store', '{"name":"Zoya","phone":"9877700011"}', jsonb_build_array(jsonb_build_object('variant_id', :bl, 'qty', 1)), 'cash'))->>'id' as zo2 \gset
+:as_server
+select t.eq('repeat customer is not new', (select count(*) from notifications where order_id = :zo2 and kind = 'client'), 0::bigint);
+select id as ship_id from orders where status = 'confirmed' limit 1 \gset
+:as_mahendra
+select set_order_status(:ship_id, 'packed');
+select set_order_status(:ship_id, 'shipped', null, 'Delhivery', 'D9');
+:as_server
+select t.eq('dispatch moment', (select count(*) from notifications where order_id = :ship_id and kind = 'dispatch'), 1::bigint);
+:as_aaryak
+select upsert_product(jsonb_build_object('name', 'Launch Test Tee', 'mrp', 999, 'price', 799, 'variants', jsonb_build_array(jsonb_build_object('colour', 'Black', 'size', 'M'))));
+select t.eq('new product launch moment', (select count(*) from notifications where kind = 'launch' and title like '%Launch Test Tee'), 1::bigint);
+:as_mahendra
+select t.eq('best seller of the week', (demand_report(7))->'products'->0->>'name', 'Z Basic Tee');
+select t.eq('black is the colour in demand', (demand_report(30))->'colours'->0->>'name', 'Black');
+:as_guest
+select t.expect_error('select demand_report(7)', 'permission denied');
+\o
+\echo '\nALL WELCOME + DEMAND RULES PASSED ✅'

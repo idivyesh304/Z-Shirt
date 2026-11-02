@@ -5,7 +5,7 @@
   'use strict';
   const cfg = window.ZS_CONFIG || {};
   const $app = document.getElementById('app');
-  const C = window.ZSCelebrate || { confetti() {}, chime() {}, moment() {} };
+  const C = window.ZSCelebrate || { confetti() {}, chime() {}, moment() {}, welcome() { return Promise.resolve(); } };
 
   // ================================================================ helpers
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -229,6 +229,7 @@
       await Promise.all([loadSettings(), loadStock(), loadNotifs(true)]);
       render();
       startLive();
+      showWelcome().catch(() => {});
     } catch (e) {
       $app.innerHTML = `<div class="login"><div class="card warnbox">Could not load: ${esc(errText(e))}</div></div>`;
     }
@@ -268,7 +269,7 @@
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
       try { new Notification(n.title, { body: [n.amount ? inr(n.amount) : '', n.body].filter(Boolean).join(' · '), icon: 'icon.svg', tag: `zs-${n.id}` }); } catch (_) { /* */ }
     }
-    if (['order', 'status', 'service', 'payment'].includes(n.kind) && ['home', 'orders'].includes(state.tab) && !panelEl) render();
+    if (['order', 'sale', 'dispatch', 'client', 'status', 'service', 'payment'].includes(n.kind) && ['home', 'orders'].includes(state.tab) && !panelEl) render();
   }
   function startLive() {
     try {
@@ -293,7 +294,7 @@
     if (b) { b.textContent = n > 9 ? '9+' : n; b.hidden = n === 0; }
   }
   function openNotifs() {
-    const ICONS = { order: '₹', payment: '₹', milestone: '★', status: '➜', service: '↺', stock: '!', approval: '✓' };
+    const ICONS = { order: '₹', payment: '₹', milestone: '★', status: '➜', service: '↺', stock: '!', approval: '✓', sale: '🏪', dispatch: '🚚', launch: '🚀', client: '👋' };
     const seen = state.lastSeen;
     const body = panel(`
       <h1>Alerts</h1>
@@ -519,6 +520,8 @@
       ${actions.length ? `<div class="action-list">${actions.map(([n, c, t1, t2], i) => `
         <button class="action ${c}" data-a="${i}"><span class="n">${n}</span><span class="t"><b>${t1}</b><span>${t2}</span></span><span class="go">›</span></button>`).join('')}</div>`
         : `<div class="all-clear"><b>All clear</b>Nothing waiting. Go make some content.</div>`}
+      <h2>Best sellers & demand</h2>
+      <div id="demandBox"></div>
       <h2>This month</h2>
       ${milestoneCard}
       ${people.length ? `<h2>Who's selling · ${esc(monthName(m0))}</h2>${leaderboard}` : ''}
@@ -547,6 +550,7 @@
     view.querySelectorAll('[data-cash]').forEach((b) => { b.onclick = () => cashPunch(b.dataset.cash, () => VIEWS.home(view)); });
     const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('more', 'cash');
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
+    demandCard(view.querySelector('#demandBox'));
     const st = view.querySelector('#setTargets'); if (st) st.onclick = () => targetsDialog(targets || [], () => VIEWS.home(view));
   };
 
@@ -1856,6 +1860,76 @@
   }
 
 
+
+
+  // ---------------- what's in demand: best sellers of the week / 15 days / month, by tee, category, colour, size
+  async function demandCard(root) {
+    const st = state.demand || (state.demand = { days: 7, by: 'products' });
+    root.innerHTML = '<div class="card"><div class="muted">Loading best sellers…</div></div>';
+    let d;
+    try { d = await q(sb.rpc('demand_report', { p_days: st.days })); } catch (e) { root.innerHTML = ''; return; }
+    const list = d[st.by] || [];
+    const top = list[0];
+    const maxU = Math.max(1, ...list.map((x) => Number(x.units)));
+    const label = { 7: 'this week', 15: 'last 15 days', 30: 'this month' }[st.days];
+    root.innerHTML = `<div class="card demand">
+      <div class="seg" style="margin-bottom:8px">${[[7, 'Week'], [15, '15 days'], [30, 'Month']].map(([k, l]) => `<button data-dd="${k}" class="${st.days === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="seg">${[['products', 'Tee'], ['categories', 'Category'], ['colours', 'Colour'], ['sizes', 'Size']].map(([k, l]) => `<button data-db="${k}" class="${st.by === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      ${top ? `<div class="crown"><span class="crown-ic">👑</span><div><div class="muted">Best seller ${label}</div>
+          <b>${esc(top.name)}${st.by === 'products' && top.category ? ` <small class="muted">· ${esc(top.category)}</small>` : ''}</b>
+          <div class="muted">${top.units} pcs${top.revenue ? ` · ${esc(inr(top.revenue))}` : ''}${st.by === 'products' && top.by_colour && top.by_colour[0] ? ` · mostly ${esc(top.by_colour[0].c)}` : ''}</div></div></div>
+        <div class="hbars" style="margin-top:12px">${list.slice(0, 8).map((x, i) => `<div class="hbar"><span class="l">${i + 1}. ${st.by === 'colours' ? `<span class="dot-c" style="background:${esc(x.hex || '#888')}"></span>` : ''}${esc(x.name)}</span>
+          <span class="b"><i style="width:${(x.units / maxU) * 100}%"></i></span><span class="v">${x.units} pcs</span></div>`).join('')}</div>
+        ${st.by === 'products' ? list.filter((x) => Number(x.stock_left) <= (num(state.settings.low_stock_alert) || 5) && Number(x.units) > 0).slice(0, 3)
+          .map((x) => `<div class="hot">🔥 <b>${esc(x.name)}</b> is selling fast: ${x.units} sold, only ${x.stock_left} left. Plan the next batch.</div>`).join('') : ''}`
+        : `<div class="empty" style="padding:16px 0">No sales ${label} yet.</div>`}
+      ${d.wanted && d.wanted.length ? `<div class="wanted"><b>Customers waiting for a restock</b>${d.wanted.slice(0, 5).map((w) => `<div class="row"><span>${esc(w.name)} · ${esc(w.colour)} / ${esc(w.size)}</span><b>${w.n} 🔔</b></div>`).join('')}</div>` : ''}
+    </div>`;
+    root.querySelectorAll('[data-dd]').forEach((b) => { b.onclick = () => { st.days = Number(b.dataset.dd); demandCard(root); }; });
+    root.querySelectorAll('[data-db]').forEach((b) => { b.onclick = () => { st.by = b.dataset.db; demandCard(root); }; });
+  }
+
+  // ---------------- first login: a personal welcome for each partner and for Mahendra
+  async function showWelcome() {
+    const w = await q(sb.rpc('my_welcome'));
+    if (!w || w.welcomed_at) return;
+    const first = (w.name || '').split(' ')[0];
+    const others = (w.partners || []).filter((n) => n !== w.name).map((n) => n.split(' ')[0]);
+    const list = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0] || '');
+    let opts;
+    if (w.role === 'partner') {
+      const share = Number(w.total_capital) ? Math.round((Number(w.capital) / Number(w.total_capital)) * 100) : null;
+      opts = {
+        kicker: `Partner ${w.partner_no || ''} of ${(w.partners || []).length} · welcome to`,
+        name: `Hey ${first}, welcome aboard.`,
+        lines: [
+          `You, ${list(others)} built this together. Every order, every rupee and every decision lives here, open to all four of you.`,
+          'Nothing big moves without your OK: payouts, big expenses, price changes and stock write-offs wait for the partners to approve.',
+          `${w.employee ? `${w.employee.split(' ')[0]} runs the store day to day. ` : ''}You'll get a buzz for every order, sale, dispatch and milestone.`,
+          'Big fits. Zero apologies. Let’s make it big.',
+        ],
+        chips: [[Number(w.capital) ? inr(w.capital) : '—', 'you invested'], [share !== null ? `${share}%` : '—', 'of the capital'], [String(w.products || 0), 'tees live'], [String(w.orders || 0), 'orders so far']],
+        button: "Let's go",
+      };
+    } else {
+      const sh = w.shift || {};
+      opts = {
+        kicker: 'Welcome to the team',
+        name: `Welcome, ${first}!`,
+        lines: [
+          `You run the Z-SHIRTS store: sales, stock, production and the cash counter. The partners trust you with all of it.`,
+          `Your day: ${sh.shift_start || '10:00'} to ${sh.shift_end || '21:00'} with a ${sh.lunch_min || 30}-minute lunch. Punch in with a selfie on the Home screen.`,
+          'Tap the big + to bill any sale in seconds. Pick who sold it, add a coupon, done.',
+          'Every sale you make shows on the leaderboard. Go top it!',
+        ],
+        chips: [[String(w.products || 0), 'tees to sell'], [String(w.orders || 0), 'orders so far']],
+        button: 'Start my day',
+      };
+    }
+    await C.welcome(opts);
+    await q(sb.rpc('mark_welcomed')).catch(() => {});
+  }
+
   // ---------------- attendance punch card (Home + HR): check in → lunch → back → check out
   function punchHtml(a, pol) {
     const step = !a ? 'in' : a.out_at ? 'done' : !a.lunch_out_at ? 'lunch_or_out' : !a.lunch_in_at ? 'lunch_in' : 'out';
@@ -2355,9 +2429,9 @@
   };
 
   // ================================================================ REPORTS (partners)
-  const REPORTS = [['profit', 'Profit per tee'], ['monthly', 'Monthly report'], ['ads', 'Ads & influencers'], ['forecast', 'Cash forecast'], ['investor', 'Investor view']];
+  const REPORTS = [['demand', 'Best sellers'], ['profit', 'Profit per tee'], ['monthly', 'Monthly report'], ['ads', 'Ads & influencers'], ['forecast', 'Cash forecast'], ['investor', 'Investor view']];
   VIEWS.reports = async (view) => {
-    const r = state.report || 'profit';
+    const r = state.report || 'demand';
     view.innerHTML = `${backBtn}<h1>Reports</h1>
       <div class="seg">${REPORTS.map(([k, l]) => `<button data-r="${k}" class="${r === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="rep"><div class="empty">Loading…</div></div>`;
     wireBack(view);
@@ -2370,6 +2444,7 @@
     return `<div class="hbars">${rows.map((x) => `<div class="hbar"><span class="l">${esc(label(x))}</span><span class="b"><i class="${Number(x[key]) < 0 ? 'neg' : ''}" style="width:${(Math.abs(Number(x[key]) || 0) / max) * 100}%"></i></span><span class="v">${esc(inr(x[key]))}</span></div>`).join('')}</div>`;
   };
   const REPORT_VIEWS = {
+    async demand(el) { await demandCard(el); },
     async profit(el) {
       const [prod, drops] = await Promise.all([q(sb.from('product_profit').select('*').order('profit', { ascending: false })), q(sb.from('drop_profit').select('*').order('profit', { ascending: false }))]);
       const noCost = prod.filter((p) => !Number(p.cost_price) && Number(p.units_sold));

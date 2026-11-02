@@ -315,3 +315,15 @@ a.btn { text-decoration: none; }
 .punch-grid .stat { padding: 10px 8px; }
 .punch-btn { cursor: pointer; display: flex; }
 .cash-hero .btn.small { white-space: nowrap; }
+
+/* ---------- phase 5: demand ---------- */
+.demand .crown { display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, rgba(198,255,0,.12), rgba(255,46,136,.08)); border: 1px solid rgba(198,255,0,.35); }
+.demand .crown b { font-family: var(--display); font-size: 17px; }
+.crown-ic { font-size: 34px; animation: crownBob 2.4s ease-in-out infinite; }
+@keyframes crownBob { 50% { transform: translateY(-4px) rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) { .crown-ic { animation: none; } }
+.demand .hot { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,46,136,.08); border: 1px solid rgba(255,46,136,.35); font-size: 14px; }
+.demand .wanted { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; }
+.demand .wanted .row { padding: 4px 0; }
+.hbar .l .dot-c { margin-right: 4px; }
+.demand .hbar { grid-template-columns: 130px 1fr auto; }

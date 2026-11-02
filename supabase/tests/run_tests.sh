@@ -12,6 +12,7 @@ psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/001_phase1_partner_l
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/003_phase2_commerce.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/005_phase3_growth.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/007_phase4_people_targets_cash.sql >/dev/null
+psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/008_phase5_moments_demand.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f tests/test_members.sql >/dev/null
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/rules_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/commerce_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

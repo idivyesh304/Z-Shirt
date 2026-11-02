@@ -62,7 +62,7 @@ select (place_web_order(:riya, jsonb_build_array(jsonb_build_object('variant_id'
 :as_server
 select t.eq('stock reserved: Black M now 8', stock_of(:bm), 8);
 select t.eq('order total uses shop prices (not the browser)', (select total from orders where order_no = :'o1'), 3897.00::numeric);
-select t.eq('team notified with celebration', (select celebrate from notifications where order_id = (select id from orders where order_no = :'o1')), true);
+select t.eq('team notified with celebration', (select celebrate from notifications where kind = 'order' and order_id = (select id from orders where order_no = :'o1')), true);
 :as_customer
 select t.expect_error(format('select place_web_order(%L, ''[{"variant_id": %s, "qty": 5}]'', ''cod'')', :riya, :bl), 'Only 2 left');
 select t.expect_error(format('select place_web_order(''{"name":"X Y","phone":"123","address":{}}'', ''[{"variant_id": %s, "qty": 1}]'', ''cod'')', :bm), '10-digit');
