@@ -1,0 +1,21 @@
+# Re-checks every money rule automatically on each change to the code.
+name: Money rules test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run rules test
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+        run: bash supabase/tests/run_tests.sh | tee result.txt && grep -q "ALL RULES PASSED" result.txt
