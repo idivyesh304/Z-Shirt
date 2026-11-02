@@ -198,7 +198,7 @@
           <label for="email">E-mail</label>
           <input id="email" type="email" autocomplete="email" required>
           <label for="password">Password</label>
-          <input id="password" type="password" autocomplete="current-password" minlength="8" required>
+          <input id="password" type="password" autocomplete="current-password" required>
           <button class="btn block" type="submit" id="signinBtn">Sign in</button>
           <p class="hint">Your login is created by Divyesh. Ask him for your e-mail and first password, then change the password from More → My password.</p>
         </form>
