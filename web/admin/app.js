@@ -34,7 +34,19 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode */ } },
   };
-  const shopUrl = () => location.href.replace(/admin\/.*$/, '').split('?')[0];
+  const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const Plug = (window.Capacitor && window.Capacitor.Plugins) || {};
+  // Links to WhatsApp, phone, the shop: open in the right app (Android hands them to the system)
+  const openExternal = (url) => { if (NATIVE) location.href = url; else window.open(url, '_blank'); };
+  if (NATIVE) {
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      const href = a.getAttribute('href');
+      if (/^(https?:|tel:|mailto:)/i.test(href)) { e.preventDefault(); openExternal(href); }
+    });
+  }
+  const shopUrl = () => cfg.SHOP_URL || location.href.replace(/admin\/.*$/, '').split('?')[0];
   const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
   const sizeSort = (a, b) => (SIZE_ORDER.indexOf(a) + 99) % 99 - (SIZE_ORDER.indexOf(b) + 99) % 99 || String(a).localeCompare(String(b));
 
@@ -587,7 +599,7 @@
         ${o.status === 'shipped' ? '<button class="btn bad" id="oRto">Mark RTO</button>' : ''}
       </div>
       <div class="actions">
-        <button class="btn outline" id="oPrint">Print invoice + label</button>
+        ${NATIVE ? `<button class="btn outline" id="oShare">Send invoice on WhatsApp</button>` : '<button class="btn outline" id="oPrint">Print invoice + label</button>'}
         ${canCancel ? '<button class="btn outline" id="oCancel" style="color:var(--pink)">Cancel order</button>' : ''}
       </div>
       ${awaiting(o) ? '<p class="hint">Waiting for the customer to finish paying online. Unpaid orders release their stock after 30 minutes.</p>' : ''}`);
@@ -610,7 +622,24 @@
       if (!v) return;
       try { await q(sb.rpc('set_order_status', { p_order_id: o.id, p_status: 'cancelled', p_note: v.note, p_courier: null, p_tracking: null })); toast('Order cancelled'); reopen(); } catch (e) { toast(errText(e), true); }
     };
-    body.querySelector('#oPrint').onclick = () => printInvoice(o);
+    const pr = body.querySelector('#oPrint');
+    if (pr) pr.onclick = () => printInvoice(o);
+    const sh = body.querySelector('#oShare');
+    if (sh) sh.onclick = () => shareInvoice(o);
+  }
+
+  // In the phone app (no printer): the invoice goes to the customer as a WhatsApp message.
+  function shareInvoice(o) {
+    const lines = [
+      `*${cfg.BUSINESS_NAME || 'Z-SHIRTS'} · Invoice ${o.order_no}*`, day(o.created_at), '',
+      ...(o.items || []).map((i) => `${i.qty} × ${i.name} (${i.variant}) — ${inr(i.price * i.qty)}`), '',
+      Number(o.discount) ? `Discount: − ${inr(o.discount)}` : '', Number(o.shipping) ? `Delivery: ${inr(o.shipping)}` : '',
+      `*Total: ${inr(o.total)}* (inclusive of all taxes)`,
+      o.payment_method === 'cod' && o.payment_status !== 'paid' ? `Cash on delivery: ${inr(o.total)}` : 'Paid — thank you!',
+      cfg.GSTIN ? `GSTIN: ${cfg.GSTIN}` : '',
+    ].filter((l, i, a) => l !== '' || a[i - 1] !== '');
+    const text = encodeURIComponent(lines.join('\n'));
+    openExternal(o.customer_phone ? `https://wa.me/91${o.customer_phone}?text=${text}` : `https://wa.me/?text=${text}`);
   }
 
   function printInvoice(o) {
@@ -1018,7 +1047,7 @@
         <button id="openShop"><span><span>Open the shop</span><span class="d">See what customers see</span></span></button>
       </div>`;
     view.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => go('more', b.dataset.v); });
-    view.querySelector('#openShop').onclick = () => window.open(shopUrl(), '_blank');
+    view.querySelector('#openShop').onclick = () => openExternal(shopUrl());
   };
   const backBtn = '<button class="linkish" id="back" style="margin-top:14px">‹ More</button>';
   const wireBack = (view) => { const b = view.querySelector('#back'); if (b) b.onclick = () => go('more'); };
@@ -1396,5 +1425,21 @@
     state.session = session;
     if (!started || prev !== (session && session.user.id)) { started = true; boot(); }
   });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (NATIVE) {
+    // Android: black status bar, and the back button closes panels / goes back before leaving the app
+    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#000000' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'DARK' }); } catch (_) { /* */ }
+    if (Plug.App) {
+      Plug.App.addListener('backButton', () => {
+        const dlg = document.querySelector('dialog[open]');
+        if (dlg) return dlg.close();
+        if (document.querySelector('.zs-moment')) return document.querySelector('.zs-moment').remove();
+        if (panelEl) return closePanel();
+        if (state.tab === 'more' && state.view) return go('more');
+        if (state.me && state.tab !== 'home') return go('home');
+        Plug.App.exitApp();
+      });
+      // coming back to the app refreshes alerts and the current screen
+      Plug.App.addListener('resume', () => { if (state.me) { loadNotifs().catch(() => {}); if (!panelEl) render(); } });
+    }
+  } else if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

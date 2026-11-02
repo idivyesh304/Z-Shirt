@@ -1,0 +1,19 @@
+{
+  "name": "zshirts-team-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Z-SHIRTS Team app for Android (wraps web/admin)",
+  "scripts": {
+    "www": "node build-www.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

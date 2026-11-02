@@ -9,6 +9,9 @@ window.ZS_CONFIG = {
   BUSINESS_ADDRESS: '',        // e.g. 'Ahmedabad, Gujarat 380051'
   GSTIN: '',                   // add once registered
 
+  // Public address of the shop (used for links in WhatsApp messages and the Android app)
+  SHOP_URL: 'https://idivyesh304.github.io/Z-Shirt/',
+
   // Shop details shown to customers
   STORE_WHATSAPP: '',          // e.g. '919876543210' (country code + number, no +). Leave '' to hide the button.
   INSTAGRAM: '',               // e.g. 'zshirts.in'

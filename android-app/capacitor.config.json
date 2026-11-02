@@ -1,0 +1,17 @@
+{
+  "appId": "in.zshirts.team",
+  "appName": "Z-SHIRTS Team",
+  "webDir": "www",
+  "backgroundColor": "#000000",
+  "android": {
+    "backgroundColor": "#000000",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "backgroundColor": "#000000",
+      "style": "DARK",
+      "overlaysWebView": false
+    }
+  }
+}
