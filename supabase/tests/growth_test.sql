@@ -160,7 +160,7 @@ grant all on leak to authenticated;
 do $$ declare r record; v bigint; begin
   for r in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
            where n.nspname = 'public' and c.relkind in ('r', 'v')
-             and c.relname not in ('catalog', 'public_settings', 'categories', 'products', 'product_variants', 'bundles', 'push_public_key', 'customers', 'business_summary')
+             and c.relname not in ('catalog', 'public_settings', 'categories', 'products', 'product_variants', 'bundles', 'push_public_key', 'customers', 'business_summary', 'public_offers', 'public_reviews', 'also_bought')
              and has_table_privilege('authenticated', c.oid, 'select') loop
     execute format('select count(*) from %I', r.relname) into v;
     if v > 0 then insert into leak values (r.relname, v); end if;
