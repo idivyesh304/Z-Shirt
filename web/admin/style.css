@@ -52,9 +52,9 @@
   --radius: 20px;
   --spring: cubic-bezier(.2, .8, .2, 1);
   --ease: cubic-bezier(.2, .8, .2, 1);
-  --font: 'Inter', system-ui, -apple-system, sans-serif;
-  --display: 'Sora', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  --display: 'Unbounded', 'Inter Tight', system-ui, sans-serif;
+  --mono: 'Inter Tight', system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -607,9 +607,9 @@ body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-even
 :focus-visible { outline-color: var(--gold); }
 
 /* type */
-h1 { font-family: var(--display); font-weight: 300; font-size: 28px; letter-spacing: -.02em; line-height: 1.15; margin: 14px 0 6px; }
-h1 b { font-weight: 600; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-h2 { font-family: var(--mono); font-size: 11.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 28px 2px 12px;
+h1 { font-family: var(--display); font-weight: 700; font-size: 25px; letter-spacing: -.02em; line-height: 1.2; margin: 14px 0 6px; }
+h1 b { font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+h2 { font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 28px 2px 12px;
   display: flex; align-items: center; gap: 10px; }
 h2::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(216, 181, 106, .35), rgba(216, 181, 106, 0)); }
 .sub, .muted, .hint { color: var(--muted); }
@@ -617,7 +617,7 @@ label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-s
 .po-sizes label, .po-line-tax label { letter-spacing: .04em; }
 .stat .k, .kpi span, .kpi-row span, .cash-hero .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .stat .v, .kpi b, .amt, .order-no, .hbar .v, .kpi-row b, .lb-row b, .pnl tr.total td, .report .big, .cash-hero .v, .po-grand b, .action .n, .lb-rank {
-  font-family: var(--display); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .pos { color: var(--green); } .neg { color: var(--pink); }
 
 /* motion: quiet */
@@ -632,7 +632,7 @@ label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-s
 /* header */
 header.top { top: 0; margin: 0 -16px 8px; padding: 10px 16px; border-radius: 0; border: 0; border-bottom: 1px solid var(--line);
   background: rgba(11, 13, 20, .94); box-shadow: none; }
-.brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -.01em; color: var(--text); }
+.brand { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -.02em; color: var(--text); }
 .brand b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
 .brand small { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); background: none; padding: 0; margin-left: 10px; }
 .bell { width: 40px; height: 40px; border-radius: 13px; background: rgba(255, 255, 255, .035); border: 1px solid var(--line); color: var(--text-2); box-shadow: none; }
@@ -771,8 +771,8 @@ th { color: var(--muted); } th, td { border-bottom-color: var(--line); }
 .set-row, .cart-line, .lb-row { border-bottom-color: var(--line); }
 .scan-box { background: #000; } .scan-frame { border-color: var(--gold); box-shadow: 0 0 0 999px rgba(0, 0, 0, .5), 0 0 30px rgba(216, 181, 106, .5); }
 details.card > summary::before { color: var(--gold); }
-.login .logo { font-family: var(--display); font-weight: 300; letter-spacing: -.02em; }
-.login .logo b { font-weight: 700; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.login .logo { font-family: var(--display); font-weight: 800; letter-spacing: -.03em; }
+.login .logo b { font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
 .gi { color: var(--gold); }
 .voter.approve::before { color: var(--green); } .voter.reject::before { color: var(--pink); }
 .voter.wait { color: var(--dim); }
@@ -789,3 +789,13 @@ details.card > summary::before { color: var(--gold); }
 
 @media (max-width: 400px) { nav.tabs { left: 6px; right: 6px; padding: 5px; } nav.tabs button { font-size: 9px; } }
 @media print { body::before { display: none; } }
+
+/* bold titles everywhere */
+.card b, .order-no, .menu button, .hub button, .action .t b, .lb-name, .pick b { font-weight: 700; }
+.card > .row b:first-child, .order-no { font-family: var(--display); letter-spacing: -.01em; }
+.stat .k, .kpi span, .kpi-row span, .cash-hero .k, label { font-weight: 700; }
+.stat .v { white-space: nowrap; word-break: normal; overflow-wrap: normal; font-size: clamp(15px, 4.4vw, 21px); letter-spacing: -.03em; }
+.stat.hero .v { font-size: clamp(24px, 7vw, 32px); }
+.today .stat .v { font-size: clamp(14px, 4.2vw, 19px); }
+.kpi b, .amt, .kpi-row b { white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+.kpi b { font-size: clamp(15px, 4.4vw, 20px); letter-spacing: -.03em; }
