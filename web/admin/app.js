@@ -202,7 +202,21 @@
   const partners = () => state.members.filter((m) => m.role === 'partner' && m.active);
   const memberName = (id) => (state.members.find((m) => m.id === id) || {}).name || '—';
   const isPartner = () => state.me && state.me.role === 'partner';
-  const variantLabel = (vid) => { const v = state.stock.find((s) => s.variant_id === Number(vid)); return v ? `${v.product_name} · ${v.colour} / ${v.size}` : `#${vid}`; };
+  const variantLabel = (vid) => { const v = state.stock.find((s) => s.variant_id === Number(vid)); return v ? `${v.product_name} · ${v.colour} / ${v.size}${v.fit === 'regular' ? ' · Regular Fit' : ''}` : `#${vid}`; };
+  const fitOfVariant = (vid) => (state.stock.find((s) => s.variant_id === Number(vid)) || {}).fit;
+  const hasRegular = () => state.stock.some((v) => v.fit === 'regular');
+  const fitTag = (fit) => (hasRegular() ? ` <span class="fit-pill ${fit === 'regular' ? 'regular' : 'oversized'}">${fit === 'regular' ? 'Regular Fit' : 'Oversized'}</span>` : '');
+  const fitCompare = (rows) => {
+    if (!rows || !rows.length) return '';
+    const by = Object.fromEntries(rows.map((r) => [r.fit, r]));
+    const o = by.oversized || {}, r = by.regular || {};
+    const cell = (x, k, fmt) => `<td class="r">${fmt(x[k])}</td>`;
+    const money = (v) => esc(inr(v || 0)), n = (v) => esc(String(v || 0)), pct = (v) => (v == null ? '—' : `${v}%`);
+    const rowsDef = [['Tees sold', 'units_sold', n], ['Revenue (after discounts)', 'revenue', money], ['Cost of tees', 'cost', money], ['Gross profit', 'profit', (v) => signed(v || 0)], ['Margin', 'margin_pct', pct],
+      ['Printed stock now', 'printed_stock', n], ['  worth at cost', 'printed_stock_value', money], ['Blank tees now', 'blank_stock', n], ['  worth at cost', 'blank_stock_value', money]];
+    return `<div class="card table-wrap fit-compare"><table><thead><tr><th></th><th class="r"><span class="fit-pill oversized">Oversized</span></th><th class="r"><span class="fit-pill regular">Regular Fit</span></th></tr></thead><tbody>
+      ${rowsDef.map(([l, k, f]) => `<tr><td${l.startsWith('  ') ? ' class="muted"' : ''}>${esc(l.trim())}</td>${cell(o, k, f)}${cell(r, k, f)}</tr>`).join('')}</tbody></table></div>`;
+  };
   const productName = (pid) => { const v = state.stock.find((s) => s.product_id === Number(pid)); return v ? v.product_name : `#${pid}`; };
 
   async function q(promise) {
@@ -687,7 +701,7 @@
   };
 
   function orderCard(o) {
-    const items = (o.items || []).map((i) => `${i.qty}× ${i.name} (${i.variant})`).join(', ');
+    const items = (o.items || []).map((i) => `${i.qty}× ${i.name} (${i.variant}${hasRegular() ? ` · ${fitOfVariant(i.variant_id) === 'regular' ? 'Regular' : 'Oversized'}` : ''})`).join(', ');
     const nx = NEXT[o.status];
     return `
       <div class="card order" data-id="${o.id}">
@@ -774,7 +788,7 @@
       </div>
 
       <div class="card">
-        ${(o.items || []).map((i) => `<div class="row"><span>${i.qty}× ${esc(i.name)} <span class="muted">· ${esc(i.variant)}</span></span><span class="amt">${esc(inr(i.price * i.qty))}</span></div>`).join('')}
+        ${(o.items || []).map((i) => `<div class="row"><span>${i.qty}× ${esc(i.name)}${fitTag(fitOfVariant(i.variant_id))} <span class="muted">· ${esc(i.variant)}</span></span><span class="amt">${esc(inr(i.price * i.qty))}</span></div>`).join('')}
         <div class="row" style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><span class="muted">Items</span><span>${esc(inr(o.subtotal))}</span></div>
         ${Number(o.bundle_discount) ? `<div class="row"><span class="muted">Combo · ${esc(o.bundle_name)}</span><span class="neg">− ${esc(inr(o.bundle_discount))}</span></div>` : ''}
         ${Number(o.coupon_discount) ? `<div class="row"><span class="muted">Coupon ${esc(o.coupon_code)}</span><span class="neg">− ${esc(inr(o.coupon_discount))}</span></div>` : ''}
@@ -892,7 +906,7 @@
     }
     const products = [...new Map(state.stock.filter((v) => v.published && v.product_active && v.active).map((v) => [v.product_id, v])).values()];
     const term = s.search.trim().toLowerCase();
-    const shown = products.filter((p) => !term || `${p.product_name}`.toLowerCase().includes(term) ||
+    const shown = products.filter((p) => !term || `${p.product_name} ${p.fit === 'regular' ? 'regular fit' : 'oversized'}`.toLowerCase().includes(term) ||
       state.stock.some((v) => v.product_id === p.product_id && v.colour.toLowerCase().includes(term)));
     const cart = s.cart.map((c) => ({ ...c, v: state.stock.find((x) => x.variant_id === c.variant_id) })).filter((c) => c.v);
     const sub = cart.reduce((t, c) => t + c.v.price * c.qty, 0);
@@ -910,7 +924,7 @@
         <button class="btn cyan" id="sScan" style="height:46px">Scan tag</button></div>
       <div id="picker">${shown.length ? shown.map((p) => {
         const vars = state.stock.filter((v) => v.product_id === p.product_id && v.active).sort((a, b) => a.colour.localeCompare(b.colour) || sizeSort(a.size, b.size));
-        return `<div class="card"><div class="row"><b>${esc(p.product_name)}</b><span class="amt pos">${esc(inr(p.price))}</span></div>
+        return `<div class="card"><div class="row"><b>${esc(p.product_name)}${fitTag(p.fit)}</b><span class="amt pos">${esc(inr(p.price))}</span></div>
           <div class="var-grid">${vars.map((v) => {
             const inCart = (s.cart.find((x) => x.variant_id === v.variant_id) || {}).qty || 0;
             return `<button class="var" data-add="${v.variant_id}" ${v.stock - inCart <= 0 && !v.is_preorder ? 'disabled' : ''}><i style="background:${esc(v.colour_hex)}"></i>${esc(v.colour)} ${esc(v.size)} <small>${v.stock - inCart}</small></button>`;
@@ -919,7 +933,7 @@
 
       <h2>This ${store_ ? 'sale' : 'order'}</h2>
       <div class="card">
-        ${cart.length ? cart.map((l) => `<div class="cart-line"><div class="grow"><b>${esc(l.v.product_name)}</b><div class="muted">${esc(l.v.colour)} / ${esc(l.v.size)}</div></div>
+        ${cart.length ? cart.map((l) => `<div class="cart-line"><div class="grow"><b>${esc(l.v.product_name)}</b><div class="muted">${esc(l.v.colour)} / ${esc(l.v.size)}${hasRegular() ? ` · ${l.v.fit === 'regular' ? 'Regular Fit' : 'Oversized'}` : ''}</div></div>
           <div class="stepper"><button data-dec="${l.variant_id}" aria-label="One less">−</button><span>${l.qty}</span><button data-inc="${l.variant_id}" aria-label="One more">+</button></div>
           <span class="amt" style="min-width:72px;text-align:right">${esc(inr(l.v.price * l.qty))}</span></div>`).join('') : '<div class="muted">Tap a size above to add it.</div>'}
         ${maxDisc && !s.coupon ? `<label>Discount</label><div class="chipset">${[0, 5, 10, 15, 20, 25, 30, 40, 50].filter((d) => d <= maxDisc).map((d) => `<button data-disc="${d}" class="${s.discount === d ? 'on' : ''}">${d ? `${d}%` : 'None'}</button>`).join('')}</div>` : ''}
@@ -1099,25 +1113,32 @@
     const [blanks, dtf, gone] = await Promise.all([q(sb.from('blank_stock').select('*')).catch(() => []), q(sb.from('dtf_stock').select('*')).catch(() => []),
       q(sb.from('products').select('id,name,deleted_at,deleted_by').not('deleted_at', 'is', null).order('deleted_at', { ascending: false })).catch(() => [])]);
     const lim = num(state.settings.low_stock_alert) || 5;
-    const groups = [...new Map(state.stock.map((v) => [v.product_id, v])).values()].sort((a, b) => a.product_name.localeCompare(b.product_name));
-    const totalPieces = state.stock.filter((v) => v.active).reduce((t, v) => t + Math.max(0, v.stock), 0);
-    const value = state.stock.filter((v) => v.active).reduce((t, v) => t + Math.max(0, v.stock) * Number(v.price), 0);
+    const ff = state.fitFilter || 'all';
+    const fitOk = (f) => ff === 'all' || (f || 'oversized') === ff;
+    const pcs = (f) => state.stock.filter((v) => v.active && (v.fit || 'oversized') === f).reduce((t, v) => t + Math.max(0, v.stock), 0);
+    const groups = [...new Map(state.stock.filter((v) => fitOk(v.fit)).map((v) => [v.product_id, v])).values()].sort((a, b) => ((a.fit || '') > (b.fit || '') ? 1 : (a.fit || '') < (b.fit || '') ? -1 : a.product_name.localeCompare(b.product_name)));
+    const totalPieces = state.stock.filter((v) => v.active && fitOk(v.fit)).reduce((t, v) => t + Math.max(0, v.stock), 0);
+    const value = state.stock.filter((v) => v.active && fitOk(v.fit)).reduce((t, v) => t + Math.max(0, v.stock) * Number(v.price), 0);
+    const blankFits = FITS.filter(([f]) => fitOk(f) && blanks.some((b) => (b.fit || 'oversized') === f));
+    const blankMatrix = (rows) => {
+      const cols = [...new Map(rows.map((b) => [b.colour, b.colour_hex])).entries()];
+      const sizes = [...new Set(rows.map((b) => b.size))].sort(sizeSort);
+      return `<table class="matrix"><thead><tr><th></th>${sizes.map((z) => `<th>${esc(z)}</th>`).join('')}</tr></thead><tbody>${cols.map(([cn, hex]) => `<tr><th class="c"><span class="dot-c" style="background:${esc(hex || '#000')}"></span>${esc(cn)}</th>${sizes.map((z) => {
+        const b = rows.find((x) => x.colour === cn && x.size === z);
+        return b ? `<td><span class="cell ${b.qty <= 0 ? 'zero' : b.qty <= lim ? 'low' : 'ok'}" style="display:grid;place-items:center">${b.qty}</span></td>` : '<td></td>';
+      }).join('')}</tr>`).join('')}</tbody></table>`;
+    };
 
     view.innerHTML = `
       <h1>Stock</h1>
       <p class="sub">${totalPieces} pieces in stock · worth ${esc(inr(value))} at selling price. Tap any number to add pieces.
         ${state.stock.some((v) => v.waiting > 0) ? `<br><b style="color:var(--cyan)">${state.stock.reduce((t, v) => t + Number(v.waiting || 0), 0)} customers waiting for a restock alert</b> (sizes marked with a dot).` : ''}</p>
       <div class="actions" style="margin:0 0 16px"><button class="btn" id="newProd">+ New product</button><button class="btn outline" id="toPo">Purchase orders</button></div>
+      <div class="chipset fit-tabs" style="margin:0 0 16px">${[['all', 'All fits', pcs('oversized') + pcs('regular')], ...FITS.map(([f, l]) => [f, l, pcs(f)])].map(([f, l, n]) => `<button data-ff="${f}" class="${ff === f ? 'on' : ''}">${esc(l)} · ${n}</button>`).join('')}</div>
       <div class="card blanks-card">
-        <div class="row"><div><b>Blank tees (before printing)</b><div class="muted">${blanks.reduce((t, b) => t + Math.max(0, b.qty), 0)} plain pieces · used automatically when a batch starts printing</div></div></div>
-        ${blanks.length ? (() => {
-          const cols = [...new Map(blanks.map((b) => [b.colour, b.colour_hex])).entries()];
-          const sizes = [...new Set(blanks.map((b) => b.size))].sort(sizeSort);
-          return `<table class="matrix"><thead><tr><th></th>${sizes.map((z) => `<th>${esc(z)}</th>`).join('')}</tr></thead><tbody>${cols.map(([cn, hex]) => `<tr><th class="c"><span class="dot-c" style="background:${esc(hex || '#000')}"></span>${esc(cn)}</th>${sizes.map((z) => {
-            const b = blanks.find((x) => x.colour === cn && x.size === z);
-            return b ? `<td><span class="cell ${b.qty <= 0 ? 'zero' : b.qty <= lim ? 'low' : 'ok'}" style="display:grid;place-items:center">${b.qty}</span></td>` : '<td></td>';
-          }).join('')}</tr>`).join('')}</tbody></table>`;
-        })() : '<div class="muted" style="margin-top:8px">Not tracking blanks yet. Add your first purchase of plain black tees.</div>'}
+        <div class="row"><div><b>Blank tees (before printing)</b><div class="muted">${FITS.map(([f, l]) => `${blanks.filter((b) => (b.fit || 'oversized') === f).reduce((t, b) => t + Math.max(0, b.qty), 0)} ${l}`).join(' · ')} · used automatically when a batch of the same fit starts printing</div></div></div>
+        ${blankFits.length ? blankFits.map(([f, l]) => `<div class="fit-head"><span class="fit-pill ${f}">${esc(l)}</span></div>${blankMatrix(blanks.filter((b) => (b.fit || 'oversized') === f))}`).join('')
+          : '<div class="muted" style="margin-top:8px">No plain tees in this fit yet. Add your first purchase.</div>'}
         <div class="actions"><button class="btn small" data-blank="purchase">+ Bought blanks</button><button class="btn small outline" data-dmg="blank" style="color:var(--pink)">Damaged blanks</button></div>
       </div>
       <div class="card blanks-card">
@@ -1133,7 +1154,7 @@
         const sizes = [...new Set(vars.map((v) => v.size))].sort(sizeSort);
         const tot = vars.reduce((t, v) => t + Math.max(0, v.stock), 0);
         return `<div class="card">
-          <div class="row"><div><b>${esc(g.product_name)}</b>
+          <div class="row"><div><b>${esc(g.product_name)}</b> <span class="fit-pill ${esc(g.fit || 'oversized')}">${esc(fitLabel(g.fit))}</span>${g.line === 'plain' ? ' <span class="fit-pill plain">Pure Essence</span>' : ''}
             <div class="muted">${esc(inr(g.price))}${Number(g.mrp) > Number(g.price) ? ` · MRP ${esc(inr(g.mrp))}` : ''} · ${tot} pcs</div></div>
             <span class="pill ${g.published ? (g.product_active ? 'approved' : 'cancelled') : 'pending'}">${g.published ? (g.product_active ? 'Live' : 'Hidden') : 'Draft'}</span></div>
           <table class="matrix"><thead><tr><th></th>${sizes.map((sz) => `<th>${esc(sz)}</th>`).join('')}</tr></thead>
@@ -1145,6 +1166,8 @@
             }).join('')}</tr>`).join('')}</tbody></table>
           <div class="actions">
             <button class="btn small outline" data-edit="${g.product_id}">Edit</button>
+            <button class="btn small outline label-btn" data-label="${g.product_id}">Label: ${esc(labelName(g.shop_label))}</button>
+            ${g.line === 'plain' ? `<button class="btn small" data-fromblank="${g.product_id}">+ Move from blanks</button>` : ''}
             ${!g.published && isPartner() ? `<button class="btn small" data-pub="${g.product_id}">Publish to shop</button>` : ''}
             ${g.published && isPartner() ? `<button class="btn small outline" data-price="${g.product_id}">Change price</button>` : ''}
             ${g.published ? `<a class="btn small outline" target="_blank" rel="noopener" href="${esc(shopUrl())}">View in shop</a>` : ''}
@@ -1160,6 +1183,30 @@
         ${gone.map((p) => `<div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span>${esc(p.name)}<div class="muted">deleted ${esc(day(p.deleted_at))} · ${esc(memberName(p.deleted_by))}</div></span>
           ${isPartner() ? `<button class="btn small outline" data-restore="${p.id}">Restore</button>` : ''}</div>`).join('')}</details>` : ''}`;
 
+    view.querySelectorAll('[data-label]').forEach((b) => {
+      b.onclick = async () => { const g = state.stock.find((v) => v.product_id === Number(b.dataset.label)); if (await pickLabel(g.product_id, g.product_name, g.shop_label, false)) VIEWS.stock(view); };
+    });
+    view.querySelectorAll('[data-fromblank]').forEach((b) => {
+      b.onclick = async () => {
+        const pid = Number(b.dataset.fromblank);
+        const vars = state.stock.filter((v) => v.product_id === pid && v.active).sort((x, y) => x.colour.localeCompare(y.colour) || sizeSort(x.size, y.size));
+        const g = vars[0];
+        const bl = (v) => (blanks.find((x) => x.colour.toLowerCase() === v.colour.toLowerCase() && x.size === v.size && (x.fit || 'oversized') === (g.fit || 'oversized')) || {}).qty || 0;
+        const body = panel(`<h1 style="margin-top:14px">Move plain tees to the shop</h1>
+          <p class="sub">${esc(g.product_name)} · taken from ${esc(fitLabel(g.fit))} blank stock. No printing, so they are ready to sell right away.</p>
+          ${vars.map((v) => `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span><span class="dot-c" style="background:${esc(v.colour_hex)}"></span> ${esc(v.colour)} / ${esc(v.size)}<div class="muted">${bl(v)} plain in blank stock · ${v.stock} in shop</div></span>
+            <input type="number" inputmode="numeric" min="0" max="${bl(v)}" data-mv="${v.variant_id}" placeholder="0" style="width:84px" ${bl(v) ? '' : 'disabled'}></div>`).join('')}
+          <button class="btn block" id="mvGo" style="margin-top:16px">Move to shop</button>`);
+        body.querySelector('#mvGo').onclick = async (e) => {
+          const items = [...body.querySelectorAll('[data-mv]')].map((i) => ({ variant_id: Number(i.dataset.mv), qty: Number(i.value) || 0 })).filter((i) => i.qty > 0);
+          if (!items.length) return toast('Enter how many to move', true);
+          const firstEver = vars.every((v) => Number(v.stock) <= 0);
+          e.currentTarget.disabled = true;
+          try { const n = await q(sb.rpc('blanks_to_shop', { p_product: pid, p_items: items })); closePanel(); toast(`${n} Pure Essence tees now in the shop`); if (firstEver) await labelOnFirstStock(pid); VIEWS.stock(view); } catch (err) { toast(errText(err), true); e.target.disabled = false; }
+        };
+      };
+    });
+    view.querySelectorAll('[data-ff]').forEach((b) => { b.onclick = () => { state.fitFilter = b.dataset.ff; VIEWS.stock(view); }; });
     view.querySelectorAll('[data-dmg]').forEach((b) => { b.onclick = () => reportDamage(b.dataset.dmg, () => VIEWS.stock(view)); });
     view.querySelectorAll('[data-restore]').forEach((b) => {
       b.onclick = async () => { try { const n = await q(sb.rpc('restore_product', { p_id: Number(b.dataset.restore) })); toast(`${n} is back as a draft`); await loadStock(); VIEWS.stock(view); } catch (e) { toast(errText(e), true); } };
@@ -1181,13 +1228,14 @@
       b.onclick = async () => {
         const buy = b.dataset.blank === 'purchase';
         const v = await ask({ title: buy ? 'Blank tees bought' : 'Damaged blank tees', fields: [
+          { name: 'fit', label: 'Fit', type: 'select', value: ff === 'regular' ? 'regular' : 'oversized', options: FITS },
           { name: 'colour', label: 'Colour', value: 'Black', required: true }, { name: 'size', label: 'Size', type: 'select', value: 'L', options: PRESET_SIZES.map((z) => [z, z]) },
           { name: 'qty', label: 'Pieces', type: 'number', required: true }, ...(buy ? [{ name: 'cost', label: 'Total cost (₹, optional)', type: 'number' }] : []),
           { name: 'note', label: buy ? 'Supplier / bill no.' : 'What happened?' }], ok: 'Save' });
         if (!v) return;
         const preset = PRESET_COLOURS.find((c) => c[0].toLowerCase() === v.colour.trim().toLowerCase());
-        try { const left = await q(sb.rpc('add_blanks', { p_colour: v.colour, p_hex: preset ? preset[1] : null, p_size: v.size, p_qty: Number(v.qty), p_reason: b.dataset.blank, p_cost: num(v.cost), p_note: v.note || null }));
-          toast(`${v.colour} ${v.size}: ${left} blank pieces now`); VIEWS.stock(view); } catch (e) { toast(errText(e), true); }
+        try { const left = await q(sb.rpc('add_blanks', { p_colour: v.colour, p_hex: preset ? preset[1] : null, p_size: v.size, p_qty: Number(v.qty), p_reason: b.dataset.blank, p_cost: num(v.cost), p_note: v.note || null, p_fit: v.fit }));
+          toast(`${fitLabel(v.fit)} ${v.colour} ${v.size}: ${left} blank pieces now`); VIEWS.stock(view); } catch (e) { toast(errText(e), true); }
       };
     });
     view.querySelectorAll('[data-tags]').forEach((b) => {
@@ -1230,9 +1278,13 @@
       <button class="btn outline block" id="qWo" style="color:var(--pink)">Report damaged stock</button>`);
     const add = async (n) => {
       try {
+        const pidOf = (state.stock.find((x) => x.variant_id === vid) || {}).product_id;
+        const firstEver = pidOf && state.stock.filter((x) => x.product_id === pidOf).every((x) => Number(x.stock) <= 0);
         const left = await q(sb.rpc('add_stock', { p_variant: vid, p_qty: n, p_reason: 'production', p_note: body.querySelector('#qNote').value || null }));
         toast(`+${n} added · ${left} in stock`);
-        closePanel(); done();
+        closePanel();
+        if (firstEver) await labelOnFirstStock(pidOf);
+        done();
       } catch (e) { toast(errText(e), true); }
     };
     body.querySelectorAll('[data-q]').forEach((b) => { b.onclick = () => add(Number(b.dataset.q)); });
@@ -1256,6 +1308,22 @@
   const PRESET_COLOURS = [['Black', '#0b0b0c'], ['White', '#ffffff'], ['Bone', '#e9e4d8'], ['Grey Melange', '#9a9a9f'], ['Navy', '#1b2a4a'], ['Olive', '#5b6236'],
     ['Maroon', '#6b1020'], ['Beige', '#d6c3a1'], ['Lavender', '#b9a6e0'], ['Lime', '#c6ff00'], ['Hot Pink', '#ff2e88'], ['Sky Blue', '#8cc8f0']];
   const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const FITS = [['oversized', 'Oversized'], ['regular', 'Regular Fit']];
+  const fitLabel = (f) => (f === 'regular' ? 'Regular Fit' : 'Oversized');
+  const LABELS = [['new', 'New collection'], ['bestseller', 'Bestseller'], ['premium', 'Premium'], ['coming_soon', 'Coming soon'], ['prebook', 'Pre-book'], ['restocked', 'Restocked'], ['none', 'No label']];
+  const labelName = (l) => (LABELS.find((x) => x[0] === (l || 'none')) || LABELS[6])[1];
+  async function pickLabel(pid, name, current, first) {
+    const v = await ask({ title: first ? `First stock for ${name}` : `Shop label for ${name}`, html: `<p class="muted">${first ? 'Where should it show in the shop? You can change this any time from the Stock screen.' : 'Shows on the tee in the shop and puts it in that collection.'}</p>`,
+      fields: [{ name: 'l', label: 'Label', type: 'select', value: current || 'new', options: LABELS }], ok: 'Save label' });
+    if (!v) return false;
+    try { await q(sb.rpc('set_product_label', { p_product: pid, p_label: v.l })); toast(`${name}: ${labelName(v.l)}`); return true; } catch (e) { toast(errText(e), true); return false; }
+  }
+  // the first time stock lands on a tee with no label, ask which shop label it gets
+  async function labelOnFirstStock(pid) {
+    const vars = state.stock.filter((v) => v.product_id === pid);
+    if (!vars.length || vars[0].shop_label) return;
+    await pickLabel(pid, vars[0].product_name, null, true);
+  }
 
   async function openProductForm(pid) {
     const prod = pid ? await q(sb.from('products').select('*').eq('id', pid).single()) : null;
@@ -1264,16 +1332,26 @@
       colours: new Map(existing.length ? existing.map((v) => [v.colour, v.colour_hex]) : []),
       sizes: new Set(existing.length ? existing.map((v) => v.size) : ['S', 'M', 'L', 'XL', 'XXL']),
       images: prod ? [...(prod.images || [])] : [],
+      fit: (prod && prod.fit) || state.fitFilter === 'regular' && 'regular' || 'oversized',
+      line: (prod && prod.line) || 'designed',
+      label: prod ? prod.shop_label || 'none' : 'new',
     };
     const live = prod && prod.published_at;
     const draw = () => {
       const body = panel(`
         <h1 style="margin-top:14px">${prod ? 'Edit product' : 'New product'}</h1>
         ${!prod && !isPartner() ? '<p class="sub">Saved as a draft. A partner publishes it to the shop.</p>' : ''}
-        <label for="pName">Name</label><input id="pName" value="${esc(prod ? prod.name : '')}" placeholder="e.g. Acid Wash Drop">
+        <label>What are you adding?</label>
+        <div class="fit-choose">${[['designed', 'Designed tee', 'Printed with a design (DTF / print)'], ['plain', 'Pure Essence', 'Plain tee, no design. Listed by colour']].map(([k, l, d]) => `<button type="button" data-line="${k}" class="${sel.line === k ? 'on' : ''}"><b>${l}</b><span>${d}</span></button>`).join('')}</div>
+        <label>Fit</label>
+        <div class="fit-choose">${FITS.map(([f, l]) => `<button type="button" data-fit="${f}" class="${sel.fit === f ? 'on' : ''}"><b>${l}</b><span>${f === 'regular' ? 'True to size, classic shoulder' : 'Dropped shoulder, boxy and long'}</span></button>`).join('')}</div>
+        <label for="pName">Name</label><input id="pName" value="${esc(prod ? prod.name : sel.line === 'plain' ? `Pure Essence ${fitLabel(sel.fit)}` : '')}" placeholder="e.g. Acid Wash Drop">
+        ${sel.line === 'plain' ? '<div class="hint">In the shop every colour shows as its own tee, named by colour, under Pure Essence.</div>' : ''}
+        <label for="pLabel">Shop label</label><select id="pLabel">${LABELS.map(([k, l]) => `<option value="${k}" ${sel.label === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <div class="hint">New collection, Premium, Pre-book (orders without stock), Coming soon (can't be ordered yet)… change it any time.</div>
         <div class="row2">
           <div><label for="pCat">Category</label><select id="pCat"><option value="">—</option>${state.categories.map((c) => `<option value="${c.id}" ${prod && prod.category_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="new">+ New category</option></select></div>
-          <div><label for="pType">Type</label><input id="pType" value="${esc(prod ? prod.type : 'Oversized Tee')}" list="types"><datalist id="types"><option>Oversized Tee</option><option>Graphic Tee</option><option>Hoodie</option><option>Sweatshirt</option></datalist></div>
+          <div><label for="pType">Type</label><input id="pType" value="${esc(prod ? prod.type : sel.fit === 'regular' ? 'Regular Fit Tee' : 'Oversized Tee')}" list="types"><datalist id="types"><option>Oversized Tee</option><option>Regular Fit Tee</option><option>Graphic Tee</option><option>Hoodie</option><option>Sweatshirt</option></datalist></div>
         </div>
         <div class="row2">
           <div><label for="pMrp">MRP (₹)</label><input id="pMrp" type="number" inputmode="decimal" value="${prod ? prod.mrp : ''}" ${live ? 'disabled' : ''}></div>
@@ -1332,7 +1410,7 @@
       ['#pMrp', '#pPrice'].forEach((s) => { const el = body.querySelector(s); if (el) el.oninput = updOff; });
       updOff();
       const keep = () => ({
-        name: body.querySelector('#pName').value, cat: body.querySelector('#pCat').value, type: body.querySelector('#pType').value,
+        name: body.querySelector('#pName').value, label: body.querySelector('#pLabel').value, cat: body.querySelector('#pCat').value, type: body.querySelector('#pType').value,
         mrp: body.querySelector('#pMrp').value, price: body.querySelector('#pPrice').value, fabric: body.querySelector('#pFabric').value,
         gsm: body.querySelector('#pGsm').value, desc: body.querySelector('#pDesc').value, feat: body.querySelector('#pFeat').checked,
         active: body.querySelector('#pActive') ? body.querySelector('#pActive').checked : true,
@@ -1345,7 +1423,7 @@
       });
       const restore = (k) => {
         const b2 = panelEl.p;
-        b2.querySelector('#pName').value = k.name; b2.querySelector('#pCat').value = k.cat; b2.querySelector('#pType').value = k.type;
+        b2.querySelector('#pName').value = k.name; b2.querySelector('#pLabel').value = k.label; b2.querySelector('#pCat').value = k.cat; b2.querySelector('#pType').value = k.type;
         b2.querySelector('#pMrp').value = k.mrp; b2.querySelector('#pPrice').value = k.price; b2.querySelector('#pFabric').value = k.fabric;
         b2.querySelector('#pGsm').value = k.gsm; b2.querySelector('#pDesc').value = k.desc; b2.querySelector('#pFeat').checked = k.feat;
         if (b2.querySelector('#pActive')) b2.querySelector('#pActive').checked = k.active;
@@ -1353,6 +1431,22 @@
       };
       const redraw = () => { const k = keep(); const y = panelEl.p.scrollTop; draw(); restore(k); panelEl.p.scrollTop = y; };
 
+      body.querySelectorAll('[data-line]').forEach((b) => {
+        b.onclick = () => {
+          const nm = body.querySelector('#pName');
+          if (!prod && (!nm.value.trim() || /^Pure Essence/.test(nm.value))) nm.value = b.dataset.line === 'plain' ? `Pure Essence ${fitLabel(sel.fit)}` : '';
+          sel.line = b.dataset.line; redraw();
+        };
+      });
+      body.querySelectorAll('[data-fit]').forEach((b) => {
+        b.onclick = () => {
+          const nm = body.querySelector('#pName');
+          if (!prod && /^Pure Essence/.test(nm.value)) nm.value = `Pure Essence ${fitLabel(b.dataset.fit)}`;
+          const t = body.querySelector('#pType');
+          if (['', 'Oversized Tee', 'Regular Fit Tee'].includes(t.value.trim())) t.value = b.dataset.fit === 'regular' ? 'Regular Fit Tee' : 'Oversized Tee';
+          sel.fit = b.dataset.fit; redraw();
+        };
+      });
       body.querySelectorAll('[data-col]').forEach((b) => {
         b.onclick = () => { const n = b.dataset.col; if (sel.colours.has(n)) { if (!existing.some((v) => v.colour === n)) sel.colours.delete(n); else toast('Existing colours stay; hide them by editing stock instead'); } else sel.colours.set(n, b.dataset.hex); redraw(); };
       });
@@ -1396,7 +1490,8 @@
               id: prod ? prod.id : null, name: k.name.trim(), category_id: catId ? Number(catId) : null, type: k.type,
               description: k.desc, fabric: k.fabric || null, gsm: k.gsm ? Number(k.gsm) : null,
               mrp: num(live ? prod.mrp : k.mrp), price: num(live ? prod.price : k.price), images: sel.images,
-              featured: k.feat, active: k.active, publish: true, variants,
+              featured: k.feat, active: k.active, publish: true, variants, fit: sel.fit, line: sel.line,
+              shop_label: k.label !== ((prod && prod.shop_label) || (prod ? 'none' : '')) ? k.label : null,
             },
           }));
           if (isPartner() && id) {
@@ -2788,9 +2883,10 @@
       ${type === 'plain' ? `<h2>Fabric and fit</h2><div class="card">
         <div class="row2"><label>Fabric<select id="sFab">${['100% Cotton', 'Cotton-Poly 60/40', 'Polyester', 'French terry', 'Heavyweight cotton'].map((o) => `<option ${spec.fabric === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
           <label>GSM<input id="sGsm" type="number" inputmode="numeric" value="${esc(spec.gsm)}"></label></div>
-        <div class="row2"><label>Fit<select id="sFit">${['Oversized', 'Drop shoulder', 'Boxy', 'Regular'].map((o) => `<option ${spec.fit === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+        <div class="row2"><label>Fit<select id="sFit">${['Oversized', 'Drop shoulder', 'Boxy', 'Regular Fit'].map((o) => `<option ${spec.fit === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
           <label>Neck<select id="sNeck">${['Round neck', 'Crew neck rib', 'Polo', 'V neck', 'Henley'].map((o) => `<option ${spec.neck === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label></div>
         <label>Sleeve<select id="sSleeve">${['Half sleeve', 'Full sleeve', 'Sleeveless'].map((o) => `<option ${spec.sleeve === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+        <div class="hint">Regular Fit lands in the Regular blank stock when received; every other fit lands in Oversized.</div>
         <div class="hint">Garments up to ₹${esc(gstHigh)} a piece carry ${esc(state.settings.gst_rate_low ?? 5)}% GST; above that ${esc(state.settings.gst_rate_high ?? 18)}%. The GST % fills in from the rate.</div></div>` : ''}
       <h2>${type === 'plain' ? 'Colours and sizes' : 'Items'}</h2>
       <div id="poRows"></div>
@@ -2824,7 +2920,7 @@
         const sp = { fabric: fab, gsm, fit, neck, sleeve };
         rows.forEach((r) => SIZES.forEach((z) => {
           const qy = (r.sizes || {})[z];
-          if (qy > 0) out.push({ description: `${fit} tee · ${gsm} GSM ${fab} · ${neck}, ${sleeve} · ${r.colour || 'Colour'} · ${z}`, specs: sp, hsn: r.hsn, unit: 'pcs', qty: qy, rate: r.rate, gst_rate: r.gst_rate, disc_pct: r.disc_pct, colour: r.colour, colour_hex: r.hex, size: z });
+          if (qy > 0) out.push({ description: `${fit} tee · ${gsm} GSM ${fab} · ${neck}, ${sleeve} · ${r.colour || 'Colour'} · ${z}`, specs: sp, hsn: r.hsn, unit: 'pcs', qty: qy, rate: r.rate, gst_rate: r.gst_rate, disc_pct: r.disc_pct, colour: r.colour, colour_hex: r.hex, size: z, fit: /^regular/i.test(fit) ? 'regular' : 'oversized' });
         }));
       } else {
         rows.forEach((r) => {
@@ -3274,7 +3370,7 @@
         <p class="sub">The pieces leave stock now. The claim stays open until the vendor replaces, refunds or refuses.</p>
         <div class="seg" id="dKind">${Object.entries(DMG_ITEM).map(([k, l]) => `<button type="button" data-k="${k}" class="${kind === k ? 'on' : ''}">${l}</button>`).join('')}</div>
         ${kind === 'dtf' ? `<label for="dProd">Design</label><select id="dProd">${dtf.length ? dtf.map((d) => `<option value="${d.product_id}">${esc(d.name)} · ${d.qty} prints</option>`).join('') : prods.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('')}</select>`
-          : kind === 'blank' ? `<label for="dBlank">Colour and size</label><select id="dBlank">${blanks.filter((b) => b.qty > 0).map((b) => `<option value="${esc(b.colour)}|${esc(b.size)}">${esc(b.colour)} / ${esc(b.size)} · ${b.qty} pcs</option>`).join('') || '<option value="">No blank stock</option>'}</select>`
+          : kind === 'blank' ? `<label for="dBlank">Fit, colour and size</label><select id="dBlank">${blanks.filter((b) => b.qty > 0).map((b) => `<option value="${esc(b.colour)}|${esc(b.size)}|${esc(b.fit || 'oversized')}">${esc(fitLabel(b.fit))} · ${esc(b.colour)} / ${esc(b.size)} · ${b.qty} pcs</option>`).join('') || '<option value="">No blank stock</option>'}</select>`
           : `<label for="dProd">Tee</label><select id="dProd">${prods.filter(([id]) => state.stock.some((v) => v.product_id === id && v.stock > 0)).map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('')}</select>
              <label for="dVar">Colour and size</label><select id="dVar"></select>`}
         <label for="dQty">How many pieces?</label><input id="dQty" type="number" inputmode="numeric" min="1" value="1">
@@ -3308,7 +3404,7 @@
             ask: (body.querySelector('#dAsk .on') || {}).dataset.a, photos };
           if (kind === 'dtf') p.product_id = Number(body.querySelector('#dProd').value);
           if (kind === 'tee') p.variant_id = Number(body.querySelector('#dVar').value) || null;
-          if (kind === 'blank') { const [c, z] = (body.querySelector('#dBlank').value || '|').split('|'); p.colour = c; p.size = z; }
+          if (kind === 'blank') { const [c, z, f] = (body.querySelector('#dBlank').value || '||').split('|'); p.colour = c; p.size = z; p.fit = f || 'oversized'; }
           const id = await q(sb.rpc('report_damage', { p }));
           closePanel(); toast(`Claim #${id} saved. Partners are told.`); done();
         } catch (err) { btn.disabled = false; toast(errText(err), true); }
@@ -3402,6 +3498,8 @@
       </div>
       <h2>Profit & loss</h2>
       <div class="card report">${pnl}<div class="actions"><button class="btn small outline" id="finPrint">${NATIVE ? 'Share' : 'Print / PDF'}</button></div></div>
+      <h2>Oversized vs Regular Fit</h2>
+      <div id="byFit"><div class="card"><div class="muted">Loading…</div></div></div>
       <h2>Profit per tee</h2>
       <div id="perTee" class="card"><div class="muted">Loading…</div></div>
       <div class="chipset" style="margin-top:8px"><button data-more="costs">Edit cost sheet</button><button data-more="fininputs">Finance inputs (depreciation, overheads…)</button><button data-more="changelog">Change log</button></div>
@@ -3430,6 +3528,7 @@
         return e.map(([c, v]) => `<div class="hbar"><span class="l">${esc(cat(c))}</span><span class="b"><i class="neg" style="width:${(v / mx) * 100}%"></i></span><span class="v">${esc(inr(v))}</span></div>`).join(''); })()}</div>` : '<div class="empty">No expenses in this period.</div>'}
       <div class="chipset" style="margin-top:14px">${[['books', 'Books'], ['partners', 'Partners'], ['close', 'Month close'], ['approvals', 'Approvals'], ['requests', 'Money entry']].map(([kk, l]) => `<button data-more="${kk}">${l}</button>`).join('')}</div>`;
     view.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => { state.finPeriod = b.dataset.p; VIEWS.finance(view); }; });
+    q(sb.rpc('fit_summary', { p_from: from, p_to: to })).then((rows) => { const el = view.querySelector('#byFit'); if (el) el.innerHTML = fitCompare(rows) || '<div class="card muted">No sales yet.</div>'; }).catch(() => { const el = view.querySelector('#byFit'); if (el) el.innerHTML = ''; });
     q(sb.rpc('product_finance', { p_from: from, p_to: to })).then((pf) => {
       const el = view.querySelector('#perTee');
       if (!el) return;
@@ -3502,7 +3601,8 @@
     const draw = () => {
       const vars = state.stock.filter((v) => v.product_id === pid && v.active).sort((x, y) => x.colour.localeCompare(y.colour) || sizeSort(x.size, y.size));
       const body = panel(`<h1 style="margin-top:14px">${b ? `Edit ${esc(b.code)}` : 'New production batch'}</h1>
-        <label for="bProd">Product</label><select id="bProd" ${b ? 'disabled' : ''}>${products.map((p) => `<option value="${p.product_id}" ${p.product_id === pid ? 'selected' : ''}>${esc(p.product_name)}</option>`).join('')}</select>
+        <label for="bProd">Product</label><select id="bProd" ${b ? 'disabled' : ''}>${products.map((p) => `<option value="${p.product_id}" ${p.product_id === pid ? 'selected' : ''}>${esc(p.product_name)}${hasRegular() ? ` · ${p.fit === 'regular' ? 'Regular Fit' : 'Oversized'}` : ''}</option>`).join('')}</select>
+        <div class="hint">Plain tees are taken from the blank stock of the same fit when printing starts.</div>
         <label>Pieces per size</label>
         <div class="qty-grid">${vars.map((v) => `<label class="qty-cell"><span><span class="dot-c" style="background:${esc(v.colour_hex)}"></span>${esc(v.colour)} ${esc(v.size)}</span>
           <input type="number" min="0" inputmode="numeric" data-vq="${v.variant_id}" value="${qty.get(v.variant_id) || ''}" placeholder="0"></label>`).join('')}</div>
@@ -3900,18 +4000,19 @@
         <h2>Why customers asked for exchange / return</h2><div class="card">${svc.slice(0, 20).map((r) => `<div style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(r.reason)}<div class="muted">${esc(r.order_no)} · ${r.kind === 'replacement' ? 'exchange' : 'return'} · ${esc(r.status)}</div></div>`).join('') || '<div class="muted">None yet.</div>'}</div>`;
     },
     async profit(el) {
-      const [prod, drops] = await Promise.all([q(sb.from('product_profit').select('*').order('profit', { ascending: false })), q(sb.from('drop_profit').select('*').order('profit', { ascending: false }))]);
+      const [prod, drops, fits] = await Promise.all([q(sb.from('product_profit').select('*').order('profit', { ascending: false })), q(sb.from('drop_profit').select('*').order('profit', { ascending: false })), q(sb.from('fit_profit').select('*')).catch(() => [])]);
       const noCost = prod.filter((p) => !Number(p.cost_price) && Number(p.units_sold));
       const tot = prod.reduce((a, p) => ({ rev: a.rev + Number(p.revenue), cost: a.cost + Number(p.cost), profit: a.profit + Number(p.profit), units: a.units + Number(p.units_sold) }), { rev: 0, cost: 0, profit: 0, units: 0 });
       el.innerHTML = `<p class="sub">Paid, not returned orders. Revenue is after every discount; cost is what that tee cost when it was sold.</p>
         <div class="grid"><div class="stat"><div class="k">Gross profit</div><div class="v">${signed(tot.profit)}</div></div><div class="stat"><div class="k">Margin</div><div class="v">${tot.rev ? Math.round((tot.profit / tot.rev) * 100) : 0}%</div></div>
           <div class="stat"><div class="k">Profit per tee</div><div class="v">${esc(inr(tot.units ? Math.round(tot.profit / tot.units) : 0))}</div></div><div class="stat"><div class="k">Tees sold</div><div class="v">${tot.units}</div></div></div>
         ${noCost.length ? `<div class="card warnbox" style="margin-top:12px">${noCost.length} product(s) have no cost price, so their profit looks too high: ${noCost.map((p) => esc(p.name)).join(', ')}. Set it in Stock → Edit.</div>` : ''}
+        <h2>Oversized vs Regular Fit</h2>${fitCompare(fits)}
         <h2>By drop</h2>${drops.length ? bars(drops, 'profit', (d) => d.drop_name) : '<div class="empty">No sales yet.</div>'}
         <div class="card table-wrap" style="margin-top:10px"><table><thead><tr><th>Drop</th><th class="r">Tees</th><th class="r">Revenue</th><th class="r">Margin</th></tr></thead><tbody>
           ${drops.map((d) => `<tr><td>${esc(d.drop_name)}</td><td class="r">${d.units_sold}</td><td class="r">${esc(inr(d.revenue))}</td><td class="r">${d.margin_pct ?? '—'}%</td></tr>`).join('')}</tbody></table></div>
         <h2>By tee</h2><div class="card table-wrap"><table><thead><tr><th>Tee</th><th class="r">Sold</th><th class="r">Cost/pc</th><th class="r">Profit</th><th class="r">Per tee</th></tr></thead><tbody>
-          ${prod.map((p) => `<tr><td>${esc(p.name)}<div class="muted">${esc(inr(p.price))} · ${p.margin_pct ?? '—'}%</div></td><td class="r">${p.units_sold}</td><td class="r">${Number(p.cost_price) ? esc(inr(p.cost_price)) : '<span class="neg">not set</span>'}</td>
+          ${prod.map((p) => `<tr><td>${esc(p.name)}${fitTag(p.fit)}<div class="muted">${esc(inr(p.price))} · ${p.margin_pct ?? '—'}%</div></td><td class="r">${p.units_sold}</td><td class="r">${Number(p.cost_price) ? esc(inr(p.cost_price)) : '<span class="neg">not set</span>'}</td>
             <td class="r">${signed(p.profit)}</td><td class="r">${esc(inr(Number(p.units_sold) ? Math.round(p.profit / p.units_sold) : 0))}</td></tr>`).join('')}</tbody></table></div>`;
     },
 

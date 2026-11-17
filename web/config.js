@@ -23,5 +23,13 @@ window.ZS_CONFIG = {
     { size: 'L',   chest: 48, length: 30, shoulder: 23 },
     { size: 'XL',  chest: 50, length: 31, shoulder: 24 },
     { size: 'XXL', chest: 52, length: 32, shoulder: 25 }
+  ],
+  // Regular Fit: true to size, shoulder seam on the shoulder (inches, garment)
+  SIZE_GUIDE_REGULAR: [
+    { size: 'S',   chest: 38, length: 26, shoulder: 16.5 },
+    { size: 'M',   chest: 40, length: 27, shoulder: 17.5 },
+    { size: 'L',   chest: 42, length: 28, shoulder: 18.5 },
+    { size: 'XL',  chest: 44, length: 29, shoulder: 19.5 },
+    { size: 'XXL', chest: 46, length: 30, shoulder: 20.5 }
   ]
 };

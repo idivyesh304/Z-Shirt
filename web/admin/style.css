@@ -799,3 +799,18 @@ details.card > summary::before { color: var(--gold); }
 .today .stat .v { font-size: clamp(14px, 4.2vw, 19px); }
 .kpi b, .amt, .kpi-row b { white-space: nowrap; word-break: normal; overflow-wrap: normal; }
 .kpi b { font-size: clamp(15px, 4.4vw, 20px); letter-spacing: -.03em; }
+
+/* ---------- fit: Oversized vs Regular ---------- */
+.fit-pill { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: 2px; white-space: nowrap; }
+.fit-pill.oversized { background: rgba(216, 181, 106, .14); color: var(--gold); border: 1px solid rgba(216, 181, 106, .3); }
+.fit-pill.regular { background: rgba(143, 176, 255, .12); color: var(--blue); border: 1px solid rgba(143, 176, 255, .3); }
+.fit-head { margin: 14px 0 6px; }
+.fit-choose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fit-choose button { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); display: grid; gap: 3px; }
+.fit-choose button b { font-size: 15px; }
+.fit-choose button span { font-size: 12px; color: var(--muted); }
+.fit-choose button.on { border-color: var(--gold); background: rgba(216, 181, 106, .1); box-shadow: inset 0 0 0 1px var(--gold); }
+.fit-compare th .fit-pill { font-size: 10px; }
+.fit-pill.plain { background: rgba(127, 209, 168, .12); color: var(--green); border: 1px solid rgba(127, 209, 168, .3); }
+.fit-choose + label { margin-top: 14px; }
+.fit-choose { margin-bottom: 4px; }

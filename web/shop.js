@@ -73,25 +73,29 @@
   const googleIcon = () => '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3A12 12 0 1 1 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7A20 20 0 1 0 44 24c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8A12 12 0 0 1 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7A20 20 0 0 0 6.3 14.7z"/><path fill="#4CAF50" d="M24 44a20 20 0 0 0 13.4-5.2l-6.2-5.2A12 12 0 0 1 12.7 28l-6.5 5A20 20 0 0 0 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.2-.1-2.3-.4-3.5z"/></svg>';
 
   // a drawn tee when a product has no photo yet
-  function tee(hex = '#111', label = 'Z-SHIRTS tee') {
+  const SHAPES = {
+    oversized: { body: 'M116 98 L168 76 Q200 102 232 76 L284 98 L364 172 L328 236 L296 216 L298 440 Q200 454 102 440 L104 216 L72 236 L36 172 Z', neck: 'M168 76 Q200 116 232 76', mark: 'translate(0 8)' },
+    regular: { body: 'M140 86 L172 70 Q200 94 228 70 L260 86 L322 118 L302 178 L270 166 L270 418 Q200 428 130 418 L130 166 L98 178 L78 118 Z', neck: 'M172 70 Q200 106 228 70', mark: 'translate(0 -6)' },
+  };
+  function tee(hex = '#111', label = 'Z-SHIRTS tee', fit = 'oversized') {
     const c = /^#[0-9a-f]{6}$/i.test(hex || '') ? hex : '#111111';
     const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
     const light = (r * 299 + g * 587 + b * 114) / 1000 > 150;
     const stroke = light ? 'rgba(0,0,0,.14)' : 'rgba(255,255,255,.14)';
-    const mark = light ? '#0e0e10' : '#c6ff00';
+    const mark = light ? '#000' : '#FFD60A';
+    const sh = SHAPES[fit] || SHAPES.oversized;
     return `<svg viewBox="0 0 400 500" role="img" aria-label="${esc(label)}" style="stroke:none">
-      <rect width="400" height="500" fill="${light ? '#e9e9e3' : '#f1f1ec'}"/>
-      <ellipse cx="200" cy="452" rx="130" ry="14" fill="rgba(0,0,0,.07)"/>
-      <path d="M128 92 L170 74 Q200 98 230 74 L272 92 L352 140 L322 214 L290 198 L292 432 Q200 446 108 432 L110 198 L78 214 L48 140 Z"
-        fill="${c}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M170 74 Q200 112 230 74" fill="none" stroke="${stroke}" stroke-width="5"/>
-      <path d="M182 170h36v7l-26 26h26v8h-36v-7l26-26h-26z" fill="${mark}"/>
+      <rect width="400" height="500" fill="${light ? '#e4e4de' : '#efefea'}"/>
+      <ellipse cx="200" cy="462" rx="${sh === SHAPES.regular ? 96 : 136}" ry="12" fill="rgba(0,0,0,.07)"/>
+      <path d="${sh.body}" fill="${c}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="${sh.neck}" fill="none" stroke="${stroke}" stroke-width="5"/>
+      <path transform="${sh.mark}" d="M182 170h36v7l-26 26h26v8h-36v-7l26-26h-26z" fill="${mark}"/>
     </svg>`;
   }
   const firstHex = (p) => (p.variants[0] && p.variants[0].hex) || '#111111';
   const imgOf = (p, i = 0, hex) => (p.images && p.images[i]
     ? `<img src="${esc(p.images[i])}" alt="${esc(p.name)}${i ? ` photo ${i + 1}` : ''}" loading="lazy"${i ? ' class="alt"' : ''}>`
-    : i ? '' : tee(hex || firstHex(p), p.name));
+    : i ? '' : tee(hex || firstHex(p), p.name, p.fit));
 
   // ================================================================ setup
   if (!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes('YOUR-PROJECT')) {
@@ -123,6 +127,11 @@
   const coloursOf = (p) => [...new Map(p.variants.map((v) => [v.colour, v.hex])).entries()];
   const isNew = (p) => p.published_at && (Date.now() - new Date(p.published_at)) / 864e5 <= 30;
   const S = () => state.settings;
+  const FIT_NAME = { oversized: 'Oversized', regular: 'Regular Fit' };
+  const fitOf = (p) => (p && p.fit === 'regular' ? 'regular' : 'oversized');
+  const fitName = (p) => FIT_NAME[fitOf(p)];
+  const mySizeFor = (p) => state.mySize && ((state.mySize.sizes && state.mySize.sizes[fitOf(p)]) || state.mySize.size);
+  const fitsLive = () => ['oversized', 'regular'].filter((f) => state.products.some((p) => fitOf(p) === f));
 
   // marketing source + coupon from the link: ?utm_source=instagram&coupon=ROHAN10
   (() => {
@@ -189,7 +198,7 @@
   }
 
   // ================================================================ search
-  const SYN = { tshirt: 'tee', tshirts: 'tee', 't-shirt': 'tee', 't-shirts': 'tee', tees: 'tee', shirt: 'tee', oversize: 'oversized', baggy: 'oversized', loose: 'oversized',
+  const SYN = { normal: 'regular', slim: 'regular', fitted: 'regular', classic: 'regular', 'regular-fit': 'regular', boxy: 'oversized', tshirt: 'tee', tshirts: 'tee', 't-shirt': 'tee', 't-shirts': 'tee', tees: 'tee', shirt: 'tee', oversize: 'oversized', baggy: 'oversized', loose: 'oversized',
     kala: 'black', kaala: 'black', safed: 'white', grey: 'gray', blk: 'black', wht: 'white', cheap: 'under', sale: 'sale', offer: 'sale' };
   const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9₹ ]+/g, ' ').split(/\s+/).filter(Boolean);
   function lev(a, b) {
@@ -203,7 +212,7 @@
     if (p._ix) return p._ix;
     const name = words(p.name);
     const bag = new Set([...name, ...words(p.type), ...words(p.category), ...words(p.fabric), ...(p.tags || []).flatMap(words), ...words(p.drop_name),
-      ...p.variants.flatMap((v) => words(v.colour)), 'tee', p.gsm ? `${p.gsm}gsm` : '']);
+      ...p.variants.flatMap((v) => words(v.colour)), 'tee', fitOf(p), p.gsm ? `${p.gsm}gsm` : '']);
     p._ix = { all: [...bag].filter(Boolean), name, initials: name.map((w) => w[0]).join('') };
     return p._ix;
   }
@@ -263,13 +272,13 @@
         <div class="chips" style="flex-wrap:wrap">${colours.map(([n, h]) => `<button class="chip" data-q="${esc(n)}"><i style="background:${esc(h)}"></i>${esc(n)}</button>`).join('')}</div>`;
     } else {
       const hits = searchList(q).slice(0, 8);
-      const cats = [...new Set(state.products.flatMap((p) => [p.category, p.type]).filter(Boolean))].filter((c) => c.toLowerCase().includes(q.toLowerCase())).slice(0, 3);
+      const cats = [...new Set(state.products.flatMap((p) => [p.category, p.type, fitName(p)]).filter(Boolean))].filter((c) => c.toLowerCase().includes(q.toLowerCase())).slice(0, 3);
       const cols = colourList().filter(([n]) => n.toLowerCase().startsWith(q.toLowerCase())).slice(0, 4);
       box.innerHTML = `
         <button class="s-row" data-q="${esc(q)}"><span class="im" style="display:grid;place-items:center">${I.search}</span><span><b>Search "${esc(q)}"</b><span class="muted small">${searchList(q).length} products</span></span></button>
         ${cats.map((c) => `<button class="s-row" data-q="${esc(c)}"><span class="im" style="display:grid;place-items:center">${I.fabric}</span><span><b>${mark(c, q)}</b><span class="muted small">Category</span></span></button>`).join('')}
         ${cols.map(([n, h]) => `<button class="s-row" data-q="${esc(n)}"><span class="im" style="display:grid;place-items:center"><i style="width:24px;height:24px;border-radius:50%;background:${esc(h)};border:1px solid rgba(0,0,0,.15)"></i></span><span><b>${mark(n, q)} tees</b><span class="muted small">Colour</span></span></button>`).join('')}
-        ${hits.length ? `<div class="s-h">Products</div>${hits.map((p) => `<a class="s-row" href="#/p/${esc(p.slug)}"><span class="im">${imgOf(p)}</span><span><b>${mark(p.name, q)}</b><span class="muted small">${esc(inr(p.price))}${p.mrp > p.price ? ` <s>${esc(inr(p.mrp))}</s>` : ''} · ${esc(p.type || '')}</span></span></a>`).join('')}`
+        ${hits.length ? `<div class="s-h">Products</div>${hits.map((p) => `<a class="s-row" href="#/p/${esc(p.slug)}"><span class="im">${imgOf(p)}</span><span><b>${mark(p.name, q)}</b><span class="muted small">${esc(inr(p.price))}${p.mrp > p.price ? ` <s>${esc(inr(p.mrp))}</s>` : ''}, ${esc(fitName(p))}</span></span></a>`).join('')}`
           : `<div class="empty-box"><h3>No match yet</h3><p>Try "black", "oversized" or a colour.</p></div>`}`;
     }
     box.querySelectorAll('[data-q]').forEach((b) => { b.onclick = () => goSearch(b.dataset.q); });
@@ -304,9 +313,19 @@
     if (!best && !pre) return null;
     return { price: after - pre, code: best && best.code, coupon: best ? best.d : 0, prepaid: pre, first: best && best.first };
   }
+  const LABEL_NAME = { new: 'New collection', bestseller: 'Bestseller', premium: 'Premium', coming_soon: 'Coming soon', prebook: 'Pre-book', restocked: 'Restocked' };
+  // Pure Essence plain tees show one card per colour, named by the colour
+  function asColour(p, colour) {
+    const vs = p.variants.filter((v) => v.colour === colour);
+    return { ...p, _colour: colour, name: colour, variants: vs, total_stock: vs.reduce((t, v) => t + v.stock, 0), _href: `#/p/${p.slug}?c=${encodeURIComponent(colour)}`, images: [] };
+  }
+  const expand = (list, cols) => list.flatMap((p) => (p.line === 'plain' ? coloursOf(p).map(([c]) => c).filter((c) => !cols || !cols.length || cols.includes(c)).map((c) => asColour(p, c)) : [p]));
+  const hrefOf = (p) => p._href || `#/p/${p.slug}`;
   function badgeOf(p) {
-    if (p.coming_soon) return '<span class="badge dark">Dropping soon</span>';
+    if (p.coming_soon) return `<span class="badge dark">${p.drop_at && new Date(p.drop_at) > Date.now() ? 'Dropping soon' : 'Coming soon'}</span>`;
     if (!available(p)) return '<span class="badge">Sold out</span>';
+    if (p.shop_label === 'prebook') return '<span class="badge dark">Pre-book</span>';
+    if (p.shop_label && LABEL_NAME[p.shop_label]) return `<span class="badge ${p.shop_label === 'premium' ? 'prem' : p.shop_label === 'bestseller' ? 'lime' : ''}">${LABEL_NAME[p.shop_label]}</span>`;
     if (p.is_preorder) return '<span class="badge dark">Pre-order</span>';
     if (p.limited_qty) return '<span class="badge dark">Limited</span>';
     if (p.sold_count >= 10 && p === bestSellers()[0]) return '<span class="badge lime">#1 Bestseller</span>';
@@ -321,16 +340,17 @@
     const cols = coloursOf(p);
     const low = !p.is_preorder && p.total_stock > 0 && p.total_stock <= 5;
     return `<div class="card${available(p) ? '' : ' oos'}" style="animation-delay:${Math.min(i, 12) * 30}ms">
-      <a href="#/p/${esc(p.slug)}" class="img" aria-label="${esc(p.name)}">
+      <div class="imgbox"><a href="${esc(hrefOf(p))}" class="img" aria-label="${esc(p.name)}">
         ${imgOf(p)}${imgOf(p, 1)}
         ${badgeOf(p)}
         ${p.rating_count ? `<span class="rate">${p.rating.toFixed(1)} <i>★</i><span>${p.rating_count}</span></span>` : ''}
       </a>
       <button class="heart${state.wish.has(p.id) ? ' on' : ''}" data-wish="${p.id}" aria-label="${state.wish.has(p.id) ? 'Remove from wishlist' : 'Add to wishlist'}">${I.heart}</button>
       <button class="cmp-btn${state.cmp.includes(p.id) ? ' on' : ''}" data-cmp="${p.id}" aria-label="Compare">${I.cmp}${state.cmp.includes(p.id) ? 'Added' : 'Compare'}</button>
-      <a href="#/p/${esc(p.slug)}" class="body">
+      ${available(p) && !p.coming_soon ? `<button class="qadd" data-qadd="${p.id}" ${p._colour ? `data-col="${esc(p._colour)}"` : ''} aria-label="Quick add ${esc(p.name)} to bag">${I.bag}</button>` : ''}</div>
+      <a href="${esc(hrefOf(p))}" class="body">
         <div class="nm">${esc(p.name)}</div>
-        <div class="sub">${esc([p.type, p.gsm ? `${p.gsm} GSM` : '', p.fabric].filter(Boolean).join(' · '))}</div>
+        <div class="sub"><span class="fit-dot ${fitOf(p)}"></span>${p.line === 'plain' ? `Pure Essence, ${esc(fitName(p))}` : `${esc(fitName(p))}${p.gsm ? `, ${p.gsm} GSM` : ''}`}</div>
         <div class="price"><b>${esc(inr(p.price))}</b>${p.mrp > p.price ? `<s>${esc(inr(p.mrp))}</s><span class="off">${p.discount_pct}% OFF</span>` : ''}</div>
         ${cols.length > 1 ? `<div class="dots">${cols.slice(0, 4).map(([, h]) => `<i style="background:${esc(h)}"></i>`).join('')}${cols.length > 4 ? `+${cols.length - 4}` : ''}</div>` : ''}
         ${p.coming_soon ? `<div class="urgent">Drops ${esc(dropDate(p.drop_at))}</div>` : low ? `<div class="urgent">Only ${p.total_stock} left</div>` : ''}
@@ -338,6 +358,9 @@
     </div>`;
   }
   function bindCards(root) {
+    root.querySelectorAll('[data-qadd]').forEach((b) => {
+      b.onclick = (e) => { e.preventDefault(); const p0 = byId(Number(b.dataset.qadd)); const p = b.dataset.col ? asColour(p0, b.dataset.col) : p0; quickAdd(p, (v) => { if (addToBag(p, v)) toast(`Added ${v.colour}, ${v.size}`, false, ' <a href="#/bag">View bag</a>'); }); };
+    });
     root.querySelectorAll('[data-wish]').forEach((b) => { b.onclick = (e) => { e.preventDefault(); toggleWish(Number(b.dataset.wish), b); }; });
     root.querySelectorAll('[data-cmp]').forEach((b) => { b.onclick = (e) => { e.preventDefault(); toggleCompare(Number(b.dataset.cmp)); b.classList.toggle('on', state.cmp.includes(Number(b.dataset.cmp))); b.innerHTML = `${I.cmp}${state.cmp.includes(Number(b.dataset.cmp)) ? 'Added' : 'Compare'}`; }; });
   }
@@ -472,18 +495,24 @@
     show(); setInterval(show, 4000);
 
     const cats = categoryList();
-    $('topnav').innerHTML = `<a href="#/shop?tag=new">New in</a><a href="#/shop?tag=best">Bestsellers</a>
-      ${cats.map(([slug, name]) => `<a href="#/shop?c=${esc(slug)}">${esc(name)}</a>`).join('')}
-      ${state.bundles.length ? '<a href="#/shop?tag=combo">Combos</a>' : ''}<a class="hot" href="#/shop?tag=sale">Sale</a>`;
+    const fl = fitsLive();
+    const plain = state.products.some((p) => p.line === 'plain');
+    const best = new Set(bestSellers().slice(0, 12).map((p) => p.id));
+    const colls = ['new', 'best', 'premium', 'restocked', 'prebook', 'coming'].filter((t) => state.products.some((p) => inTag(p, t, best)));
+    $('topnav').innerHTML = `
+      ${plain ? `<div class="nav-dd"><a href="#/shop?line=plain">Pure Essence <svg viewBox="0 0 24 24" class="caret"><path d="m6 9 6 6 6-6"/></svg></a>
+        <div class="dd">${['oversized', 'regular'].map((x) => `<a href="#/shop?line=plain&fit=${x}">${x === 'regular' ? 'Regular fit tees' : 'Oversized tees'}</a>`).join('')}<a href="#/shop?line=plain">All plain tees</a></div></div>` : ''}
+      ${fl.map((x) => `<a href="#/shop?fit=${x}">${FIT_NAME[x]}</a>`).join('')}
+      <div class="nav-dd"><a href="#/shop?tag=new">Collections <svg viewBox="0 0 24 24" class="caret"><path d="m6 9 6 6 6-6"/></svg></a>
+        <div class="dd">${(colls.length ? colls : ['new', 'best']).map((t) => `<a href="#/shop?tag=${t}">${TAGS[t]}</a>`).join('')}${state.bundles.length ? '<a href="#/shop?tag=combo">Combos</a>' : ''}</div></div>
+      <a class="hot" href="#/shop?tag=sale">Sale</a>`;
     $('btnMenu').onclick = () => {
+      const grp = (title, rows) => `<div class="s-h">${title}</div><div class="menu-list">${rows.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join('')}</div>`;
       const b = openSheet(`<h2>Shop</h2>
-        <div style="display:grid;gap:4px">
-          ${[['#/shop', 'All tees'], ['#/shop?tag=new', 'New in'], ['#/shop?tag=best', 'Bestsellers'], ...cats.map(([s, n]) => [`#/shop?c=${s}`, n]),
-            ...(state.bundles.length ? [['#/shop?tag=combo', 'Combos']] : []), ['#/shop?tag=sale', 'Sale'], ['#/shop?tag=under', 'Under ₹599']]
-            .map(([h, l]) => `<a class="s-row" style="font-weight:800;font-size:16px;text-transform:uppercase" href="${h}">${esc(l)}</a>`).join('')}
-        </div>
-        <div class="s-h">Help</div>
-        <a class="s-row" href="#/track">Track my order</a><a class="s-row" href="#/help">Size guide, returns & FAQs</a><a class="s-row" href="#/account">My account</a>`, { title: 'Menu' });
+        ${grp('By fit', [['#/shop', 'All tees'], ...fl.map((x) => [`#/shop?fit=${x}`, `${FIT_NAME[x]} tees`])])}
+        ${plain ? grp('Pure Essence, plain tees', [['#/shop?line=plain&fit=oversized', 'Oversized tees'], ['#/shop?line=plain&fit=regular', 'Regular fit tees']]) : ''}
+        ${grp('Collections', [...colls.map((t) => [`#/shop?tag=${t}`, TAGS[t]]), ...cats.map(([s2, n]) => [`#/shop?c=${s2}`, n]), ...(state.bundles.length ? [['#/shop?tag=combo', 'Combos']] : []), ['#/shop?tag=sale', 'Sale'], ['#/shop?tag=under', 'Under ₹599']])}
+        ${grp('Help', [['#/track', 'Track my order'], ['#/help', 'Size guide, returns and FAQs'], ['#/account', 'My account']])}`, { title: 'Menu' });
       b.querySelectorAll('a').forEach((a) => { a.onclick = closeSheet; });
     };
 
@@ -491,72 +520,81 @@
     if (wa) { $('waFloat').hidden = false; $('waFloat').href = `https://wa.me/${String(wa).replace(/\D/g, '')}?text=${encodeURIComponent('Hi Z-SHIRTS!')}`; }
     const ig = cfg.INSTAGRAM || s.instagram;
     $('foot').innerHTML = `<div class="wrap">
-      <div><div class="logo">Z<span>-</span>SHIRTS</div><p>Oversized tees in heavy cotton. Designed in Ahmedabad, delivered across India.</p>
+      <div><p>Oversized and Regular Fit tees in heavy cotton, printed or plain. Made in Ahmedabad, delivered across India.</p>
         <div class="paybadges"><span>UPI</span><span>Cards</span><span>Netbanking</span>${s.cod_enabled ? '<span>Cash on delivery</span>' : ''}</div></div>
-      <div><h4>Shop</h4><a href="#/shop">All tees</a><a href="#/shop?tag=new">New in</a><a href="#/shop?tag=best">Bestsellers</a><a href="#/shop?tag=sale">Sale</a></div>
+      <div><h4>Shop</h4><a href="#/shop?fit=oversized">Oversized</a><a href="#/shop?fit=regular">Regular Fit</a>${plain ? '<a href="#/shop?line=plain">Pure Essence</a>' : ''}<a href="#/shop?tag=new">New collection</a><a href="#/shop?tag=sale">Sale</a></div>
       <div><h4>Help</h4><a href="#/track">Track order</a><a href="#/help">Size guide</a><a href="#/help#returns">Returns & exchange</a><a href="#/help#shipping">Shipping</a><a href="#/help">FAQs</a></div>
       <div><h4>Talk to us</h4>${wa ? `<a target="_blank" rel="noopener" href="https://wa.me/${esc(String(wa).replace(/\D/g, ''))}">WhatsApp</a>` : ''}${ig ? `<a target="_blank" rel="noopener" href="https://instagram.com/${esc(ig)}">Instagram</a>` : ''}<a href="#/account">My account</a></div>
-    </div>`;
+    </div><div class="wordmark" aria-hidden="true">Z-SHIRTS</div>`;
   }
 
   // ================================================================ HOME
   PAGES.home = () => {
     const s = S();
-    const drop = state.products.filter((p) => p.coming_soon).sort((a, b) => new Date(a.drop_at) - new Date(b.drop_at))[0];
-    const hero = drop || state.products.find((p) => p.featured) || bestSellers()[0] || state.products[0];
-    const best = bestSellers().slice(0, 10);
-    const fresh = [...state.products].sort((a, b) => new Date(b.published_at) - new Date(a.published_at)).slice(0, 10);
-    const cols = colourList();
-    const cats = categoryList();
-    const under = state.products.filter((p) => p.price <= 599).length;
+    const drop = state.products.filter((p) => p.coming_soon && p.drop_at).sort((a, b) => new Date(a.drop_at) - new Date(b.drop_at))[0];
+    const bestIds = new Set(bestSellers().slice(0, 12).map((p) => p.id));
+    const best = expand(state.products.filter((p) => inTag(p, 'best', bestIds) && available(p))).slice(0, 10);
+    const fresh = expand([...state.products].filter((p) => inTag(p, 'new', bestIds)).sort((a, b) => new Date(b.published_at) - new Date(a.published_at))).slice(0, 10);
+    const freshAll = fresh.length ? fresh : expand([...state.products].sort((a, b) => new Date(b.published_at) - new Date(a.published_at))).slice(0, 10);
+    const plain = state.products.filter((p) => p.line === 'plain');
     const recent = state.viewed.map(byId).filter(Boolean).slice(0, 10);
+    const stat = (fit) => {
+      const ps = state.products.filter((p) => fitOf(p) === fit);
+      return { n: expand(ps).length, from: ps.length ? Math.min(...ps.map((p) => p.price)) : 0 };
+    };
+    const TAGTXT = { oversized: 'Dropped shoulder. Boxy and long. The street cut.', regular: 'Seam on the shoulder. True to size. The everyday cut.' };
+    const tag = (fit, i) => {
+      const st = stat(fit);
+      const live = st.n > 0;
+      return `<a class="htag-wrap" style="--d:${i * 140}ms" href="${live ? `#/shop?fit=${fit}` : '#/shop'}">
+        <span class="htag ${fit}">
+          <span class="htag-art">${tee(fit === 'regular' ? '#000000' : '#ffffff', FIT_NAME[fit], fit)}</span>
+          <span class="htag-name">${FIT_NAME[fit]}</span>
+          <span class="htag-line">${TAGTXT[fit]}</span>
+          <span class="htag-meta">${live ? `${st.n} ${st.n === 1 ? 'style' : 'styles'}, from ${esc(inr(st.from))}` : 'Landing soon'}</span>
+          <span class="htag-cta">Shop ${FIT_NAME[fit]}</span>
+        </span></a>`;
+    };
+    const colls = [['premium', 'Premium'], ['restocked', 'Restocked'], ['prebook', 'Pre-book'], ['coming', 'Coming soon']]
+      .map(([k, l]) => [k, l, state.products.filter((p) => inTag(p, k, bestIds))]).filter(([, , ps]) => ps.length);
+    const plainCols = [...new Map(plain.flatMap((p) => coloursOf(p))).entries()];
     main.innerHTML = `
-      <section class="hero">
-        <div class="hero-in">
-          <div>
-            ${drop ? `<div style="color:var(--lime);font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:12.5px">Next drop · ${esc(drop.drop_name || drop.name)}</div>` : ''}
-            <h1><span>Big fits.</span><span class="stroke">Zero</span><span>apologies.</span></h1>
-            <p>${drop ? `Drops in <b id="heroClock" style="color:#fff">${countdown(drop.drop_at)}</b>. Set a reminder and be first in line.` : `Heavyweight oversized tees${hero && hero.gsm ? ` in ${hero.gsm} GSM cotton` : ''}. Cut to drop off the shoulder. Built to last.`}</p>
-            <div class="btns"><a class="btn lime" href="#/shop">Shop all tees</a>${best.length ? '<a class="btn line" href="#/shop?tag=best">Bestsellers</a>' : ''}</div>
+      <section class="hero2">
+        <div class="wrap hero2-in">
+          <div class="hero2-copy">
+            <h1>Pick your fit.</h1>
+            <p>Oversized or Regular. Heavy cotton tees, printed or plain, delivered anywhere in India.</p>
+            ${drop ? `<a class="ticket" href="#/p/${esc(drop.slug)}"><span>Next drop</span><b>${esc(drop.drop_name || drop.name)}</b><span id="heroClock">${countdown(drop.drop_at)}</span></a>` : ''}
+            <ul class="hero2-trust">
+              <li>${I.truck}${s.free_shipping_above > 0 ? `Free delivery above ${esc(inr(s.free_shipping_above))}` : 'Free delivery'}</li>
+              ${s.cod_enabled ? `<li>${I.cash}Cash on delivery</li>` : ''}
+              <li>${I.swap}${s.return_window_days || 15}-day size exchange</li>
+            </ul>
           </div>
-          ${hero ? `<a class="hero-art" href="#/p/${esc(hero.slug)}">${imgOf(hero)}<span class="tag">${esc(hero.name)}<b>${esc(inr(hero.price))}${hero.mrp > hero.price ? ` <s style="color:var(--faint);font-size:13px">${esc(inr(hero.mrp))}</s>` : ''}</b></span></a>` : ''}
+          <div class="htags">${tag('oversized', 0)}${tag('regular', 1)}</div>
         </div>
-        <div class="marquee" aria-hidden="true"><div>${Array(2).fill(['Heavy cotton', 'Oversized fit', 'Pre-shrunk', 'Cash on delivery', 'Easy exchange', 'Made in India', 'Big fits zero apologies']).flat().map((t) => `<span>${t} ✦</span>`).join('')}</div></div>
       </section>
       <div class="wrap">
-        <div class="trust">
-          <div>${I.truck}<span><b>${s.free_shipping_above > 0 ? `Free above ${esc(inr(s.free_shipping_above))}` : 'Free delivery'}</b>Across India</span></div>
-          <div>${I.cash}<span><b>${s.cod_enabled ? 'Cash on delivery' : 'Secure payments'}</b>${s.cod_enabled ? 'Pay when it arrives' : 'UPI, cards'}</span></div>
-          <div>${I.swap}<span><b>${s.return_window_days || 15}-day exchange</b>Wrong size? Swap it</span></div>
-          <div>${I.shield}<span><b>Secure checkout</b>UPI · cards · netbanking</span></div>
-        </div>
-
-        <section class="sec">
-          <div class="sec-h"><h2>Shop the <em>vibe</em></h2><a href="#/shop">View all</a></div>
-          <div class="tiles">
-            <a class="tile dark" href="#/shop?tag=new"><span class="big">New<br>in</span><b>Just dropped</b></a>
-            ${best[0] ? `<a class="tile" href="#/shop?tag=best"><span class="art">${imgOf(best[0])}</span><b>Bestsellers</b></a>` : ''}
-            ${cats.map(([slug, name]) => { const p = state.products.find((x) => x.category_slug === slug); return `<a class="tile" href="#/shop?c=${esc(slug)}"><span class="art">${p ? imgOf(p) : ''}</span><b>${esc(name)}</b></a>`; }).join('')}
-            ${under ? '<a class="tile lime" href="#/shop?tag=under"><span class="big">Under<br>₹599</span><b>Steal deals</b></a>' : ''}
-            ${state.bundles.length ? `<a class="tile dark" href="#/shop?tag=combo"><span class="big">${esc(state.bundles[0].qty)} for<br>${esc(inr(state.bundles[0].price))}</span><b>Combos</b></a>` : ''}
-            <a class="tile" href="#/shop?tag=sale"><span class="art">${fresh[1] ? imgOf(fresh[1]) : ''}</span><b>On sale</b></a>
-          </div>
-        </section>
-
         ${best.length ? `<section class="sec"><div class="sec-h"><h2>Bestsellers</h2><a href="#/shop?tag=best">See all</a></div><div class="rail">${best.map(card).join('')}</div></section>` : ''}
 
-        ${state.bundles.length ? `<section class="sec"><div class="combo-band"><div><h3>${esc(state.bundles[0].name)}</h3><p>Mix any ${esc(state.bundles[0].qty)} tees. The combo price applies in your bag automatically.</p></div><a class="btn" href="#/shop?tag=combo">Build your combo</a></div></section>` : ''}
+        ${plain.length ? `<section class="sec pe-band">
+          <div class="pe-copy"><h2>Pure Essence</h2><p>Plain tees with nothing on them. Pick a colour, pick a fit.</p>
+            <div class="pe-btns">${['oversized', 'regular'].filter((x) => plain.some((p) => fitOf(p) === x)).map((x) => `<a class="btn ${x === 'oversized' ? '' : 'line'}" href="#/shop?line=plain&fit=${x}">${x === 'regular' ? 'Regular fit tees' : 'Oversized tees'}</a>`).join('')}</div></div>
+          <div class="pe-swatches">${plainCols.map(([n, h]) => `<a href="#/shop?line=plain&col=${encodeURIComponent(n)}"><i style="background:${esc(h)}"></i><span>${esc(n)}</span></a>`).join('')}</div>
+        </section>` : ''}
 
-        <section class="sec"><div class="sec-h"><h2>New <em>arrivals</em></h2><a href="#/shop?sort=new">See all</a></div><div class="rail">${fresh.map(card).join('')}</div></section>
+        <section class="sec"><div class="sec-h"><h2>New collection</h2><a href="#/shop?tag=new">See all</a></div><div class="rail">${freshAll.map(card).join('')}</div></section>
 
-        ${cols.length > 1 ? `<section class="sec"><div class="sec-h"><h2>Shop by colour</h2></div><div class="swatch-row">${cols.map(([n, h]) => `<a href="#/shop?col=${encodeURIComponent(n)}"><i style="background:${esc(h)}"></i>${esc(n)}</a>`).join('')}</div></section>` : ''}
+        ${colls.length ? `<section class="sec"><div class="sec-h"><h2>Collections</h2></div><div class="coll-row">${colls.map(([k, l, ps]) => `<a class="coll" href="#/shop?tag=${k}"><span class="coll-art">${imgOf(ps[0])}</span><b>${l}</b><span>${expand(ps).length} ${expand(ps).length === 1 ? 'tee' : 'tees'}</span></a>`).join('')}</div></section>` : ''}
 
-        ${state.offers.length ? `<section class="sec"><div class="sec-h"><h2>Offers for you</h2></div><div class="offers">${state.offers.map((o) => `<div class="offer"><div><b>${o.kind === 'percent' ? `${Number(o.value)}% OFF` : `${esc(inr(o.value))} OFF`}</b><div class="muted small">${esc(o.description || '')}${Number(o.min_order) ? ` · on orders above ${esc(inr(o.min_order))}` : ''}${o.first_order_only ? ' · first order' : ''}</div></div><button class="code" data-copy="${esc(o.code)}">${esc(o.code)}</button></div>`).join('')}</div></section>` : ''}
+        ${state.bundles.length ? `<section class="sec"><a class="combo2" href="#/shop?tag=combo"><b>${esc(state.bundles[0].name)}</b><span>Mix any ${esc(state.bundles[0].qty)} tees. The combo price is applied in your bag.</span></a></section>` : ''}
+
+        ${state.offers.length ? `<section class="sec"><div class="sec-h"><h2>Offers</h2></div><div class="offers">${state.offers.map((o) => `<div class="offer"><div><b>${o.kind === 'percent' ? `${Number(o.value)}% off` : `${esc(inr(o.value))} off`}</b><div class="muted small">${esc([o.description, Number(o.min_order) ? `On orders above ${inr(o.min_order)}` : '', o.first_order_only ? 'First order only' : ''].filter(Boolean).join('. '))}</div></div><button class="code" data-copy="${esc(o.code)}">${esc(o.code)}</button></div>`).join('')}</div></section>` : ''}
 
         <section class="sec" id="homeReviews"></section>
 
-        <section class="sec"><div class="club"><div><h3>Join <span>Z-Club</span></h3><ul><li>${s.loyalty_points_per_100 || 5} points per ₹100</li><li>1 point = ₹1 off</li><li>Early access to drops</li><li>Track all orders</li></ul></div>
-          <a class="btn lime" href="#/account">${state.account ? `You have ${state.account.points} points` : 'Join free with Google'}</a></div></section>
+        <section class="sec"><div class="club"><div><h3>Z-Club</h3><p>${s.loyalty_points_per_100 || 5} points on every ₹100. 1 point is ₹1 off your next order. Your orders, addresses and wishlist on every phone.</p></div>
+          <a class="btn" href="#/account">${state.account ? `You have ${state.account.points} points` : 'Join with Google'}</a></div></section>
 
         ${recent.length ? `<section class="sec"><div class="sec-h"><h2>Recently viewed</h2></div><div class="rail">${recent.map(card).join('')}</div></section>` : ''}
       </div>`;
@@ -569,7 +607,7 @@
     const { data } = await sb.from('public_reviews').select('*').gte('rating', 4).order('created_at', { ascending: false }).limit(8);
     const box = $('homeReviews');
     if (!box || !data || !data.length) return;
-    box.innerHTML = `<div class="sec-h"><h2>Fits that <em>hit</em></h2></div><div class="rev-wall">${data.map((r) => {
+    box.innerHTML = `<div class="sec-h"><h2>What buyers say</h2></div><div class="rev-wall">${data.map((r) => {
       const p = byId(r.product_id);
       return `<a class="rev-card" href="${p ? `#/p/${esc(p.slug)}` : '#/shop'}"><div><span class="rv"><span class="stars">${r.rating} ★</span></span>${r.verified ? '<span class="muted small">Verified buyer</span>' : ''}</div>
         <b style="display:block;margin-top:8px">${esc(r.title || 'Loved it')}</b><p class="small" style="margin:6px 0;color:var(--ink-2)">${esc((r.body || '').slice(0, 140))}</p>
@@ -579,16 +617,24 @@
 
   // ================================================================ SHOP (listing)
   const SORTS = [['rec', 'Recommended'], ['pop', 'Popularity'], ['new', 'New arrivals'], ['low', 'Price: low to high'], ['high', 'Price: high to low'], ['off', 'Biggest discount'], ['rating', 'Customer rating']];
-  const TAGS = { new: 'New in', best: 'Bestsellers', sale: 'Sale', under: 'Under ₹599', combo: 'Combo eligible', drop: 'Drops & limited', preorder: 'Pre-order' };
+  const TAGS = { new: 'New collection', best: 'Bestsellers', premium: 'Premium', restocked: 'Restocked', prebook: 'Pre-book', coming: 'Coming soon', sale: 'Sale', under: 'Under ₹599', combo: 'Combo eligible', drop: 'Drops & limited', preorder: 'Pre-order' };
+  const inTag = (p, tag, best) => ({
+    new: () => p.shop_label === 'new' || (!p.shop_label && isNew(p)),
+    best: () => p.shop_label === 'bestseller' || best.has(p.id),
+    premium: () => p.shop_label === 'premium', restocked: () => p.shop_label === 'restocked',
+    prebook: () => p.shop_label === 'prebook' || p.is_preorder, coming: () => !!p.coming_soon,
+  }[tag] || (() => true))();
   const listParams = () => {
     const pr = route.params;
     const arr = (k) => (pr[k] ? pr[k].split(',').filter(Boolean) : []);
-    return { q: pr.q || '', c: arr('c'), t: arr('t'), col: arr('col'), sz: arr('sz'), pmin: Number(pr.pmin) || 0, pmax: Number(pr.pmax) || 0,
+    return { line: pr.line === 'plain' || pr.line === 'designed' ? pr.line : '', fit: pr.fit === 'regular' || pr.fit === 'oversized' ? pr.fit : '', q: pr.q || '', c: arr('c'), t: arr('t'), col: arr('col'), sz: arr('sz'), pmin: Number(pr.pmin) || 0, pmax: Number(pr.pmax) || 0,
       off: Number(pr.off) || 0, r: Number(pr.r) || 0, stock: pr.stock === '1', tag: pr.tag || '', sort: pr.sort || 'rec' };
   };
   function listHash(f) {
     const q = new URLSearchParams();
     if (f.q) q.set('q', f.q);
+    if (f.line) q.set('line', f.line);
+    if (f.fit) q.set('fit', f.fit);
     ['c', 't', 'col', 'sz'].forEach((k) => { if (f[k].length) q.set(k, f[k].join(',')); });
     ['pmin', 'pmax', 'off', 'r'].forEach((k) => { if (f[k]) q.set(k, f[k]); });
     if (f.stock) q.set('stock', '1');
@@ -602,6 +648,7 @@
     const comboIds = new Set(state.bundles.flatMap((b) => (b.product_ids && b.product_ids.length ? b.product_ids : state.products.map((p) => p.id))));
     const best = new Set(bestSellers().slice(0, 12).map((p) => p.id));
     return list.filter((p) => {
+      if (skip !== 'fit' && f.fit && fitOf(p) !== f.fit) return false;
       if (skip !== 'c' && f.c.length && !f.c.includes(p.category_slug)) return false;
       if (skip !== 't' && f.t.length && !f.t.includes(p.type)) return false;
       if (skip !== 'col' && f.col.length && !p.variants.some((v) => f.col.includes(v.colour) && (!f.stock || v.stock > 0 || p.is_preorder))) return false;
@@ -611,8 +658,8 @@
       if (f.off && p.discount_pct < f.off) return false;
       if (f.r && p.rating < f.r) return false;
       if (f.stock && !available(p)) return false;
-      if (f.tag === 'new' && !isNew(p) && ![...state.products].sort((a, b) => new Date(b.published_at) - new Date(a.published_at)).slice(0, 8).includes(p)) return false;
-      if (f.tag === 'best' && !best.has(p.id)) return false;
+      if (skip !== 'line' && f.line && (p.line === 'plain' ? 'plain' : 'designed') !== f.line) return false;
+      if (['new', 'best', 'premium', 'restocked', 'prebook', 'coming'].includes(f.tag) && !inTag(p, f.tag, best)) return false;
       if (f.tag === 'sale' && !(p.discount_pct > 0)) return false;
       if (f.tag === 'under' && p.price > 599) return false;
       if (f.tag === 'combo' && !comboIds.has(p.id)) return false;
@@ -637,7 +684,14 @@
     const sizes = SIZE_ORDER.filter((z) => all.some((p) => p.variants.some((v) => v.size === z)));
     const maxP = Math.max(0, ...all.map((p) => p.price));
     const box = (k, val, label, n, extra = '') => `<label class="fopt"><input type="checkbox" data-f="${k}" value="${esc(val)}" ${f[k].includes(val) ? 'checked' : ''}>${extra}${esc(label)}<small>${n}</small></label>`;
+    const fl = fitsLive();
+    const hasPlain = all.some((p) => p.line === 'plain');
+    const best = new Set(bestSellers().slice(0, 12).map((p) => p.id));
+    const cols2 = ['new', 'best', 'premium', 'restocked', 'prebook', 'coming'].filter((t) => all.some((p) => inTag(p, t, best)));
     return `
+      ${hasPlain ? `<div class="fgroup"><h4>Range</h4>${[['', 'Everything'], ['designed', 'Designed tees'], ['plain', 'Pure Essence (plain)']].map(([x, l]) => `<label class="fopt"><input type="radio" name="line" data-line="${x}" ${f.line === x ? 'checked' : ''}>${l}<small>${count('line', (p) => !x || (p.line === 'plain' ? 'plain' : 'designed') === x)}</small></label>`).join('')}</div>` : ''}
+      ${cols2.length ? `<div class="fgroup"><h4>Collection</h4>${[['', 'All'], ...cols2.map((t) => [t, TAGS[t]])].map(([x, l]) => `<label class="fopt"><input type="radio" name="tag" data-tag="${x}" ${f.tag === x ? 'checked' : ''}>${l}</label>`).join('')}</div>` : ''}
+      ${fl.length > 1 ? `<div class="fgroup"><h4>Fit</h4>${['', ...fl].map((x) => `<label class="fopt"><input type="radio" name="fit" data-fit="${x}" ${f.fit === x ? 'checked' : ''}>${x ? FIT_NAME[x] : 'Both fits'}<small>${count('fit', (p) => !x || fitOf(p) === x)}</small></label>`).join('')}</div>` : ''}
       ${cats.length > 1 ? `<div class="fgroup"><h4>Category</h4>${cats.map(([s, n]) => box('c', s, n, count('c', (p) => p.category_slug === s))).join('')}</div>` : ''}
       ${types.length > 1 ? `<div class="fgroup"><h4>Style</h4>${types.map((t) => box('t', t, t, count('t', (p) => p.type === t))).join('')}</div>` : ''}
       <div class="fgroup"><h4>Size</h4><div class="fsizes">${sizes.map((z) => `<button type="button" data-sz="${z}" class="${f.sz.includes(z) ? 'on' : ''}">${z}</button>`).join('')}</div></div>
@@ -652,6 +706,9 @@
   }
   function readFilters(root, f) {
     const n = { ...f, c: [], t: [], col: [] };
+    const fr = root.querySelector('[data-fit]:checked'); if (fr) n.fit = fr.dataset.fit;
+    const lr = root.querySelector('[data-line]:checked'); if (lr) n.line = lr.dataset.line;
+    const tr = root.querySelector('[data-tag]:checked'); if (tr) n.tag = tr.dataset.tag;
     root.querySelectorAll('[data-f]:checked').forEach((i) => n[i.dataset.f].push(i.value));
     n.sz = [...root.querySelectorAll('[data-sz].on')].map((b) => b.dataset.sz);
     const pr = root.querySelector('[data-pr]:checked');
@@ -669,15 +726,16 @@
   }
   PAGES.shop = () => {
     const f = listParams();
-    const list = sortProducts(filterProducts(f), f.sort, f.q);
+    const list = expand(sortProducts(filterProducts(f), f.sort, f.q), f.col);
     const cat = f.c.length === 1 ? (categoryList().find(([s]) => s === f.c[0]) || [])[1] : '';
-    const title = f.q ? `"${f.q}"` : cat || (f.tag ? TAGS[f.tag] : f.col.length === 1 ? `${f.col[0]} tees` : 'All tees');
+    const title = f.q ? `"${f.q}"` : f.line === 'plain' ? `Pure Essence${f.fit ? ` ${FIT_NAME[f.fit]}` : ''}` : cat || (f.tag ? TAGS[f.tag] : f.col.length === 1 ? `${f.col[0]} tees` : f.fit ? `${FIT_NAME[f.fit]} tees` : 'All tees');
     const applied = [
       ...f.c.map((v) => ['c', v, (categoryList().find(([s]) => s === v) || [])[1] || v]), ...f.t.map((v) => ['t', v, v]), ...f.col.map((v) => ['col', v, v]), ...f.sz.map((v) => ['sz', v, `Size ${v}`]),
       ...(f.pmin || f.pmax ? [['price', '', `${f.pmin ? inr(f.pmin) : '₹0'} – ${f.pmax ? inr(f.pmax) : 'any'}`]] : []), ...(f.off ? [['off', '', `${f.off}%+ off`]] : []),
-      ...(f.r ? [['r', '', `${f.r}★+`]] : []), ...(f.stock ? [['stock', '', 'In stock']] : []), ...(f.tag ? [['tag', '', TAGS[f.tag]]] : []), ...(f.q ? [['q', '', `"${f.q}"`]] : []),
+      ...(f.r ? [['r', '', `${f.r}★+`]] : []), ...(f.stock ? [['stock', '', 'In stock']] : []), ...(f.tag ? [['tag', '', TAGS[f.tag]]] : []), ...(f.q ? [['q', '', `"${f.q}"`]] : []), ...(f.fit ? [['fit', '', FIT_NAME[f.fit]]] : []), ...(f.line ? [['line', '', f.line === 'plain' ? 'Pure Essence' : 'Designed tees']] : []),
     ];
     const nf = applied.filter(([k]) => !['q', 'tag'].includes(k)).length;
+    const fitChips = fitsLive().length > 1 ? fitsLive().map((x) => `<button class="chip fit-chip ${x}${f.fit === x ? ' on' : ''}" data-qfit="${x}">${FIT_NAME[x]}</button>`).join('') : '';
     const quick = [['stock', 'In stock'], ['sale', 'On sale'], ['new', 'New in'], ['under', 'Under ₹599'], ['best', 'Bestsellers']];
     main.innerHTML = `<div class="wrap">
       <div class="crumb"><a href="#/">Home</a> / <a href="#/shop">Shop</a>${f.q || cat || f.tag ? ` / ${esc(title)}` : ''}</div>
@@ -685,7 +743,7 @@
       <div class="count-line muted small">${list.length} ${list.length === 1 ? 'product' : 'products'}</div>
       <div class="toolbar">
         <button class="tb-btn only-m" id="openF">${I.filter}Filter${nf ? `<span class="n">${nf}</span>` : ''}</button>
-        <div class="chips">${quick.map(([k, l]) => `<button class="chip${(k === 'stock' ? f.stock : f.tag === k) ? ' on' : ''}" data-quick="${k}">${l}</button>`).join('')}
+        <div class="chips">${fitChips}${quick.map(([k, l]) => `<button class="chip${(k === 'stock' ? f.stock : f.tag === k) ? ' on' : ''}" data-quick="${k}">${l}</button>`).join('')}
           ${SIZE_ORDER.filter((z) => state.products.some((p) => p.variants.some((v) => v.size === z))).map((z) => `<button class="chip${f.sz.includes(z) ? ' on' : ''}" data-qsz="${z}">${z}</button>`).join('')}</div>
         <select class="sort-sel" id="sortSel" aria-label="Sort">${SORTS.map(([k, l]) => `<option value="${k}" ${f.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
       </div>
@@ -700,16 +758,17 @@
     bindCards(main);
     $('sortSel').onchange = (e) => go(listHash({ ...f, sort: e.target.value }));
     main.querySelectorAll('[data-quick]').forEach((b) => { b.onclick = () => { const k = b.dataset.quick; go(listHash(k === 'stock' ? { ...f, stock: !f.stock } : { ...f, tag: f.tag === k ? '' : k })); }; });
+    main.querySelectorAll('[data-qfit]').forEach((b) => { b.onclick = () => go(listHash({ ...f, fit: f.fit === b.dataset.qfit ? '' : b.dataset.qfit })); });
     main.querySelectorAll('[data-qsz]').forEach((b) => { b.onclick = () => { const z = b.dataset.qsz; go(listHash({ ...f, sz: f.sz.includes(z) ? f.sz.filter((x) => x !== z) : [...f.sz, z] })); }; });
     main.querySelectorAll('[data-rm]').forEach((b) => {
       b.onclick = () => {
         const k = b.dataset.rm; const v = b.dataset.v; const n = { ...f };
         if (['c', 't', 'col', 'sz'].includes(k)) n[k] = f[k].filter((x) => x !== v);
-        else if (k === 'price') { n.pmin = 0; n.pmax = 0; } else if (k === 'stock') n.stock = false; else n[k] = k === 'tag' || k === 'q' ? '' : 0;
+        else if (k === 'price') { n.pmin = 0; n.pmax = 0; } else if (k === 'stock') n.stock = false; else n[k] = ['tag', 'q', 'fit', 'line'].includes(k) ? '' : 0;
         go(listHash(n));
       };
     });
-    if ($('clearAll')) $('clearAll').onclick = () => go(listHash({ ...listParams(), c: [], t: [], col: [], sz: [], pmin: 0, pmax: 0, off: 0, r: 0, stock: false, tag: '', q: '' }));
+    if ($('clearAll')) $('clearAll').onclick = () => go(listHash({ ...listParams(), line: '', fit: '', c: [], t: [], col: [], sz: [], pmin: 0, pmax: 0, off: 0, r: 0, stock: false, tag: '', q: '' }));
     if ($('openF')) $('openF').onclick = () => {
       const b = openSheet(`<h2>Filters</h2><div id="fs">${filtersHtml(f)}</div>
         <div class="fsheet-foot"><button class="btn ghost" id="fClear">Clear</button><button class="btn" id="fApply">Show results</button></div>`, { title: 'Filters' });
@@ -718,7 +777,7 @@
       const upd = () => { const n = filterProducts(readFilters(fs, f)).length; $('fApply').textContent = `Show ${n} result${n === 1 ? '' : 's'}`; };
       fs.addEventListener('change', upd); fs.addEventListener('click', () => setTimeout(upd, 0)); upd();
       $('fApply').onclick = () => go(listHash(readFilters(fs, f)));
-      $('fClear').onclick = () => go(listHash({ ...f, c: [], t: [], col: [], sz: [], pmin: 0, pmax: 0, off: 0, r: 0, stock: false }));
+      $('fClear').onclick = () => go(listHash({ ...f, fit: '', c: [], t: [], col: [], sz: [], pmin: 0, pmax: 0, off: 0, r: 0, stock: false }));
     };
   };
 
@@ -761,28 +820,31 @@
   }
 
   // ================================================================ size help
-  const guideRows = () => cfg.SIZE_GUIDE || [];
-  function suggestSize(h, w, pref) {
+  const guideRows = (fit) => (fit === 'regular' ? cfg.SIZE_GUIDE_REGULAR || cfg.SIZE_GUIDE : cfg.SIZE_GUIDE) || [];
+  function suggestSize(h, w, pref, fit) {
     // oversized cut: weight sets the base, height nudges, preference shifts one size
-    const ladder = guideRows().map((r) => r.size);
+    const ladder = guideRows(fit).map((r) => r.size);
     if (!ladder.length || !h || !w) return null;
     let i = w < 56 ? 0 : w < 66 ? 1 : w < 77 ? 2 : w < 88 ? 3 : 4;
     if (h >= 183 && i < 2) i += 1;
     if (h <= 160 && i > 0 && w < 70) i -= 1;
-    if (pref === 'regular') i -= 1;
-    if (pref === 'baggy') i += 1;
+    // Oversized is cut big: your usual size already sits loose. Regular Fit is true to size.
+    if (fit !== 'regular' && pref === 'regular') i -= 1;
+    if (pref === 'baggy') i += fit === 'regular' ? 2 : 1;
+    if (fit === 'regular' && pref === 'oversized') i += 1;
     return ladder[Math.max(0, Math.min(ladder.length - 1, i))];
   }
   function sizeGuideSheet(p) {
-    const rows = guideRows();
+    const fit = p ? fitOf(p) : 'oversized';
+    const rows = guideRows(fit);
     let unit = store.get('zs_unit', 'in');
     const me = state.mySize || {};
     const b = openSheet(`<h2>Size guide</h2>
       <div class="sg">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="muted small">Garment measurements · oversized fit</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="muted small">${FIT_NAME[fit]} garment measurements</span>
           <span class="unit-sw"><button data-u="in">in</button><button data-u="cm">cm</button></span></div>
         <div id="sgT" style="margin-top:10px"></div>
-        <p class="muted small">Chest is measured armpit to armpit and doubled. Your usual size gives the relaxed, drop-shoulder look. Want it fitted? Go one size down.</p>
+        <p class="muted small">${fit === 'regular' ? 'Chest is measured armpit to armpit and doubled. Regular Fit is true to size: take the size you always wear.' : 'Chest is measured armpit to armpit and doubled. Your usual size gives the relaxed, drop-shoulder look. Want it closer to the body? Go one size down.'}</p>
       </div>
       <h2 style="margin-top:22px">Find my size</h2>
       <form class="form" id="fitF">
@@ -800,25 +862,37 @@
         ${rows.map((r) => `<tr class="${r.size === hl ? 'me' : ''}"><td><b>${esc(r.size)}</b></td><td>${f(r.chest)}</td><td>${f(r.length)}</td><td>${f(r.shoulder)}</td></tr>`).join('')}</tbody></table>`;
       b.querySelectorAll('[data-u]').forEach((x) => x.classList.toggle('on', x.dataset.u === unit));
     };
-    table(me.size);
-    b.querySelectorAll('[data-u]').forEach((x) => { x.onclick = () => { unit = x.dataset.u; store.set('zs_unit', unit); table(state.mySize && state.mySize.size); }; });
+    table(mySizeFor(p || { fit }));
+    b.querySelectorAll('[data-u]').forEach((x) => { x.onclick = () => { unit = x.dataset.u; store.set('zs_unit', unit); table(mySizeFor(p || { fit })); }; });
     b.querySelectorAll('[data-pref]').forEach((x) => { x.onclick = () => { pref = x.dataset.pref; b.querySelectorAll('[data-pref]').forEach((y) => y.classList.toggle('on', y === x)); }; });
     b.querySelector('#fitF').onsubmit = (e) => {
       e.preventDefault();
       const h = Number(b.querySelector('#fH').value), w = Number(b.querySelector('#fW').value);
       if (h < 120 || h > 220 || w < 30 || w > 180) { b.querySelector('#fitR').innerHTML = '<div class="err">Enter your height in cm and weight in kg.</div>'; return; }
-      const size = suggestSize(h, w, pref);
-      state.mySize = { h, w, pref, size };
+      const size = suggestSize(h, w, pref, fit);
+      state.mySize = { h, w, pref, size: suggestSize(h, w, 'oversized', 'oversized'), sizes: { oversized: suggestSize(h, w, pref, 'oversized'), regular: suggestSize(h, w, pref, 'regular') } };
       store.set('zs_my_size', state.mySize);
       table(size);
-      b.querySelector('#fitR').innerHTML = `<div class="fit-res"><span class="small">Your Z-SHIRTS size</span><b>${esc(size)}</b><span class="small">Saved. We'll mark it on every tee.</span></div>
+      b.querySelector('#fitR').innerHTML = `<div class="fit-res"><span class="small">Your size in ${FIT_NAME[fit]}</span><b>${esc(size)}</b><span class="small">Saved. We'll mark it on every tee${state.mySize.sizes.oversized !== state.mySize.sizes.regular ? ` (${state.mySize.sizes.oversized} in Oversized, ${state.mySize.sizes.regular} in Regular Fit)` : ''}.</span></div>
         ${p ? '<button class="btn full" id="fitUse" style="margin-top:10px">Select this size</button>' : ''}`;
       if (p && $('fitUse')) $('fitUse').onclick = () => { closeSheet(); const el = document.querySelector(`.sz[data-size="${size}"]`); if (el && !el.disabled) el.click(); };
-      if (route.path === 'p') document.querySelectorAll('.sz .mine').forEach((m) => m.remove()), document.querySelectorAll(`.sz[data-size="${size}"]`).forEach((s) => s.insertAdjacentHTML('beforeend', '<span class="mine">You</span>'));
+      if (route.path === 'p') document.querySelectorAll('.sz .mine').forEach((m) => m.remove()), document.querySelectorAll(`#sizes .sz[data-size="${size}"]`).forEach((s) => s.insertAdjacentHTML('beforeend', '<span class="mine">You</span>'));
     };
   }
 
   // ================================================================ PRODUCT PAGE
+  // side-by-side silhouettes with the real L measurements of both fits
+  function fitExplain(p, hex) {
+    const f = fitOf(p);
+    const L = (fit) => guideRows(fit).find((r) => r.size === 'L') || {};
+    const other = f === 'regular' ? 'oversized' : 'regular';
+    const twin = state.products.find((x) => fitOf(x) === other && available(x));
+    return `<div class="fit-explain">
+      ${['oversized', 'regular'].map((x) => `<div class="fe ${x}${x === f ? ' me' : ''}"><div class="fe-art">${tee(x === f ? hex || (p.variants[0] || {}).hex || '#111' : '#d8d8d2', FIT_NAME[x], x)}</div>
+        <b>${FIT_NAME[x]}</b><span>Size L: ${L(x).chest}" chest, ${L(x).length}" long</span></div>`).join('')}
+      <p>${f === 'regular' ? 'Sits close at the shoulder and chest, like the tee you wear every day.' : 'Shoulder seam drops past your shoulder. Wider and longer for the relaxed street look.'}
+        ${twin ? `<a class="link" href="#/shop?fit=${other}">See ${FIT_NAME[other]} tees</a>` : ''}</p></div>`;
+  }
   function pushViewed(id) {
     state.viewed = [id, ...state.viewed.filter((x) => x !== id)].slice(0, 12);
     store.set('zs_viewed', state.viewed);
@@ -850,8 +924,8 @@
           <button class="share" id="share" aria-label="Share">${I.share}</button>
         </div>
         <div class="info">
-          <div class="kicker">${esc(p.type || 'Tee')}${p.drop_name ? `<span class="pill">${esc(p.drop_name)}</span>` : ''}${p.limited_qty ? '<span class="pill">Limited</span>' : ''}${isNew(p) ? '<span class="pill">New</span>' : ''}</div>
-          <h1>${esc(p.name)}</h1>
+          <div class="kicker">${p.line === 'plain' ? '<a class="pe-mark" href="#/shop?line=plain">Pure Essence</a>' : ''}<span class="fit-tag-sm ${fitOf(p)}">${esc(fitName(p))}</span>${p.shop_label && LABEL_NAME[p.shop_label] ? `<span class="pill">${LABEL_NAME[p.shop_label]}</span>` : ''}${p.drop_name ? `<span class="pill">${esc(p.drop_name)}</span>` : ''}${p.limited_qty ? '<span class="pill">Limited</span>' : ''}${!p.shop_label && isNew(p) ? '<span class="pill">New</span>' : ''}</div>
+          <h1 id="pTitle">${esc(p.line === 'plain' ? colour : p.name)}</h1>
           ${p.rating_count ? `<a class="rate-line" href="#reviews" id="toRev">${p.rating.toFixed(1)} <i>★</i><span>${p.rating_count} rating${p.rating_count === 1 ? '' : 's'}</span></a>` : ''}
           <div class="pprice"><b>${esc(inr(p.price))}</b>${p.mrp > p.price ? `<s>MRP ${esc(inr(p.mrp))}</s><span class="off">(${p.discount_pct}% OFF)</span>` : ''}</div>
           <div class="tax">Inclusive of all taxes</div>
@@ -863,7 +937,8 @@
 
           <div class="opt-h"><b>Select size <span id="sizeMsg"></span></b><button class="link" id="sgOpen">${I.ruler && ''}Size guide</button></div>
           <div class="sizes" id="sizes"></div>
-          <div class="hint" id="sizeHint">${state.mySize ? `Your size: <b>${esc(state.mySize.size)}</b> · <button class="link" id="refit">change</button>` : `Not sure? <button class="link" id="refit">Find my size in 10 seconds</button>`}</div>
+          <div class="hint" id="sizeHint">${state.mySize ? `Your ${esc(fitName(p))} size is <b>${esc(mySizeFor(p))}</b>. <button class="link" id="refit">Change</button>` : `Not sure? <button class="link" id="refit">Find my size in 10 seconds</button>`}</div>
+          ${fitExplain(p, (cols.find(([n]) => n === colour) || [])[1])}
           ${fitTotal ? `<div class="fit-note"><span class="muted">Runs small</span><span class="fit-bar"><i style="left:${fitPos}%"></i></span><span class="muted">Runs large</span></div>
             <div class="hint">${Math.round(((p.fit_true || 0) / fitTotal) * 100)}% of buyers say it fits as expected</div>` : ''}
 
@@ -890,7 +965,7 @@
           </div></details>` : ''}
           <details class="acc" open><summary>Product details</summary><div class="acc-b">
             <div class="specs">
-              ${[['Fit', p.type || 'Oversized'], ['Fabric', p.fabric], ['Weight', p.gsm ? `${p.gsm} GSM` : ''], ['Neck', 'Round neck'], ['Sleeve', 'Half sleeve, drop shoulder'], ['Wash', 'Machine wash cold, inside out']]
+              ${[['Fit', fitOf(p) === 'regular' ? 'Regular Fit, true to size' : 'Oversized, cut big'], ['Fabric', p.fabric], ['Weight', p.gsm ? `${p.gsm} GSM` : ''], ['Neck', 'Round neck'], ['Sleeve', fitOf(p) === 'regular' ? 'Half sleeve, set-in shoulder' : 'Half sleeve, dropped shoulder'], ['Wash', 'Machine wash cold, inside out']]
                 .filter(([, v]) => v).map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}
             </div>
             ${p.description ? `<p style="white-space:pre-line">${esc(p.description)}</p>` : ''}
@@ -934,7 +1009,7 @@
       $('sizes').innerHTML = vs.map((v) => {
         const ok = canBuy(p, v);
         const low = !p.is_preorder && v.stock > 0 && v.stock <= 3;
-        return `<button class="sz${ok ? '' : ' out'}${size === v.size ? ' on' : ''}" data-size="${esc(v.size)}" data-v="${v.id}" aria-label="Size ${esc(v.size)}${ok ? '' : ', sold out'}">${esc(v.size)}${low ? `<small>${v.stock} left</small>` : ''}${state.mySize && state.mySize.size === v.size ? '<span class="mine">You</span>' : ''}</button>`;
+        return `<button class="sz${ok ? '' : ' out'}${size === v.size ? ' on' : ''}" data-size="${esc(v.size)}" data-v="${v.id}" aria-label="Size ${esc(v.size)}${ok ? '' : ', sold out'}">${esc(v.size)}${low ? `<small>${v.stock} left</small>` : ''}${mySizeFor(p) === v.size ? '<span class="mine">You</span>' : ''}</button>`;
       }).join('');
       $('sizes').querySelectorAll('.sz').forEach((b) => {
         b.onclick = () => {
@@ -957,6 +1032,7 @@
         colour = b.dataset.col;
         main.querySelectorAll('[data-col]').forEach((x) => x.classList.toggle('on', x === b));
         $('colName').textContent = colour;
+        if (p.line === 'plain') { $('pTitle').textContent = colour; document.title = `${colour} · Pure Essence ${fitName(p)} · Z-SHIRTS`; }
         if (!(p.images && p.images.length)) gm.innerHTML = `<div>${tee(cols.find(([n]) => n === colour)[1], p.name)}</div>`;
         history.replaceState(null, '', `#/p/${p.slug}?c=${encodeURIComponent(colour)}`);
         paintSizes();
@@ -1004,7 +1080,7 @@
     const also = state.also.filter((a) => a.product_id === p.id).sort((a, b) => b.n - a.n).map((a) => byId(a.other_id)).filter((x) => x && available(x)).slice(0, 8);
     const sim = state.products.filter((x) => x.id !== p.id && !also.includes(x)).map((x) => ({ x, s: (x.category_slug === p.category_slug ? 3 : 0) + (x.type === p.type ? 2 : 0) + (Math.abs(x.price - p.price) < 200 ? 1 : 0) + (available(x) ? 1 : 0) }))
       .sort((a, b) => b.s - a.s).slice(0, 10).map((y) => y.x);
-    if (also.length) $('pairs').innerHTML = `<div class="sec-h"><h2>Bought <em>together</em></h2></div><div class="rail">${also.map(card).join('')}</div>`;
+    if (also.length) $('pairs').innerHTML = `<div class="sec-h"><h2>Often bought together</h2></div><div class="rail">${also.map(card).join('')}</div>`;
     if (sim.length) $('similar').innerHTML = `<div class="sec-h"><h2>You may also like</h2></div><div class="rail">${sim.map(card).join('')}</div>`;
     const rv = state.viewed.filter((x) => x !== p.id).map(byId).filter(Boolean).slice(0, 8);
     if (rv.length) $('similar').insertAdjacentHTML('afterend', `<section class="sec"><div class="sec-h"><h2>Recently viewed</h2></div><div class="rail">${rv.map(card).join('')}</div></section>`);
@@ -1024,7 +1100,7 @@
     let filter = 0;
     const paint = () => {
       const shown = filter ? list.filter((r) => r.rating === filter) : list;
-      box.innerHTML = `<div class="sec-h"><h2>Ratings & <em>reviews</em></h2>${canWrite || reviewable ? '<button class="btn sm line" id="wrRev">Write a review</button>' : ''}</div>
+      box.innerHTML = `<div class="sec-h"><h2>Ratings and reviews</h2>${canWrite || reviewable ? '<button class="btn sm line" id="wrRev">Write a review</button>' : ''}</div>
         ${list.length ? `<div class="rv-top">
           <div class="rv-score"><b>${avg.toFixed(1)} <i>★</i></b><div class="muted small">${list.length} verified rating${list.length === 1 ? '' : 's'}</div></div>
           <div class="rv-bars">${dist.map((n, i) => `<div><button class="link small" data-rf="${5 - i}">${5 - i}★</button><span><i style="width:${list.length ? (n / list.length) * 100 : 0}%"></i></span><small class="muted">${n}</small></div>`).join('')}</div>
@@ -1096,7 +1172,7 @@
       <button class="btn full" style="margin-top:20px" id="qDone" disabled>Select a size</button>`, { title: 'Pick size' });
     let vid = null;
     const paint = () => {
-      b.querySelector('#qs').innerHTML = p.variants.filter((v) => v.colour === colour).map((v) => `<button class="sz${canBuy(p, v) ? '' : ' out'}" data-q="${v.id}" ${canBuy(p, v) ? '' : 'disabled'}>${esc(v.size)}${state.mySize && state.mySize.size === v.size ? '<span class="mine">You</span>' : ''}</button>`).join('');
+      b.querySelector('#qs').innerHTML = p.variants.filter((v) => v.colour === colour).map((v) => `<button class="sz${canBuy(p, v) ? '' : ' out'}" data-q="${v.id}" ${canBuy(p, v) ? '' : 'disabled'}>${esc(v.size)}${mySizeFor(p) === v.size ? '<span class="mine">You</span>' : ''}</button>`).join('');
       b.querySelectorAll('[data-q]').forEach((x) => { x.onclick = () => { vid = Number(x.dataset.q); b.querySelectorAll('[data-q]').forEach((y) => y.classList.toggle('on', y === x)); const d = b.querySelector('#qDone'); d.disabled = false; d.textContent = 'Done'; }; });
     };
     paint();
@@ -1131,14 +1207,14 @@
     const maxOff = Math.max(...list.map((p) => p.discount_pct || 0));
     const sizesOf = (p) => SIZE_ORDER.filter((z) => p.variants.some((v) => v.size === z && canBuy(p, v)));
     const row = (label, fn) => `<tr><th>${label}</th>${list.map((p) => `<td>${fn(p)}</td>`).join('')}</tr>`;
-    main.innerHTML = `<div class="wrap"><div class="crumb"><a href="#/">Home</a> / Compare</div><h1 class="page">Compare <em>${list.length}</em> tees</h1>
+    main.innerHTML = `<div class="wrap"><div class="crumb"><a href="#/">Home</a> / Compare</div><h1 class="page">Compare ${list.length} tees</h1>
       <div class="cmp"><table>
         <tr><th></th>${list.map((p) => `<td><a href="#/p/${esc(p.slug)}" style="display:block;aspect-ratio:4/5;border-radius:12px;overflow:hidden;background:var(--soft)">${imgOf(p)}</a><b style="display:block;margin-top:8px">${esc(p.name)}</b><button class="link small" data-rmc="${p.id}">Remove</button></td>`).join('')}</tr>
         ${row('Price', (p) => `<span class="${p.price === min ? 'best-v' : ''}">${esc(inr(p.price))}</span>${p.mrp > p.price ? ` <s class="muted small">${esc(inr(p.mrp))}</s>` : ''}`)}
         ${row('Discount', (p) => (p.discount_pct ? `<span class="${p.discount_pct === maxOff ? 'best-v' : ''}">${p.discount_pct}% off</span>` : '—'))}
         ${row('Best price', (p) => { const d = bestDeal(p); return d ? `${esc(inr(d.price))}${d.code ? ` <span class="muted small">with ${esc(d.code)}</span>` : ''}` : '—'; })}
         ${row('Rating', (p) => (p.rating_count ? `<span class="${p.rating === maxR ? 'best-v' : ''}">${p.rating.toFixed(1)} ★</span> <span class="muted small">(${p.rating_count})</span>` : '<span class="muted">No ratings yet</span>'))}
-        ${row('Fit', (p) => esc(p.type || '—'))}
+        ${row('Fit', (p) => esc(fitName(p)))}
         ${row('Fabric', (p) => esc(p.fabric || '—'))}
         ${row('Weight', (p) => (p.gsm ? `<span class="${p.gsm === maxG ? 'best-v' : ''}">${p.gsm} GSM</span>` : '—'))}
         ${row('Colours', (p) => `<div class="dots">${coloursOf(p).map(([n, h]) => `<i title="${esc(n)}" style="background:${esc(h)}"></i>`).join('')}</div>`)}
@@ -1785,7 +1861,8 @@
     const s = S();
     const wa = cfg.STORE_WHATSAPP || s.store_whatsapp;
     const faq = [
-      ['How do oversized tees fit?', 'They are cut wide with dropped shoulders. Take your usual size for the relaxed look, or one size down for a closer fit. Use "Find my size" on any product.'],
+      ['What is the difference between Oversized and Regular Fit?', 'Oversized is cut wide and long with the shoulder seam dropped past your shoulder. Regular Fit is true to size and sits on the shoulder, like an everyday tee. Every product page shows both shapes with real measurements.'],
+      ['How do oversized tees fit?', 'Take your usual size for the relaxed look, or one size down for a closer fit. Use "Find my size" on any product.'],
       ['Will it shrink?', 'Our fabric is pre-shrunk. Wash cold, inside out, and dry in shade to keep the print and colour fresh.'],
       ['Is cash on delivery available?', s.cod_enabled ? `Yes, for most pincodes. Check yours on any product page.${s.cod_fee ? ` A ₹${s.cod_fee} handling fee applies.` : ''}` : 'Right now we accept online payments only: UPI, cards, wallets and netbanking.'],
       ['When will my order arrive?', 'We ship in 1–2 days. Metro cities usually get it in 3–5 days, other places in 5–7 days. Enter your pincode on a product to see the date.'],
@@ -1795,8 +1872,8 @@
     ];
     main.innerHTML = `<div class="wrap" style="max-width:760px"><h1 class="page" style="margin-top:24px">Help</h1>
       <div class="chips" style="margin:14px 0"><a class="chip" href="#/track">Track order</a><a class="chip" href="#/help#size">Size guide</a><a class="chip" href="#/help#returns">Returns</a><a class="chip" href="#/help#shipping">Shipping</a></div>
-      <div class="box sg" id="size"><h3>Size guide <button class="link small" id="hFit">Find my size</button></h3><table><thead><tr><th>Size</th><th>Chest (in)</th><th>Length (in)</th><th>Shoulder (in)</th></tr></thead><tbody>
-        ${guideRows().map((r) => `<tr class="${state.mySize && state.mySize.size === r.size ? 'me' : ''}"><td><b>${esc(r.size)}</b></td><td>${r.chest}</td><td>${r.length}</td><td>${r.shoulder}</td></tr>`).join('')}</tbody></table></div>
+      ${['oversized', 'regular'].filter((x) => x === 'oversized' || fitsLive().includes(x)).map((x, i) => `<div class="box sg" ${i ? '' : 'id="size"'}><h3>${FIT_NAME[x]} size guide ${i ? '' : '<button class="link small" id="hFit">Find my size</button>'}</h3><table><thead><tr><th>Size</th><th>Chest (in)</th><th>Length (in)</th><th>Shoulder (in)</th></tr></thead><tbody>
+        ${guideRows(x).map((r) => `<tr class="${mySizeFor({ fit: x }) === r.size ? 'me' : ''}"><td><b>${esc(r.size)}</b></td><td>${r.chest}</td><td>${r.length}</td><td>${r.shoulder}</td></tr>`).join('')}</tbody></table></div>`).join('')}
       <div class="box" id="shipping"><h3>Shipping</h3><p class="small" style="margin:0">${s.free_shipping_above > 0 ? `Free delivery on orders above ${esc(inr(s.free_shipping_above))}; below that ${esc(inr(s.shipping_fee || 0))}.` : 'Free delivery across India.'} We ship across India with tracked couriers.</p></div>
       <div class="box" id="returns"><h3>Returns & exchange</h3><p class="small" style="margin:0">${s.return_window_days || 15}-day easy size exchange. Wrong size, defect or damage? Ask from your order page. Custom and pre-order prints can be exchanged only for defects.</p></div>
       <h2 style="margin-top:26px">FAQs</h2>${faq.map(([q, a]) => `<details class="acc"><summary>${esc(q)}</summary><div class="acc-b">${esc(a)}</div></details>`).join('')}
