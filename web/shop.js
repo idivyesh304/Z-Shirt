@@ -299,9 +299,11 @@
   const typeList = () => [...new Set(state.products.map((p) => p.type).filter(Boolean))];
   // best price with the best public coupon (+ online-payment offer)
   const usedFirst = () => !!(state.account && (state.account.orders || []).some((x) => x.status !== 'cancelled'));
+  const offerFits = (o, pid) => !(o.product_ids || []).length || o.product_ids.map(Number).includes(Number(pid));
   function bestDeal(p) {
     let best = null;
     for (const o of state.offers) {
+      if (!offerFits(o, p.id)) continue;
       if (Number(o.min_order) > p.price || (o.first_order_only && usedFirst())) continue;
       let d = o.kind === 'percent' ? Math.round(p.price * Number(o.value) / 100) : Number(o.value);
       if (o.max_discount) d = Math.min(d, Number(o.max_discount));
@@ -313,7 +315,8 @@
     if (!best && !pre) return null;
     return { price: after - pre, code: best && best.code, coupon: best ? best.d : 0, prepaid: pre, first: best && best.first };
   }
-  const LABEL_NAME = { new: 'New collection', bestseller: 'Bestseller', premium: 'Premium', coming_soon: 'Coming soon', prebook: 'Pre-book', restocked: 'Restocked' };
+  const LABEL_NAME = { new: 'New arrival', bestseller: 'Bestseller', premium: 'Premium', limited: 'Limited edition', coming_soon: 'Coming soon', prebook: 'Pre-book', restocked: 'Restocked' };
+  const hasL = (p, l) => (p.labels || []).includes(l) || p.shop_label === l;
   // Pure Essence plain tees show one card per colour, named by the colour
   function asColour(p, colour) {
     const vs = p.variants.filter((v) => v.colour === colour);
@@ -352,6 +355,7 @@
         <div class="nm">${esc(p.name)}</div>
         <div class="sub"><span class="fit-dot ${fitOf(p)}"></span>${p.line === 'plain' ? `Pure Essence, ${esc(fitName(p))}` : `${esc(fitName(p))}${p.gsm ? `, ${p.gsm} GSM` : ''}`}</div>
         <div class="price"><b>${esc(inr(p.price))}</b>${p.mrp > p.price ? `<s>${esc(inr(p.mrp))}</s><span class="off">${p.discount_pct}% OFF</span>` : ''}</div>
+        ${(() => { const o = state.offers.find((x) => (x.product_ids || []).map(Number).includes(p.id)); return o ? `<div class="card-offer">Extra ${o.kind === 'percent' ? `${Number(o.value)}%` : esc(inr(o.value))} off with ${esc(o.code)}</div>` : ''; })()}
         ${cols.length > 1 ? `<div class="dots">${cols.slice(0, 4).map(([, h]) => `<i style="background:${esc(h)}"></i>`).join('')}${cols.length > 4 ? `+${cols.length - 4}` : ''}</div>` : ''}
         ${p.coming_soon ? `<div class="urgent">Drops ${esc(dropDate(p.drop_at))}</div>` : low ? `<div class="urgent">Only ${p.total_stock} left</div>` : ''}
       </a>
@@ -488,7 +492,8 @@
     if (s.prepaid_discount_pct > 0) msgs.push(`Extra <b>${s.prepaid_discount_pct}% off</b> when you pay online`);
     if (s.cod_enabled) msgs.push('<b>Cash on delivery</b> available');
     if (s.return_window_days) msgs.push(`<b>${s.return_window_days}-day</b> easy size exchange`);
-    const first = state.offers.find((o) => o.first_order_only) || state.offers[0];
+    const general = state.offers.filter((o) => !(o.product_ids || []).length);
+    const first = general.find((o) => o.first_order_only) || general[0];
     if (first) msgs.push(`Use code <b>${esc(first.code)}</b>${first.description ? ` · ${esc(first.description)}` : ''}`);
     let i = 0;
     const show = () => { $('announce').innerHTML = `<span>${msgs[i % msgs.length] || 'Big fits. Zero apologies.'}</span>`; i++; };
@@ -498,7 +503,7 @@
     const fl = fitsLive();
     const plain = state.products.some((p) => p.line === 'plain');
     const best = new Set(bestSellers().slice(0, 12).map((p) => p.id));
-    const colls = ['new', 'best', 'premium', 'restocked', 'prebook', 'coming'].filter((t) => state.products.some((p) => inTag(p, t, best)));
+    const colls = ['new', 'best', 'premium', 'limited', 'restocked', 'prebook', 'coming'].filter((t) => state.products.some((p) => inTag(p, t, best)));
     $('topnav').innerHTML = `
       ${plain ? `<div class="nav-dd"><a href="#/shop?line=plain">Pure Essence <svg viewBox="0 0 24 24" class="caret"><path d="m6 9 6 6 6-6"/></svg></a>
         <div class="dd">${['oversized', 'regular'].map((x) => `<a href="#/shop?line=plain&fit=${x}">${x === 'regular' ? 'Regular fit tees' : 'Oversized tees'}</a>`).join('')}<a href="#/shop?line=plain">All plain tees</a></div></div>` : ''}
@@ -555,7 +560,7 @@
           <span class="htag-cta">Shop ${FIT_NAME[fit]}</span>
         </span></a>`;
     };
-    const colls = [['premium', 'Premium'], ['restocked', 'Restocked'], ['prebook', 'Pre-book'], ['coming', 'Coming soon']]
+    const colls = [['premium', 'Premium'], ['limited', 'Limited edition'], ['restocked', 'Restocked'], ['prebook', 'Pre-book'], ['coming', 'Coming soon']]
       .map(([k, l]) => [k, l, state.products.filter((p) => inTag(p, k, bestIds))]).filter(([, , ps]) => ps.length);
     const plainCols = [...new Map(plain.flatMap((p) => coloursOf(p))).entries()];
     main.innerHTML = `
@@ -583,7 +588,7 @@
           <div class="pe-swatches">${plainCols.map(([n, h]) => `<a href="#/shop?line=plain&col=${encodeURIComponent(n)}"><i style="background:${esc(h)}"></i><span>${esc(n)}</span></a>`).join('')}</div>
         </section>` : ''}
 
-        <section class="sec"><div class="sec-h"><h2>New collection</h2><a href="#/shop?tag=new">See all</a></div><div class="rail">${freshAll.map(card).join('')}</div></section>
+        <section class="sec"><div class="sec-h"><h2>New arrivals</h2><a href="#/shop?tag=new">See all</a></div><div class="rail">${freshAll.map(card).join('')}</div></section>
 
         ${colls.length ? `<section class="sec"><div class="sec-h"><h2>Collections</h2></div><div class="coll-row">${colls.map(([k, l, ps]) => `<a class="coll" href="#/shop?tag=${k}"><span class="coll-art">${imgOf(ps[0])}</span><b>${l}</b><span>${expand(ps).length} ${expand(ps).length === 1 ? 'tee' : 'tees'}</span></a>`).join('')}</div></section>` : ''}
 
@@ -617,12 +622,12 @@
 
   // ================================================================ SHOP (listing)
   const SORTS = [['rec', 'Recommended'], ['pop', 'Popularity'], ['new', 'New arrivals'], ['low', 'Price: low to high'], ['high', 'Price: high to low'], ['off', 'Biggest discount'], ['rating', 'Customer rating']];
-  const TAGS = { new: 'New collection', best: 'Bestsellers', premium: 'Premium', restocked: 'Restocked', prebook: 'Pre-book', coming: 'Coming soon', sale: 'Sale', under: 'Under ₹599', combo: 'Combo eligible', drop: 'Drops & limited', preorder: 'Pre-order' };
+  const TAGS = { new: 'New arrivals', best: 'Bestsellers', premium: 'Premium', limited: 'Limited edition', restocked: 'Restocked', prebook: 'Pre-book', coming: 'Coming soon', sale: 'Sale', under: 'Under ₹599', combo: 'Combo eligible', drop: 'Drops & limited', preorder: 'Pre-order' };
   const inTag = (p, tag, best) => ({
-    new: () => p.shop_label === 'new' || (!p.shop_label && isNew(p)),
-    best: () => p.shop_label === 'bestseller' || best.has(p.id),
-    premium: () => p.shop_label === 'premium', restocked: () => p.shop_label === 'restocked',
-    prebook: () => p.shop_label === 'prebook' || p.is_preorder, coming: () => !!p.coming_soon,
+    new: () => hasL(p, 'new') || (!p.shop_label && !(p.labels || []).length && isNew(p)),
+    best: () => hasL(p, 'bestseller') || best.has(p.id),
+    premium: () => hasL(p, 'premium'), restocked: () => hasL(p, 'restocked'), limited: () => hasL(p, 'limited') || !!p.limited_qty,
+    prebook: () => hasL(p, 'prebook') || p.is_preorder, coming: () => !!p.coming_soon,
   }[tag] || (() => true))();
   const listParams = () => {
     const pr = route.params;
@@ -659,7 +664,7 @@
       if (f.r && p.rating < f.r) return false;
       if (f.stock && !available(p)) return false;
       if (skip !== 'line' && f.line && (p.line === 'plain' ? 'plain' : 'designed') !== f.line) return false;
-      if (['new', 'best', 'premium', 'restocked', 'prebook', 'coming'].includes(f.tag) && !inTag(p, f.tag, best)) return false;
+      if (['new', 'best', 'premium', 'limited', 'restocked', 'prebook', 'coming'].includes(f.tag) && !inTag(p, f.tag, best)) return false;
       if (f.tag === 'sale' && !(p.discount_pct > 0)) return false;
       if (f.tag === 'under' && p.price > 599) return false;
       if (f.tag === 'combo' && !comboIds.has(p.id)) return false;
@@ -687,7 +692,7 @@
     const fl = fitsLive();
     const hasPlain = all.some((p) => p.line === 'plain');
     const best = new Set(bestSellers().slice(0, 12).map((p) => p.id));
-    const cols2 = ['new', 'best', 'premium', 'restocked', 'prebook', 'coming'].filter((t) => all.some((p) => inTag(p, t, best)));
+    const cols2 = ['new', 'best', 'premium', 'limited', 'restocked', 'prebook', 'coming'].filter((t) => all.some((p) => inTag(p, t, best)));
     return `
       ${hasPlain ? `<div class="fgroup"><h4>Range</h4>${[['', 'Everything'], ['designed', 'Designed tees'], ['plain', 'Pure Essence (plain)']].map(([x, l]) => `<label class="fopt"><input type="radio" name="line" data-line="${x}" ${f.line === x ? 'checked' : ''}>${l}<small>${count('line', (p) => !x || (p.line === 'plain' ? 'plain' : 'designed') === x)}</small></label>`).join('')}</div>` : ''}
       ${cols2.length ? `<div class="fgroup"><h4>Collection</h4>${[['', 'All'], ...cols2.map((t) => [t, TAGS[t]])].map(([x, l]) => `<label class="fopt"><input type="radio" name="tag" data-tag="${x}" ${f.tag === x ? 'checked' : ''}>${l}</label>`).join('')}</div>` : ''}
@@ -908,6 +913,8 @@
     let size = null;
     const deal = bestDeal(p);
     const s = S();
+    const dt = p.details || {};
+    const myOffers = state.offers.filter((o) => offerFits(o, p.id)).sort((a, b) => (b.product_ids || []).length - (a.product_ids || []).length);
     const imgs = (p.images && p.images.length ? p.images : [null]);
     const fitTotal = (p.fit_small || 0) + (p.fit_true || 0) + (p.fit_large || 0);
     const fitPos = fitTotal ? Math.round(((p.fit_true || 0) * 50 + (p.fit_large || 0) * 100) / fitTotal) : 50;
@@ -924,7 +931,7 @@
           <button class="share" id="share" aria-label="Share">${I.share}</button>
         </div>
         <div class="info">
-          <div class="kicker">${p.line === 'plain' ? '<a class="pe-mark" href="#/shop?line=plain">Pure Essence</a>' : ''}<span class="fit-tag-sm ${fitOf(p)}">${esc(fitName(p))}</span>${p.shop_label && LABEL_NAME[p.shop_label] ? `<span class="pill">${LABEL_NAME[p.shop_label]}</span>` : ''}${p.drop_name ? `<span class="pill">${esc(p.drop_name)}</span>` : ''}${p.limited_qty ? '<span class="pill">Limited</span>' : ''}${!p.shop_label && isNew(p) ? '<span class="pill">New</span>' : ''}</div>
+          <div class="kicker">${p.line === 'plain' ? '<a class="pe-mark" href="#/shop?line=plain">Pure Essence</a>' : ''}<span class="fit-tag-sm ${fitOf(p)}">${esc(fitName(p))}</span>${((p.labels && p.labels.length) ? p.labels : p.shop_label ? [p.shop_label] : []).filter((l) => LABEL_NAME[l]).map((l) => `<span class="pill">${LABEL_NAME[l]}</span>`).join('')}${p.drop_name ? `<span class="pill">${esc(p.drop_name)}</span>` : ''}${p.limited_qty ? '<span class="pill">Limited</span>' : ''}${!p.shop_label && isNew(p) ? '<span class="pill">New</span>' : ''}</div>
           <h1 id="pTitle">${esc(p.line === 'plain' ? colour : p.name)}</h1>
           ${p.rating_count ? `<a class="rate-line" href="#reviews" id="toRev">${p.rating.toFixed(1)} <i>★</i><span>${p.rating_count} rating${p.rating_count === 1 ? '' : 's'}</span></a>` : ''}
           <div class="pprice"><b>${esc(inr(p.price))}</b>${p.mrp > p.price ? `<s>MRP ${esc(inr(p.mrp))}</s><span class="off">(${p.discount_pct}% OFF)</span>` : ''}</div>
@@ -958,17 +965,21 @@
             </ul>
           </div>
 
-          ${state.offers.length || s.prepaid_discount_pct ? `<details class="acc" open><summary>Offers</summary><div class="acc-b offer-list">
-            ${state.offers.slice(0, 4).map((o) => `<div>${I.tag}<span><b>${esc(o.code)}</b> · ${o.kind === 'percent' ? `${Number(o.value)}% off` : `${esc(inr(o.value))} off`}${Number(o.min_order) ? ` above ${esc(inr(o.min_order))}` : ''}${o.first_order_only ? ' · first order' : ''}${o.description ? ` · ${esc(o.description)}` : ''}</span></div>`).join('')}
+          ${myOffers.length || s.prepaid_discount_pct ? `<details class="acc" open><summary>Offers</summary><div class="acc-b offer-list">
+            ${myOffers.slice(0, 4).map((o) => `<div class="${(o.product_ids || []).length ? 'tee-offer' : ''}">${I.tag}<span><b>${esc(o.code)}</b> · ${o.kind === 'percent' ? `${Number(o.value)}% off` : `${esc(inr(o.value))} off`}${(o.product_ids || []).length ? ' on this tee' : ''}${Number(o.min_order) ? ` above ${esc(inr(o.min_order))}` : ''}${o.first_order_only ? ' · first order' : ''}${o.ends_at ? ` · till ${esc(new Date(o.ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}` : ''}</span></div>`).join('')}
             ${s.prepaid_discount_pct ? `<div>${I.tag}<span><b>Pay online</b> · extra ${s.prepaid_discount_pct}% off${s.prepaid_discount_max ? ` up to ${esc(inr(s.prepaid_discount_max))}` : ''}</span></div>` : ''}
             ${state.bundles.map((b) => `<div>${I.gift}<span><b>${esc(b.name)}</b> · any ${esc(b.qty)} for ${esc(inr(b.price))}, applied in your bag</span></div>`).join('')}
           </div></details>` : ''}
           <details class="acc" open><summary>Product details</summary><div class="acc-b">
             <div class="specs">
-              ${[['Fit', fitOf(p) === 'regular' ? 'Regular Fit, true to size' : 'Oversized, cut big'], ['Fabric', p.fabric], ['Weight', p.gsm ? `${p.gsm} GSM` : ''], ['Neck', 'Round neck'], ['Sleeve', fitOf(p) === 'regular' ? 'Half sleeve, set-in shoulder' : 'Half sleeve, dropped shoulder'], ['Wash', 'Machine wash cold, inside out']]
+              ${[['Fit', fitOf(p) === 'regular' ? 'Regular Fit, true to size' : 'Oversized, cut big'], ['Fabric', p.fabric], ['Weight', p.gsm ? `${p.gsm} GSM` : ''], ['Neck', dt.neck || 'Round neck'],
+                ['Sleeve', `${dt.sleeve || 'Half sleeve'}, ${fitOf(p) === 'regular' ? 'set-in shoulder' : 'dropped shoulder'}`], ['Print', dt.print_type && dt.print_type !== 'No print (plain)' ? `${dt.print_type}${dt.print_place ? `, ${dt.print_place.toLowerCase()}` : ''}` : p.line === 'plain' ? 'No print' : ''],
+                ['Wash care', dt.care || 'Machine wash cold, inside out'], ['Made in', 'India']]
                 .filter(([, v]) => v).map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}
             </div>
+            ${(dt.highlights || []).length ? `<ul class="hl">${dt.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}
             ${p.description ? `<p style="white-space:pre-line">${esc(p.description)}</p>` : ''}
+            ${dt.model ? `<p class="muted small">${esc(dt.model)}</p>` : ''}
           </div></details>
           <details class="acc"><summary>Delivery & returns</summary><div class="acc-b">
             Ships in 1–2 days. Most cities get it in 3–6 days. Track it live with your order number.<br><br>
@@ -1328,7 +1339,8 @@
 
     const paintCoupons = (q) => {
       const sub = q ? q.subtotal - (q.bundle_discount || 0) : lines.reduce((a, l) => a + l.p.price * l.qty, 0);
-      const offers = state.offers.map((o) => ({ o, r: couponSave(o, sub) })).sort((a, b) => (b.r.ok - a.r.ok) || ((b.r.d || 0) - (a.r.d || 0)));
+      const inBag = new Set(state.bag.map((x) => x.product_id));
+      const offers = state.offers.filter((o) => !(o.product_ids || []).length || o.product_ids.some((x) => inBag.has(Number(x)))).map((o) => ({ o, r: couponSave(o, (o.product_ids || []).length ? lines.filter((l) => o.product_ids.map(Number).includes(l.p.id)).reduce((a, l) => a + l.p.price * l.qty, 0) : sub) })).sort((a, b) => (b.r.ok - a.r.ok) || ((b.r.d || 0) - (a.r.d || 0)));
       const box = $('cpnBox');
       box.innerHTML = `${q && q.coupon_code ? `<div class="applied-cpn"><span>${I.check && ''}<b>${esc(q.coupon_code)}</b> applied · you save ${esc(inr(q.coupon_discount))}</span><button class="link" id="cpnRm">Remove</button></div>` : ''}
         ${q && coupon && q.coupon_error ? `<div class="err">${esc(q.coupon_error)}</div>` : ''}

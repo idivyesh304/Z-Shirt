@@ -814,3 +814,17 @@ details.card > summary::before { color: var(--gold); }
 .fit-pill.plain { background: rgba(127, 209, 168, .12); color: var(--green); border: 1px solid rgba(127, 209, 168, .3); }
 .fit-choose + label { margin-top: 14px; }
 .fit-choose { margin-bottom: 4px; }
+
+/* ---------- listing form ---------- */
+.lst-h { display: flex; gap: 12px; align-items: center; margin: 26px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
+.lst-h span { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(216, 181, 106, .14); color: var(--gold); font-weight: 800; font-size: 13px; }
+.lst-h b { display: block; font-size: 16px; }
+.lst-h small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.label-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.label-pick button { text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); display: grid; gap: 2px; }
+.label-pick button b { font-size: 14px; }
+.label-pick button span { font-size: 11.5px; color: var(--muted); }
+.label-pick button.on { border-color: var(--gold); background: rgba(216, 181, 106, .1); box-shadow: inset 0 0 0 1px var(--gold); }
+.label-pick button.on b::before { content: '✓ '; color: var(--gold); }
+.stk-in { width: 58px !important; height: 40px !important; padding: 0 6px !important; text-align: center; }
+.lst-sum { margin: 18px 0 12px; padding: 12px 14px; border-radius: 12px; background: rgba(216, 181, 106, .08); border: 1px dashed var(--gline); font-size: 13.5px; color: var(--text); }

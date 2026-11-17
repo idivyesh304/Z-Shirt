@@ -1166,7 +1166,7 @@
             }).join('')}</tr>`).join('')}</tbody></table>
           <div class="actions">
             <button class="btn small outline" data-edit="${g.product_id}">Edit</button>
-            <button class="btn small outline label-btn" data-label="${g.product_id}">Label: ${esc(labelName(g.shop_label))}</button>
+            <button class="btn small outline label-btn" data-label="${g.product_id}">${(g.labels && g.labels.length) ? esc(g.labels.map(labelName).join(', ')) : 'Add to collections'}</button>
             ${g.line === 'plain' ? `<button class="btn small" data-fromblank="${g.product_id}">+ Move from blanks</button>` : ''}
             ${!g.published && isPartner() ? `<button class="btn small" data-pub="${g.product_id}">Publish to shop</button>` : ''}
             ${g.published && isPartner() ? `<button class="btn small outline" data-price="${g.product_id}">Change price</button>` : ''}
@@ -1184,7 +1184,7 @@
           ${isPartner() ? `<button class="btn small outline" data-restore="${p.id}">Restore</button>` : ''}</div>`).join('')}</details>` : ''}`;
 
     view.querySelectorAll('[data-label]').forEach((b) => {
-      b.onclick = async () => { const g = state.stock.find((v) => v.product_id === Number(b.dataset.label)); if (await pickLabel(g.product_id, g.product_name, g.shop_label, false)) VIEWS.stock(view); };
+      b.onclick = async () => { const g = state.stock.find((v) => v.product_id === Number(b.dataset.label)); if (await pickLabels(g.product_id, g.product_name, g.labels || (g.shop_label ? [g.shop_label] : []), false)) { await loadStock(); VIEWS.stock(view); } };
     });
     view.querySelectorAll('[data-fromblank]').forEach((b) => {
       b.onclick = async () => {
@@ -1310,88 +1310,240 @@
   const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
   const FITS = [['oversized', 'Oversized'], ['regular', 'Regular Fit']];
   const fitLabel = (f) => (f === 'regular' ? 'Regular Fit' : 'Oversized');
-  const LABELS = [['new', 'New collection'], ['bestseller', 'Bestseller'], ['premium', 'Premium'], ['coming_soon', 'Coming soon'], ['prebook', 'Pre-book'], ['restocked', 'Restocked'], ['none', 'No label']];
-  const labelName = (l) => (LABELS.find((x) => x[0] === (l || 'none')) || LABELS[6])[1];
-  async function pickLabel(pid, name, current, first) {
-    const v = await ask({ title: first ? `First stock for ${name}` : `Shop label for ${name}`, html: `<p class="muted">${first ? 'Where should it show in the shop? You can change this any time from the Stock screen.' : 'Shows on the tee in the shop and puts it in that collection.'}</p>`,
-      fields: [{ name: 'l', label: 'Label', type: 'select', value: current || 'new', options: LABELS }], ok: 'Save label' });
-    if (!v) return false;
-    try { await q(sb.rpc('set_product_label', { p_product: pid, p_label: v.l })); toast(`${name}: ${labelName(v.l)}`); return true; } catch (e) { toast(errText(e), true); return false; }
+  const LABELS = [['new', 'New arrival'], ['premium', 'Premium'], ['bestseller', 'Bestseller'], ['limited', 'Limited edition'], ['restocked', 'Restocked'], ['prebook', 'Pre-book'], ['coming_soon', 'Coming soon'], ['none', 'No label']];
+  const LABEL_HELP = { new: 'Shows in New arrivals', premium: 'Premium collection', bestseller: 'Pinned with bestsellers', limited: 'Few pieces, never restocked', restocked: 'Back in stock', prebook: 'Customers order now, you make it', coming_soon: 'Visible, cannot be ordered yet' };
+  const labelName = (l) => (LABELS.find((x) => x[0] === (l || 'none')) || LABELS[LABELS.length - 1])[1];
+  // collections a tee sits in (many at once). Changed any time from the Stock card.
+  async function pickLabels(pid, name, current, first) {
+    const on = new Set((current || []).filter(Boolean));
+    return new Promise((resolve) => {
+      const draw = () => {
+        const body = panel(`<h1 style="margin-top:14px">${first ? `First stock for ${esc(name)}` : `Collections for ${esc(name)}`}</h1>
+          <p class="sub">${first ? 'Where should it show in the shop? Pick all that fit. You can change this any time from the Stock screen.' : 'The tee shows in every collection you tick. The most important one is its badge in the shop.'}</p>
+          <div class="label-pick">${LABELS.filter(([k]) => k !== 'none').map(([k, l]) => `<button type="button" data-lp="${k}" class="${on.has(k) ? 'on' : ''}"><b>${l}</b><span>${LABEL_HELP[k]}</span></button>`).join('')}</div>
+          <button class="btn block" id="lpSave" style="margin-top:16px">Save collections</button>`);
+        body.querySelectorAll('[data-lp]').forEach((x) => {
+          x.onclick = () => {
+            const k = x.dataset.lp;
+            if (on.has(k)) on.delete(k); else { on.add(k); if (k === 'prebook') on.delete('coming_soon'); if (k === 'coming_soon') on.delete('prebook'); }
+            draw();
+          };
+        });
+        body.querySelector('#lpSave').onclick = async () => {
+          try { await q(sb.rpc('set_product_labels', { p_product: pid, p_labels: [...on] })); closePanel(); toast(on.size ? `${name}: ${[...on].map(labelName).join(', ')}` : `${name}: no collection`); resolve(true); } catch (e) { toast(errText(e), true); }
+        };
+      };
+      draw();
+    });
   }
-  // the first time stock lands on a tee with no label, ask which shop label it gets
+  // the first time stock lands on a tee with no collection, ask where it goes
   async function labelOnFirstStock(pid) {
     const vars = state.stock.filter((v) => v.product_id === pid);
-    if (!vars.length || vars[0].shop_label) return;
-    await pickLabel(pid, vars[0].product_name, null, true);
+    if (!vars.length || (vars[0].labels && vars[0].labels.length) || vars[0].shop_label) return;
+    await pickLabels(pid, vars[0].product_name, [], true);
   }
 
+  const NECKS = ['Round neck', 'Rib crew neck', 'Polo collar', 'V neck', 'Henley'];
+  const SLEEVES = ['Half sleeve', 'Full sleeve', 'Sleeveless'];
+  const PRINTS = ['DTF print', 'Screen print', 'Puff print', 'Embroidery', 'Patchwork', 'No print (plain)'];
+  const PLACES = ['Front', 'Back', 'Front and back', 'Pocket', 'Sleeve'];
+
+  // ---------------- the listing: everything the shop needs, in one go
   async function openProductForm(pid) {
-    const prod = pid ? await q(sb.from('products').select('*').eq('id', pid).single()) : null;
+    const [prod, bundles] = await Promise.all([
+      pid ? q(sb.from('products').select('*').eq('id', pid).single()) : null,
+      q(sb.from('bundles').select('*').eq('active', true)).catch(() => []),
+    ]);
     const existing = pid ? state.stock.filter((v) => v.product_id === pid) : [];
-    const sel = {
+    const d = (prod && prod.details) || {};
+    const live = prod && prod.published_at;
+    const P = isPartner();
+    const localDT = (iso) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : '');
+    const f = {
+      line: (prod && prod.line) || 'designed',
+      fit: (prod && prod.fit) || (state.fitFilter === 'regular' ? 'regular' : 'oversized'),
+      name: prod ? prod.name : '', cat: prod && prod.category_id ? String(prod.category_id) : '', type: prod ? prod.type : 'Oversized Tee',
+      desc: prod ? prod.description : '', highlights: (d.highlights || []).join('\n'),
+      labels: new Set(prod ? (prod.labels && prod.labels.length ? prod.labels : prod.shop_label ? [prod.shop_label] : []) : ['new']),
+      mrp: prod ? prod.mrp : '', price: prod ? prod.price : '', cost: prod && Number(prod.cost_price) ? prod.cost_price : '', fab: (prod && prod.fabric_type) || 'cotton',
+      fabric: prod ? prod.fabric || '' : '100% Cotton', gsm: prod && prod.gsm ? prod.gsm : '', neck: d.neck || 'Round neck', sleeve: d.sleeve || 'Half sleeve',
+      print_type: d.print_type || '', print_place: d.print_place || '', care: d.care || 'Machine wash cold, inside out. Do not iron on print.', model: d.model || '',
+      drop: (prod && prod.drop_name) || '', dropAt: localDT(prod && prod.drop_at), limited: (prod && prod.limited_qty) || '',
+      feat: !!(prod && prod.featured), active: prod ? prod.active : true,
+      offer: 'none', ocode: '', okind: 'percent', oval: '', oend: '', ocombo: new Set(),
       colours: new Map(existing.length ? existing.map((v) => [v.colour, v.colour_hex]) : []),
       sizes: new Set(existing.length ? existing.map((v) => v.size) : ['S', 'M', 'L', 'XL', 'XXL']),
       images: prod ? [...(prod.images || [])] : [],
-      fit: (prod && prod.fit) || state.fitFilter === 'regular' && 'regular' || 'oversized',
-      line: (prod && prod.line) || 'designed',
-      label: prod ? prod.shop_label || 'none' : 'new',
+      stock: {},
     };
-    const live = prod && prod.published_at;
+    if (!prod && f.line === 'plain') f.print_type = 'No print (plain)';
+    const opt = (list, val) => list.map((o) => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('');
+    const blanksFor = async () => (f.line === 'plain' ? q(sb.from('blank_stock').select('*').eq('fit', f.fit)).catch(() => []) : []);
+    let blankRows = await blanksFor();
+    const step = (n, t, sub2) => `<div class="lst-h"><span>${n}</span><div><b>${t}</b>${sub2 ? `<small>${sub2}</small>` : ''}</div></div>`;
+
     const draw = () => {
+      const off = num(f.mrp) && num(f.price) && num(f.price) < num(f.mrp) ? Math.round((1 - num(f.price) / num(f.mrp)) * 100) : 0;
+      const margin = P && num(f.cost) && num(f.price) ? Math.round((1 - num(f.cost) / num(f.price)) * 100) : null;
+      const blankQty = (c, z) => ((blankRows.find((b) => b.colour.toLowerCase() === c.toLowerCase() && b.size === z) || {}).qty || 0);
+      const sizes = [...f.sizes].sort(sizeSort);
       const body = panel(`
-        <h1 style="margin-top:14px">${prod ? 'Edit product' : 'New product'}</h1>
-        ${!prod && !isPartner() ? '<p class="sub">Saved as a draft. A partner publishes it to the shop.</p>' : ''}
-        <label>What are you adding?</label>
-        <div class="fit-choose">${[['designed', 'Designed tee', 'Printed with a design (DTF / print)'], ['plain', 'Pure Essence', 'Plain tee, no design. Listed by colour']].map(([k, l, d]) => `<button type="button" data-line="${k}" class="${sel.line === k ? 'on' : ''}"><b>${l}</b><span>${d}</span></button>`).join('')}</div>
-        <label>Fit</label>
-        <div class="fit-choose">${FITS.map(([f, l]) => `<button type="button" data-fit="${f}" class="${sel.fit === f ? 'on' : ''}"><b>${l}</b><span>${f === 'regular' ? 'True to size, classic shoulder' : 'Dropped shoulder, boxy and long'}</span></button>`).join('')}</div>
-        <label for="pName">Name</label><input id="pName" value="${esc(prod ? prod.name : sel.line === 'plain' ? `Pure Essence ${fitLabel(sel.fit)}` : '')}" placeholder="e.g. Acid Wash Drop">
-        ${sel.line === 'plain' ? '<div class="hint">In the shop every colour shows as its own tee, named by colour, under Pure Essence.</div>' : ''}
-        <label for="pLabel">Shop label</label><select id="pLabel">${LABELS.map(([k, l]) => `<option value="${k}" ${sel.label === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <div class="hint">New collection, Premium, Pre-book (orders without stock), Coming soon (can't be ordered yet)… change it any time.</div>
-        <div class="row2">
-          <div><label for="pCat">Category</label><select id="pCat"><option value="">—</option>${state.categories.map((c) => `<option value="${c.id}" ${prod && prod.category_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="new">+ New category</option></select></div>
-          <div><label for="pType">Type</label><input id="pType" value="${esc(prod ? prod.type : sel.fit === 'regular' ? 'Regular Fit Tee' : 'Oversized Tee')}" list="types"><datalist id="types"><option>Oversized Tee</option><option>Regular Fit Tee</option><option>Graphic Tee</option><option>Hoodie</option><option>Sweatshirt</option></datalist></div>
-        </div>
-        <div class="row2">
-          <div><label for="pMrp">MRP (₹)</label><input id="pMrp" type="number" inputmode="decimal" value="${prod ? prod.mrp : ''}" ${live ? 'disabled' : ''}></div>
-          <div><label for="pPrice">Selling price (₹)</label><input id="pPrice" type="number" inputmode="decimal" value="${prod ? prod.price : ''}" ${live ? 'disabled' : ''}></div>
-        </div>
-        ${live ? '<div class="hint">Price is locked on live products. Use "Change price" on the Stock screen (all partners approve).</div>' : '<div class="hint" id="offHint"></div>'}
-        <div class="row2">
-          <div><label for="pFabric">Fabric</label><input id="pFabric" value="${esc(prod ? prod.fabric || '' : '')}" placeholder="100% cotton"></div>
-          <div><label for="pGsm">GSM</label><input id="pGsm" type="number" inputmode="numeric" value="${prod && prod.gsm ? prod.gsm : ''}" placeholder="240"></div>
-        </div>
-        <label for="pDesc">Description</label><textarea id="pDesc" placeholder="Fit, feel, print details">${esc(prod ? prod.description : '')}</textarea>
+        <h1 style="margin-top:14px">${prod ? `Edit ${esc(prod.name)}` : 'List a new tee'}</h1>
+        <p class="sub">${prod ? 'Change anything below and save.' : `Fill in everything once. The shop page, collections, offer and opening stock are all set when you save.${!P ? ' A partner publishes it to the shop.' : ''}`}</p>
 
-        <label>Colours</label>
-        <div class="chipset" id="pColours">${PRESET_COLOURS.map(([n, h]) => `<button type="button" data-col="${esc(n)}" data-hex="${h}" class="${sel.colours.has(n) ? 'on' : ''}"><i style="background:${h}"></i>${esc(n)}</button>`).join('')}
-          ${[...sel.colours.entries()].filter(([n]) => !PRESET_COLOURS.some((p) => p[0] === n)).map(([n, h]) => `<button type="button" data-col="${esc(n)}" data-hex="${esc(h)}" class="on"><i style="background:${esc(h)}"></i>${esc(n)}</button>`).join('')}
+        ${step(1, 'What is it?')}
+        <div class="fit-choose">${[['designed', 'Designed tee', 'Printed with a design'], ['plain', 'Pure Essence', 'Plain tee, no design, listed by colour']].map(([k, l, s2]) => `<button type="button" data-line="${k}" class="${f.line === k ? 'on' : ''}"><b>${l}</b><span>${s2}</span></button>`).join('')}</div>
+        <div class="fit-choose" style="margin-top:10px">${FITS.map(([k, l]) => `<button type="button" data-fit="${k}" class="${f.fit === k ? 'on' : ''}"><b>${l}</b><span>${k === 'regular' ? 'True to size, classic shoulder' : 'Dropped shoulder, boxy and long'}</span></button>`).join('')}</div>
+
+        ${step(2, 'Name and category')}
+        <label for="pName">Name</label><input id="pName" data-k="name" value="${esc(f.name)}" placeholder="${f.line === 'plain' ? `Pure Essence ${fitLabel(f.fit)}` : 'e.g. Kesari Sunset'}">
+        ${f.line === 'plain' ? '<div class="hint">In the shop every colour shows as its own tee, named by colour, under Pure Essence.</div>' : ''}
+        <div class="row2">
+          <div><label for="pCat">Category</label><select id="pCat" data-k="cat"><option value="">None</option>${state.categories.map((c) => `<option value="${c.id}" ${f.cat === String(c.id) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="new">+ New category</option></select></div>
+          <div><label for="pType">Type</label><input id="pType" data-k="type" value="${esc(f.type)}" list="types"><datalist id="types"><option>Oversized Tee</option><option>Regular Fit Tee</option><option>Graphic Tee</option><option>Hoodie</option><option>Sweatshirt</option></datalist></div>
+        </div>
+
+        ${step(3, 'Collections', 'Pick every one that applies')}
+        <div class="label-pick">${LABELS.filter(([k]) => k !== 'none').map(([k, l]) => `<button type="button" data-lp="${k}" class="${f.labels.has(k) ? 'on' : ''}"><b>${l}</b><span>${LABEL_HELP[k]}</span></button>`).join('')}</div>
+        ${P && (f.labels.has('coming_soon') || f.labels.has('limited') || f.drop || f.dropAt || f.limited) ? `<div class="row2">
+          <div><label for="pDropAt">Launch date and time</label><input id="pDropAt" data-k="dropAt" type="datetime-local" value="${esc(f.dropAt)}"></div>
+          <div><label for="pLimited">Limited to (pieces)</label><input id="pLimited" data-k="limited" type="number" inputmode="numeric" value="${esc(f.limited)}" placeholder="e.g. 50"></div></div>
+          <label for="pDrop">Drop name (optional)</label><input id="pDrop" data-k="drop" value="${esc(f.drop)}" placeholder="e.g. Drop 01 · Chrome">
+          <div class="hint">The shop shows a countdown until the launch time, then it goes on sale by itself.</div>` : ''}
+
+        ${step(4, 'Price')}
+        <div class="row2">
+          <div><label for="pMrp">MRP (₹)</label><input id="pMrp" data-k="mrp" type="number" inputmode="decimal" value="${esc(f.mrp)}" ${live ? 'disabled' : ''}></div>
+          <div><label for="pPrice">Selling price (₹)</label><input id="pPrice" data-k="price" type="number" inputmode="decimal" value="${esc(f.price)}" ${live ? 'disabled' : ''}></div>
+        </div>
+        <div class="hint" id="offHint">${live ? 'Price is locked on live products. Use "Change price" on the Stock card (all partners approve).' : off ? `Shop shows ${off}% OFF` : num(f.mrp) && num(f.price) ? 'No discount shown' : ''}</div>
+        ${P ? `<div class="row2">
+          <div><label for="pCost">Cost per piece (₹)</label><input id="pCost" data-k="cost" type="number" inputmode="decimal" value="${esc(f.cost)}" placeholder="Blank + print + packing"></div>
+          <div><label for="pFab">GST group</label><select id="pFab" data-k="fab"><option value="cotton" ${f.fab !== 'synthetic' ? 'selected' : ''}>Cotton · HSN ${esc(state.settings.hsn_cotton || '61091000')}</option><option value="synthetic" ${f.fab === 'synthetic' ? 'selected' : ''}>Synthetic · HSN ${esc(state.settings.hsn_synthetic || '610990')}</option></select></div></div>
+          <div class="hint" id="marginHint">${margin !== null ? `Margin ${margin}% before shipping and ads. Only partners see cost.` : 'Only partners see cost. Production batches update it automatically.'}</div>` : ''}
+
+        ${P ? `${step(5, 'Offer on this tee', 'Optional')}
+        <div class="chipset">${[['none', 'No offer'], ['code', 'Code for this tee'], ['combo', 'Add to a combo']].map(([k, l]) => `<button type="button" data-offer="${k}" class="${f.offer === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+        ${f.offer === 'code' ? `<div class="row2"><div><label for="oCode">Code</label><input id="oCode" data-k="ocode" value="${esc(f.ocode)}" placeholder="e.g. KESARI20" style="text-transform:uppercase"></div>
+          <div><label for="oKind">Type</label><select id="oKind" data-k="okind"><option value="percent" ${f.okind === 'percent' ? 'selected' : ''}>% off</option><option value="flat" ${f.okind === 'flat' ? 'selected' : ''}>₹ off</option></select></div></div>
+          <div class="row2"><div><label for="oVal">${f.okind === 'percent' ? 'Percent off' : 'Rupees off'}</label><input id="oVal" data-k="oval" type="number" inputmode="decimal" value="${esc(f.oval)}"></div>
+          <div><label for="oEnd">Valid till (optional)</label><input id="oEnd" data-k="oend" type="date" value="${esc(f.oend)}"></div></div>
+          <div class="hint">Works only on this tee. Shows on its shop page and in the bag's coupon list.</div>` : ''}
+        ${f.offer === 'combo' ? (bundles.length ? bundles.map((bn) => { const all = !(bn.product_ids || []).length; return `<label class="row" style="justify-content:flex-start;gap:10px;color:var(--text);padding:6px 0"><input type="checkbox" data-combo="${bn.id}" style="width:auto" ${all || f.ocombo.has(bn.id) ? 'checked' : ''} ${all ? 'disabled' : ''}> ${esc(bn.name)} <span class="muted">${all ? '(already every tee)' : `${(bn.product_ids || []).length} tees`}</span></label>`; }).join('') : '<div class="hint">No combos yet. Make one in More → Coupons & combos.</div>') : ''}` : ''}
+
+        ${step(P ? 6 : 5, 'Product details', 'Shown on the shop page')}
+        <div class="row2">
+          <div><label for="pFabric">Fabric</label><input id="pFabric" data-k="fabric" value="${esc(f.fabric)}" placeholder="100% Cotton"></div>
+          <div><label for="pGsm">GSM</label><input id="pGsm" data-k="gsm" type="number" inputmode="numeric" value="${esc(f.gsm)}" placeholder="${f.fit === 'regular' ? '180' : '240'}"></div>
+        </div>
+        <div class="row2">
+          <div><label for="pNeck">Neck</label><select id="pNeck" data-k="neck">${opt(NECKS, f.neck)}</select></div>
+          <div><label for="pSleeve">Sleeve</label><select id="pSleeve" data-k="sleeve">${opt(SLEEVES, f.sleeve)}</select></div>
+        </div>
+        ${f.line === 'plain' ? '' : `<div class="row2">
+          <div><label for="pPrint">Print type</label><select id="pPrint" data-k="print_type"><option value="">Choose</option>${opt(PRINTS, f.print_type)}</select></div>
+          <div><label for="pPlace">Print on</label><select id="pPlace" data-k="print_place"><option value="">Choose</option>${opt(PLACES, f.print_place)}</select></div>
+        </div>`}
+        <label for="pDesc">Description</label><textarea id="pDesc" data-k="desc" placeholder="The story of the design, how it feels, how to style it">${esc(f.desc)}</textarea>
+        <label for="pHigh">Highlights (one per line)</label><textarea id="pHigh" data-k="highlights" placeholder="Heavy 240 GSM cotton&#10;Pre-shrunk, keeps its shape&#10;Print will not crack">${esc(f.highlights)}</textarea>
+        <label for="pCare">Wash care</label><input id="pCare" data-k="care" value="${esc(f.care)}">
+        <label for="pModel">Model info (optional)</label><input id="pModel" data-k="model" value="${esc(f.model)}" placeholder="e.g. Model is 5'11&quot; and wears L">
+
+        ${step(P ? 7 : 6, 'Colours, sizes and photos')}
+        <div class="chipset" id="pColours">${PRESET_COLOURS.map(([n, h]) => `<button type="button" data-col="${esc(n)}" data-hex="${h}" class="${f.colours.has(n) ? 'on' : ''}"><i style="background:${h}"></i>${esc(n)}</button>`).join('')}
+          ${[...f.colours.entries()].filter(([n]) => !PRESET_COLOURS.some((x) => x[0] === n)).map(([n, h]) => `<button type="button" data-col="${esc(n)}" data-hex="${esc(h)}" class="on"><i style="background:${esc(h)}"></i>${esc(n)}</button>`).join('')}
           <button type="button" id="addCol">+ Other colour</button></div>
-        <label>Sizes</label>
-        <div class="chipset" id="pSizes">${PRESET_SIZES.map((s) => `<button type="button" data-size="${s}" class="${sel.sizes.has(s) ? 'on' : ''}">${s}</button>`).join('')}</div>
-        <div class="hint">${sel.colours.size} colour(s) × ${sel.sizes.size} size(s) = ${sel.colours.size * sel.sizes.size} variants${existing.length ? '. Existing sizes are never deleted.' : ''}</div>
-
+        <div class="chipset" id="pSizes" style="margin-top:10px">${PRESET_SIZES.map((z) => `<button type="button" data-size="${z}" class="${f.sizes.has(z) ? 'on' : ''}">${z}</button>`).join('')}</div>
+        <div class="hint">${f.colours.size} colour(s) × ${f.sizes.size} size(s) = ${f.colours.size * f.sizes.size} variants${existing.length ? '. Existing sizes are never deleted.' : ''}</div>
         <label for="pImgs">Photos</label>
         <input id="pImgs" type="file" accept="image/*" multiple>
-        <div class="thumbs">${sel.images.map((src, i) => `<button type="button" class="linkish" data-rmimg="${i}" title="Remove"><img src="${esc(src)}" alt="Photo ${i + 1}"></button>`).join('')}</div>
+        <div class="thumbs">${f.images.map((src, i) => `<button type="button" class="linkish" data-rmimg="${i}" title="Remove"><img src="${esc(src)}" alt="Photo ${i + 1}"></button>`).join('')}</div>
         <div class="hint">First photo is the cover. Tap a photo to remove it. Without photos the shop draws the tee in its colour.</div>
 
-        ${isPartner() ? `<div class="card" style="margin-top:16px;border-color:rgba(255,46,136,.4)">
-          <b>Drop, limited edition & pre-order</b>
-          <label for="pDrop">Drop name (optional)</label><input id="pDrop" value="${esc(prod && prod.drop_name || '')}" placeholder="e.g. Drop 01 · Chrome">
-          <label for="pDropAt">Goes on sale at (leave empty = now)</label><input id="pDropAt" type="datetime-local" value="${prod && prod.drop_at ? new Date(new Date(prod.drop_at).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : ''}">
-          <label for="pLimited">Limited to (pieces, optional)</label><input id="pLimited" type="number" inputmode="numeric" value="${prod && prod.limited_qty || ''}" placeholder="e.g. 50">
-          <label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" id="pPre" style="width:auto" ${prod && prod.is_preorder ? 'checked' : ''}> Made to order (customers can buy with 0 stock; you update making status)</label>
-          <label for="pFab">Fabric (decides HSN code for GST)</label><select id="pFab"><option value="cotton" ${!prod || prod.fabric_type !== 'synthetic' ? 'selected' : ''}>Cotton · HSN ${esc(state.settings.hsn_cotton || '61091000')}</option><option value="synthetic" ${prod && prod.fabric_type === 'synthetic' ? 'selected' : ''}>Synthetic / silk / wool · HSN ${esc(state.settings.hsn_synthetic || '610990')}</option></select>
-          <div class="hint">GST is set by price: up to ${esc(inr(state.settings.gst_threshold || 2500))} a piece ${esc(state.settings.gst_rate_low || 5)}%, above that ${esc(state.settings.gst_rate_high || 18)}%.</div>
-          <label for="pCost">Cost per piece (₹) · only partners see this</label><input id="pCost" type="number" inputmode="decimal" value="${prod && Number(prod.cost_price) ? prod.cost_price : ''}" placeholder="Blank + print + packing">
-          <div class="hint">Production batches update the cost automatically. Shop shows a countdown until the drop time.</div>
-        </div>` : ''}
-        <label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" id="pFeat" style="width:auto" ${prod && prod.featured ? 'checked' : ''}> Feature at the top of the shop</label>
-        ${prod ? `<label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" id="pActive" style="width:auto" ${prod.active ? 'checked' : ''}> Show in the shop</label>` : ''}
-        <button class="btn block" id="pSave">${prod ? 'Save changes' : isPartner() ? 'Save and publish' : 'Save draft'}</button>
-        ${prod && isPartner() ? '<button class="btn block outline" id="pDel" style="color:var(--pink);border-color:rgba(255,79,154,.4);margin-top:10px">Delete this product</button>' : ''}`);
+        ${!prod && f.colours.size ? `${step(P ? 8 : 7, 'Opening stock', f.line === 'plain' ? `Taken from ${fitLabel(f.fit)} blank stock` : 'Pieces ready to sell now (optional)')}
+          <div class="table-wrap"><table class="matrix"><thead><tr><th></th>${sizes.map((z) => `<th>${esc(z)}</th>`).join('')}</tr></thead><tbody>
+          ${[...f.colours.entries()].map(([c, h]) => `<tr><th class="c"><span class="dot-c" style="background:${esc(h)}"></span>${esc(c)}</th>${sizes.map((z) => {
+            const k = `${c}|${z}`; const mx = f.line === 'plain' ? blankQty(c, z) : 9999;
+            return `<td><input class="stk-in" type="number" inputmode="numeric" min="0" ${f.line === 'plain' ? `max="${mx}" placeholder="${mx}"` : 'placeholder="0"'} data-stk="${esc(k)}" value="${esc(f.stock[k] || '')}" ${f.line === 'plain' && !mx ? 'disabled' : ''}></td>`;
+          }).join('')}</tr>`).join('')}</tbody></table></div>
+          ${f.line === 'plain' ? '<div class="hint">Grey number = plain pieces in blank stock you can move.</div>' : ''}` : ''}
+
+        ${step(P ? (prod ? 8 : 9) : (prod ? 7 : 8), 'Show in the shop')}
+        <label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" data-k="feat" id="pFeat" style="width:auto" ${f.feat ? 'checked' : ''}> Feature it on the home page</label>
+        ${prod ? `<label class="row" style="justify-content:flex-start;gap:10px;color:var(--text)"><input type="checkbox" data-k="active" id="pActive" style="width:auto" ${f.active ? 'checked' : ''}> Visible in the shop</label>` : ''}
+        <div class="lst-sum">${esc(f.name || 'Untitled')} · ${f.line === 'plain' ? 'Pure Essence' : 'Designed'} · ${fitLabel(f.fit)}${f.labels.size ? ` · ${[...f.labels].map(labelName).join(', ')}` : ''}${num(f.price) ? ` · ${esc(inr(f.price))}` : ''}${off ? ` (${off}% off)` : ''}</div>
+        <button class="btn block" id="pSave">${prod ? 'Save changes' : P ? 'Save and publish' : 'Save draft'}</button>
+        ${prod && P ? '<button class="btn block outline" id="pDel" style="color:var(--pink);border-color:rgba(255,79,154,.4);margin-top:10px">Delete this product</button>' : ''}`);
+
+      // every field writes straight into f, so a redraw never loses typing
+      body.querySelectorAll('[data-k]').forEach((el) => {
+        const k = el.dataset.k;
+        const upd = () => { f[k] = el.type === 'checkbox' ? el.checked : el.value; if (k === 'mrp' || k === 'price' || k === 'cost') liveHints(); };
+        el.addEventListener('input', upd); el.addEventListener('change', upd);
+      });
+      const liveHints = () => {
+        const o = num(f.mrp) && num(f.price) && num(f.price) < num(f.mrp) ? Math.round((1 - num(f.price) / num(f.mrp)) * 100) : 0;
+        const oh = body.querySelector('#offHint'); if (oh && !live) oh.textContent = o ? `Shop shows ${o}% OFF` : num(f.mrp) && num(f.price) ? (num(f.price) > num(f.mrp) ? 'Selling price cannot be more than MRP' : 'No discount shown') : '';
+        const mh = body.querySelector('#marginHint'); if (mh && num(f.cost) && num(f.price)) mh.textContent = `Margin ${Math.round((1 - num(f.cost) / num(f.price)) * 100)}% before shipping and ads. Only partners see cost.`;
+      };
+      body.querySelectorAll('[data-stk]').forEach((el) => { el.oninput = () => { f.stock[el.dataset.stk] = el.value; }; });
+      const redraw = () => { const y = panelEl.p.scrollTop; draw(); panelEl.p.scrollTop = y; };
+      body.querySelectorAll('[data-line]').forEach((x) => {
+        x.onclick = async () => {
+          f.line = x.dataset.line;
+          if (!prod && (!f.name || /^Pure Essence/.test(f.name))) f.name = f.line === 'plain' ? `Pure Essence ${fitLabel(f.fit)}` : '';
+          if (f.line === 'plain') f.print_type = 'No print (plain)'; else if (f.print_type === 'No print (plain)') f.print_type = '';
+          blankRows = await blanksFor(); redraw();
+        };
+      });
+      body.querySelectorAll('[data-fit]').forEach((x) => {
+        x.onclick = async () => {
+          f.fit = x.dataset.fit;
+          if (!prod && /^Pure Essence/.test(f.name)) f.name = `Pure Essence ${fitLabel(f.fit)}`;
+          if (['', 'Oversized Tee', 'Regular Fit Tee'].includes(f.type.trim())) f.type = f.fit === 'regular' ? 'Regular Fit Tee' : 'Oversized Tee';
+          blankRows = await blanksFor(); redraw();
+        };
+      });
+      body.querySelectorAll('[data-lp]').forEach((x) => {
+        x.onclick = () => {
+          const k = x.dataset.lp;
+          if (f.labels.has(k)) f.labels.delete(k); else { f.labels.add(k); if (k === 'prebook') f.labels.delete('coming_soon'); if (k === 'coming_soon') f.labels.delete('prebook'); }
+          redraw();
+        };
+      });
+      body.querySelectorAll('[data-offer]').forEach((x) => {
+        x.onclick = () => {
+          f.offer = x.dataset.offer;
+          if (f.offer === 'code' && !f.ocode) f.ocode = `${(f.name || 'TEE').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 8) || 'TEE'}10`;
+          if (f.offer === 'code' && !f.oval) f.oval = '10';
+          redraw();
+        };
+      });
+      body.querySelectorAll('[data-combo]').forEach((x) => { x.onchange = () => { const id = Number(x.dataset.combo); if (x.checked) f.ocombo.add(id); else f.ocombo.delete(id); }; });
+      body.querySelectorAll('[data-col]').forEach((x) => {
+        x.onclick = () => { const n = x.dataset.col; if (f.colours.has(n)) { if (!existing.some((v) => v.colour === n)) f.colours.delete(n); else toast('Existing colours stay; hide them by editing stock instead'); } else f.colours.set(n, x.dataset.hex); redraw(); };
+      });
+      body.querySelector('#addCol').onclick = async () => {
+        const v = await ask({ title: 'Add a colour', fields: [{ name: 'name', label: 'Colour name', required: true, placeholder: 'e.g. Acid Grey' }, { name: 'hex', label: 'Colour', type: 'color', value: '#777777' }], ok: 'Add' });
+        if (v && v.name.trim()) { f.colours.set(v.name.trim(), v.hex); draw(); }
+      };
+      body.querySelectorAll('[data-size]').forEach((x) => {
+        x.onclick = () => { const z = x.dataset.size; if (f.sizes.has(z)) { if (!existing.some((v) => v.size === z)) f.sizes.delete(z); } else f.sizes.add(z); redraw(); };
+      });
+      body.querySelectorAll('[data-rmimg]').forEach((x) => { x.onclick = () => { f.images.splice(Number(x.dataset.rmimg), 1); redraw(); }; });
+      body.querySelector('#pImgs').onchange = async (e) => {
+        const files = [...e.target.files];
+        if (!files.length) return;
+        toast(`Uploading ${files.length} photo(s)…`);
+        for (const fl of files) {
+          if (fl.size > 8 * 1024 * 1024) { toast(`${fl.name} is over 8 MB`, true); continue; }
+          const path = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${fl.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-40)}`;
+          const { error } = await sb.storage.from('products').upload(path, fl, { upsert: false });
+          if (error) { toast(errText(error), true); continue; }
+          f.images.push(sb.storage.from('products').getPublicUrl(path).data.publicUrl);
+        }
+        redraw();
+      };
       const del = body.querySelector('#pDel');
       if (del) del.onclick = async () => {
         const left = existing.reduce((t, v) => t + Math.max(0, v.stock), 0);
@@ -1401,121 +1553,77 @@
         try { await q(sb.rpc('delete_product', { p_id: prod.id, p_reason: v.why || null })); closePanel(); toast(`${prod.name} deleted`); await loadStock(); state.tab = 'stock'; render(); } catch (err) { toast(errText(err), true); }
       };
 
-      const offHint = body.querySelector('#offHint');
-      const updOff = () => {
-        if (!offHint) return;
-        const m = num(body.querySelector('#pMrp').value), p = num(body.querySelector('#pPrice').value);
-        offHint.textContent = m && p && p <= m ? (p < m ? `Shows ${Math.round((1 - p / m) * 100)}% off in the shop` : 'No discount shown') : '';
-      };
-      ['#pMrp', '#pPrice'].forEach((s) => { const el = body.querySelector(s); if (el) el.oninput = updOff; });
-      updOff();
-      const keep = () => ({
-        name: body.querySelector('#pName').value, label: body.querySelector('#pLabel').value, cat: body.querySelector('#pCat').value, type: body.querySelector('#pType').value,
-        mrp: body.querySelector('#pMrp').value, price: body.querySelector('#pPrice').value, fabric: body.querySelector('#pFabric').value,
-        gsm: body.querySelector('#pGsm').value, desc: body.querySelector('#pDesc').value, feat: body.querySelector('#pFeat').checked,
-        active: body.querySelector('#pActive') ? body.querySelector('#pActive').checked : true,
-        drop: body.querySelector('#pDrop') ? body.querySelector('#pDrop').value : null,
-        dropAt: body.querySelector('#pDropAt') ? body.querySelector('#pDropAt').value : null,
-        limited: body.querySelector('#pLimited') ? body.querySelector('#pLimited').value : null,
-        pre: body.querySelector('#pPre') ? body.querySelector('#pPre').checked : false,
-        cost: body.querySelector('#pCost') ? body.querySelector('#pCost').value : null,
-        fab: body.querySelector('#pFab') ? body.querySelector('#pFab').value : null,
-      });
-      const restore = (k) => {
-        const b2 = panelEl.p;
-        b2.querySelector('#pName').value = k.name; b2.querySelector('#pLabel').value = k.label; b2.querySelector('#pCat').value = k.cat; b2.querySelector('#pType').value = k.type;
-        b2.querySelector('#pMrp').value = k.mrp; b2.querySelector('#pPrice').value = k.price; b2.querySelector('#pFabric').value = k.fabric;
-        b2.querySelector('#pGsm').value = k.gsm; b2.querySelector('#pDesc').value = k.desc; b2.querySelector('#pFeat').checked = k.feat;
-        if (b2.querySelector('#pActive')) b2.querySelector('#pActive').checked = k.active;
-        if (b2.querySelector('#pDrop')) { b2.querySelector('#pDrop').value = k.drop; b2.querySelector('#pDropAt').value = k.dropAt; b2.querySelector('#pLimited').value = k.limited; b2.querySelector('#pPre').checked = k.pre; b2.querySelector('#pCost').value = k.cost; b2.querySelector('#pFab').value = k.fab; }
-      };
-      const redraw = () => { const k = keep(); const y = panelEl.p.scrollTop; draw(); restore(k); panelEl.p.scrollTop = y; };
-
-      body.querySelectorAll('[data-line]').forEach((b) => {
-        b.onclick = () => {
-          const nm = body.querySelector('#pName');
-          if (!prod && (!nm.value.trim() || /^Pure Essence/.test(nm.value))) nm.value = b.dataset.line === 'plain' ? `Pure Essence ${fitLabel(sel.fit)}` : '';
-          sel.line = b.dataset.line; redraw();
-        };
-      });
-      body.querySelectorAll('[data-fit]').forEach((b) => {
-        b.onclick = () => {
-          const nm = body.querySelector('#pName');
-          if (!prod && /^Pure Essence/.test(nm.value)) nm.value = `Pure Essence ${fitLabel(b.dataset.fit)}`;
-          const t = body.querySelector('#pType');
-          if (['', 'Oversized Tee', 'Regular Fit Tee'].includes(t.value.trim())) t.value = b.dataset.fit === 'regular' ? 'Regular Fit Tee' : 'Oversized Tee';
-          sel.fit = b.dataset.fit; redraw();
-        };
-      });
-      body.querySelectorAll('[data-col]').forEach((b) => {
-        b.onclick = () => { const n = b.dataset.col; if (sel.colours.has(n)) { if (!existing.some((v) => v.colour === n)) sel.colours.delete(n); else toast('Existing colours stay; hide them by editing stock instead'); } else sel.colours.set(n, b.dataset.hex); redraw(); };
-      });
-      body.querySelector('#addCol').onclick = async () => {
-        const v = await ask({ title: 'Add a colour', fields: [{ name: 'name', label: 'Colour name', required: true, placeholder: 'e.g. Acid Grey' }, { name: 'hex', label: 'Colour', type: 'color', value: '#777777' }], ok: 'Add' });
-        if (v && v.name.trim()) { sel.colours.set(v.name.trim(), v.hex); redraw(); }
-      };
-      body.querySelectorAll('[data-size]').forEach((b) => {
-        b.onclick = () => { const s = b.dataset.size; if (sel.sizes.has(s)) { if (!existing.some((v) => v.size === s)) sel.sizes.delete(s); } else sel.sizes.add(s); redraw(); };
-      });
-      body.querySelectorAll('[data-rmimg]').forEach((b) => { b.onclick = () => { sel.images.splice(Number(b.dataset.rmimg), 1); redraw(); }; });
-      body.querySelector('#pImgs').onchange = async (e) => {
-        const files = [...e.target.files];
-        if (!files.length) return;
-        toast(`Uploading ${files.length} photo(s)…`);
-        for (const f of files) {
-          if (f.size > 8 * 1024 * 1024) { toast(`${f.name} is over 8 MB`, true); continue; }
-          const path = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${f.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-40)}`;
-          const { error } = await sb.storage.from('products').upload(path, f, { upsert: false });
-          if (error) { toast(errText(error), true); continue; }
-          sel.images.push(sb.storage.from('products').getPublicUrl(path).data.publicUrl);
-        }
-        redraw();
-      };
       body.querySelector('#pSave').onclick = async (e) => {
-        const k = keep();
-        let catId = k.cat;
-        if (!k.name.trim()) return toast('Enter the product name', true);
-        if (!sel.colours.size || !sel.sizes.size) return toast('Choose at least one colour and one size', true);
-        e.currentTarget.disabled = true;
+        const btn = e.currentTarget;
+        const name = (f.name || (f.line === 'plain' ? `Pure Essence ${fitLabel(f.fit)}` : '')).trim();
+        if (!name) return toast('Enter the product name', true);
+        if (!live && (!num(f.mrp) || !num(f.price))) return toast('Enter MRP and selling price', true);
+        if (!live && num(f.price) > num(f.mrp)) return toast('Selling price cannot be more than MRP', true);
+        if (!f.colours.size || !f.sizes.size) return toast('Choose at least one colour and one size', true);
+        if (P && f.offer === 'code' && (!/^[A-Za-z0-9_-]{3,20}$/.test(f.ocode.trim()) || !num(f.oval))) return toast('Offer: enter a code (3-20 letters/numbers) and a value', true);
+        btn.disabled = true; btn.textContent = 'Saving…';
+        const warn = [];
         try {
+          let catId = f.cat;
           if (catId === 'new') {
             const v = await ask({ title: 'New category', fields: [{ name: 'name', label: 'Name', required: true, placeholder: 'e.g. Graphic Tees' }], ok: 'Create' });
-            if (!v) { e.target.disabled = false; return; }
+            if (!v) { btn.disabled = false; btn.textContent = 'Save'; return; }
             catId = await q(sb.rpc('upsert_category', { p_name: v.name, p_sort: state.categories.length + 1 }));
           }
           const variants = [];
-          sel.colours.forEach((hex, colour) => sel.sizes.forEach((size) => variants.push({ colour, colour_hex: hex, size })));
+          f.colours.forEach((hex, colour) => f.sizes.forEach((size) => variants.push({ colour, colour_hex: hex, size })));
+          const details = { neck: f.neck, sleeve: f.sleeve, print_type: f.line === 'plain' ? '' : f.print_type, print_place: f.line === 'plain' ? '' : f.print_place, care: f.care, model: f.model,
+            highlights: f.highlights.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 8) };
           const id = await q(sb.rpc('upsert_product', {
             p: {
-              id: prod ? prod.id : null, name: k.name.trim(), category_id: catId ? Number(catId) : null, type: k.type,
-              description: k.desc, fabric: k.fabric || null, gsm: k.gsm ? Number(k.gsm) : null,
-              mrp: num(live ? prod.mrp : k.mrp), price: num(live ? prod.price : k.price), images: sel.images,
-              featured: k.feat, active: k.active, publish: true, variants, fit: sel.fit, line: sel.line,
-              shop_label: k.label !== ((prod && prod.shop_label) || (prod ? 'none' : '')) ? k.label : null,
+              id: prod ? prod.id : null, name, category_id: catId ? Number(catId) : null, type: f.type,
+              description: f.desc, fabric: f.fabric || null, gsm: f.gsm ? Number(f.gsm) : null,
+              mrp: num(live ? prod.mrp : f.mrp), price: num(live ? prod.price : f.price), images: f.images,
+              featured: !!f.feat, active: !!f.active, publish: true, variants, fit: f.fit, line: f.line, labels: [...f.labels], details,
             },
           }));
-          if (isPartner() && id) {
-            const wasDrop = prod && (prod.drop_name || prod.drop_at || prod.limited_qty || prod.is_preorder);
-            if (k.drop || k.dropAt || k.limited || k.pre || wasDrop) {
-              await q(sb.rpc('set_product_drop', { p_product: id, p_drop_name: k.drop || null, p_drop_at: k.dropAt ? new Date(k.dropAt).toISOString() : null,
-                p_limited: k.limited ? Number(k.limited) : null, p_preorder: !!k.pre }));
+          if (P && id) {
+            const wasDrop = prod && (prod.drop_name || prod.drop_at || prod.limited_qty);
+            if (f.drop || f.dropAt || f.limited || wasDrop) {
+              await q(sb.rpc('set_product_drop', { p_product: id, p_drop_name: f.drop || null, p_drop_at: f.dropAt ? new Date(f.dropAt).toISOString() : null,
+                p_limited: f.limited ? Number(f.limited) : null, p_preorder: f.labels.has('prebook') })).catch((x) => warn.push(errText(x)));
             }
-            if (k.cost !== null && k.cost !== '' && Number(k.cost) !== Number(prod && prod.cost_price)) await q(sb.rpc('set_cost_price', { p_product: id, p_cost: Number(k.cost) }));
-            if (k.fab && k.fab !== ((prod && prod.fabric_type) || 'cotton')) await q(sb.rpc('set_product_tax', { p_product: id, p_fabric_type: k.fab, p_hsn: null }));
+            if (f.cost !== '' && f.cost !== null && Number(f.cost) !== Number(prod && prod.cost_price)) await q(sb.rpc('set_cost_price', { p_product: id, p_cost: Number(f.cost) })).catch((x) => warn.push(errText(x)));
+            if (f.fab && f.fab !== ((prod && prod.fabric_type) || 'cotton')) await q(sb.rpc('set_product_tax', { p_product: id, p_fabric_type: f.fab, p_hsn: null })).catch((x) => warn.push(errText(x)));
+            if (f.offer === 'code') {
+              await q(sb.rpc('save_coupon', { p: { code: f.ocode.trim().toUpperCase(), kind: f.okind, value: num(f.oval), channel: 'both', product_ids: [id],
+                description: `${f.okind === 'percent' ? `${num(f.oval)}%` : inr(num(f.oval))} off ${name}`, ends_at: f.oend ? new Date(`${f.oend}T23:59:59`).toISOString() : null } })).catch((x) => warn.push(`Offer: ${errText(x)}`));
+            }
+            if (f.offer === 'combo') {
+              for (const bn of bundles.filter((x) => f.ocombo.has(x.id) && (x.product_ids || []).length && !(x.product_ids || []).includes(id))) {
+                await q(sb.rpc('save_bundle', { p: { ...bn, product_ids: [...bn.product_ids, id] } })).catch((x) => warn.push(`Combo: ${errText(x)}`));
+              }
+            }
+          }
+          // opening stock
+          await loadStock();
+          const want = Object.entries(f.stock).map(([k, v]) => [k, Number(v) || 0]).filter(([, n]) => n > 0);
+          let added = 0;
+          if (!prod && want.length) {
+            const vid = (k) => { const [c, z] = k.split('|'); const v = state.stock.find((x) => x.product_id === id && x.colour === c && x.size === z); return v && v.variant_id; };
+            if (f.line === 'plain') {
+              added = await q(sb.rpc('blanks_to_shop', { p_product: id, p_items: want.map(([k, n]) => ({ variant_id: vid(k), qty: n })).filter((x) => x.variant_id) })).catch((x) => { warn.push(`Stock: ${errText(x)}`); return 0; });
+            } else {
+              for (const [k, n] of want) { const v = vid(k); if (v) { await q(sb.rpc('add_stock', { p_variant: v, p_qty: n, p_reason: 'opening', p_note: 'Opening stock at listing' })).then(() => { added += n; }).catch((x) => warn.push(`Stock: ${errText(x)}`)); } }
+            }
+            await loadStock();
           }
           closePanel();
-          if (!prod && isPartner()) C.confetti(0.7);
-          toast(prod ? 'Saved' : isPartner() ? 'Live in the shop! Now add stock.' : 'Draft saved. A partner will publish it.');
-          await loadStock();
+          if (!prod && P) C.confetti(0.7);
+          toast(warn.length ? `Saved, but: ${warn.join(' · ')}` : prod ? 'Saved' : P ? `Live in the shop${added ? ` with ${added} pieces` : ''}!` : 'Draft saved. A partner will publish it.', !!warn.length);
           state.tab = 'stock'; render();
           return id;
-        } catch (err) { toast(errText(err), true); if (e.target) e.target.disabled = false; }
+        } catch (err) { toast(errText(err), true); btn.disabled = false; btn.textContent = prod ? 'Save changes' : P ? 'Save and publish' : 'Save draft'; }
       };
     };
     draw();
   }
 
-  // ================================================================ MORE
   VIEWS.more = async (view) => {
     await updateBadges();
     const c = state.counts || {};

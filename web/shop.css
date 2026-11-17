@@ -732,3 +732,8 @@ h1.page { font-size: clamp(26px, 6vw, 40px); letter-spacing: -.03em; }
 .wordmark { font-size: clamp(52px, 16.5vw, 236px); }
 .fe-art { width: 100%; max-width: 128px; margin: 0 auto; }
 .fe { text-align: center; }
+.card-offer { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--save); }
+.hl { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.hl li { padding-left: 20px; position: relative; }
+.hl li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 8px; height: 8px; border-radius: 2px; background: var(--blue); }
+.tee-offer b { background: var(--sticker); padding: 0 4px; border-radius: 3px; }
