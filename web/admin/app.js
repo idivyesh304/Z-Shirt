@@ -4066,72 +4066,6 @@
   }
 
   // ================================================================ start
-  // ================================================================ motion: tilt, ripple, count-up
-  (() => {
-    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (calm) return;
-    // press ripple on every button
-    document.addEventListener('pointerdown', (e) => {
-      const b = e.target.closest && e.target.closest('.btn, .fab');
-      if (!b) return;
-      const r = b.getBoundingClientRect();
-      const d = Math.max(r.width, r.height);
-      const s = document.createElement('span');
-      s.className = 'ripple';
-      Object.assign(s.style, { width: `${d}px`, height: `${d}px`, left: `${e.clientX - r.left - d / 2}px`, top: `${e.clientY - r.top - d / 2}px` });
-      b.appendChild(s);
-      setTimeout(() => s.remove(), 650);
-    }, { passive: true });
-    // 3D tilt for hero cards: follows the finger or mouse, springs back on release
-    const TILT = '.stat.hero, .cash-hero, .today .stat:first-child, .pcard, .demand .crown';
-    let cur = null;
-    const reset = () => { if (cur) { cur.style.setProperty('--rx', '0deg'); cur.style.setProperty('--ry', '0deg'); cur = null; } };
-    document.addEventListener('pointermove', (e) => {
-      const el = e.target.closest && e.target.closest(TILT);
-      if (el !== cur) reset();
-      if (!el) return;
-      cur = el; el.classList.add('tilt');
-      const r = el.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      el.style.setProperty('--rx', `${(-y * 8).toFixed(2)}deg`);
-      el.style.setProperty('--ry', `${(x * 10).toFixed(2)}deg`);
-    }, { passive: true });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => document.addEventListener(t, reset, { passive: true }));
-    // the background orbs drift with the phone's tilt
-    const bg = document.querySelector('.zs-bg');
-    if (bg) window.addEventListener('deviceorientation', (e) => {
-      if (e.gamma == null) return;
-      const x = Math.max(-20, Math.min(20, e.gamma)) / 20, y = Math.max(-20, Math.min(20, (e.beta || 0) - 40)) / 20;
-      bg.style.transform = `translate3d(${(x * -14).toFixed(1)}px, ${(y * -14).toFixed(1)}px, 0)`;
-    }, { passive: true });
-    // big numbers count up when a screen opens
-    const fmt = (n, dec) => n.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-    function countUp(el) {
-      el.dataset.cu = '1';
-      const t = el.textContent;
-      const m = t.match(/^([^\d-]*)(-?[\d,]+(?:\.\d+)?)(.*)$/);
-      if (!m || /\d/.test(m[1] + m[3]) || el.children.length) return;
-      const target = Number(m[2].replace(/,/g, ''));
-      if (!Number.isFinite(target) || Math.abs(target) < 2) return;
-      const dec = (m[2].split('.')[1] || '').length;
-      const grouped = m[2].includes(',') || Math.abs(target) >= 1000;
-      const t0 = performance.now(), dur = 900;
-      (function step(now) {
-        if (!el.isConnected) return;
-        const p = Math.min(1, (now - t0) / dur), e2 = 1 - Math.pow(1 - p, 3);
-        const v = target * e2;
-        el.textContent = m[1] + (grouped ? fmt(v, dec) : v.toFixed(dec)) + m[3];
-        if (p < 1) requestAnimationFrame(step); else el.textContent = t;
-      })(t0);
-    }
-    let pend = false;
-    new MutationObserver(() => {
-      if (pend) return; pend = true;
-      requestAnimationFrame(() => { pend = false; $app.querySelectorAll('.stat .v:not([data-cu]), .kpi b:not([data-cu]), .cash-hero .v:not([data-cu])').forEach(countUp); });
-    }).observe($app, { childList: true, subtree: true });
-  })();
-
   let started = false;
   sb.auth.onAuthStateChange((_event, session) => {
     const prev = state.session && state.session.user.id;
@@ -4140,7 +4074,7 @@
   });
   if (NATIVE) {
     // Android: light glass status bar, and the back button closes panels / goes back before leaving the app
-    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#f4f0ff' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'LIGHT' }); } catch (_) { /* */ }
+    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#0B0D14' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'DARK' }); } catch (_) { /* */ }
     if (Plug.App) {
       Plug.App.addListener('backButton', () => {
         const dlg = document.querySelector('dialog[open]');

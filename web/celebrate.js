@@ -2,7 +2,7 @@
  * window.ZSCelebrate.confetti(), .chime(), .moment({title, sub, amount, big})
  */
 (() => {
-  const NEON = ['#7c5cff', '#ff4f9a', '#ffa53a', '#3a86ff', '#14b8a6', '#ffd66b'];
+  const NEON = ['#D8B56A', '#F3D9A0', '#FFF1CF', '#9C7A34', '#8FB0FF', '#7FD1A8'];
   const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let audioCtx;
 
@@ -144,10 +144,10 @@
 
   const css = document.createElement('style');
   css.textContent = `
-    .zs-moment{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;background:rgba(60,40,120,.25);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:24px;animation:zsIn .3s ease-out;perspective:900px}
-    .zs-moment-card{position:relative;overflow:hidden;background:linear-gradient(160deg,rgba(255,255,255,.95),rgba(246,242,255,.8));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
-      border:1px solid #fff;animation:zsPop .7s cubic-bezier(.2,1.35,.35,1);border-radius:34px;padding:30px 24px 24px;max-width:380px;width:100%;text-align:center;
-      box-shadow:0 30px 80px color-mix(in srgb,var(--k,#7c5cff) 35%,transparent),0 8px 20px rgba(76,52,170,.15),inset 0 1px 0 #fff;font-family:-apple-system,'Inter Tight',system-ui,sans-serif;color:#1e1835}
+    .zs-moment{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;background:rgba(6,7,11,.8);padding:24px;animation:zsIn .3s ease-out;perspective:900px}
+    .zs-moment-card{position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1812,#11141E 55%);
+      border:1px solid rgba(216,181,106,.45);animation:zsPop .7s cubic-bezier(.2,1.35,.35,1);border-radius:34px;padding:30px 24px 24px;max-width:380px;width:100%;text-align:center;
+      box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 40px rgba(216,181,106,.12);font-family:Inter,system-ui,sans-serif;color:#F2EEE6}
     .zs-moment-card::before{content:'';position:absolute;width:260px;height:260px;left:50%;top:-150px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--k) 30%,transparent),transparent 70%);pointer-events:none}
     .zs-moment-card>*{position:relative}
     .zs-moment-icon{width:92px;height:92px;margin:0 auto;border-radius:30px;display:grid;place-items:center;color:#fff;position:relative;
@@ -159,41 +159,42 @@
     .zs-moment-icon i{position:absolute;inset:-10px;border-radius:38px;border:2px solid var(--k);opacity:0;animation:zsRing 2.2s ease-out infinite}
     .zs-moment-icon i:nth-child(2){animation-delay:.7s}.zs-moment-icon i:nth-child(3){animation-delay:1.4s}
     .zs-moment-kicker{margin-top:18px;font-size:11.5px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:var(--k)}
-    .zs-moment-amt{font-family:Unbounded,system-ui,sans-serif;font-weight:800;font-size:42px;line-height:1.1;margin-top:6px;letter-spacing:-1px;
+    .zs-moment-amt{font-family:Sora,system-ui,sans-serif;font-weight:800;font-size:42px;line-height:1.1;margin-top:6px;letter-spacing:-1px;
       background:linear-gradient(120deg,var(--k),var(--k2));-webkit-background-clip:text;background-clip:text;color:transparent;animation:zsRise .6s .25s both}
-    .zs-moment-title{font-family:Unbounded,system-ui,sans-serif;font-weight:700;font-size:21px;margin-top:8px;line-height:1.25;animation:zsRise .6s .35s both}
-    .zs-moment-sub{color:#736c8c;margin-top:8px;font-size:15px;line-height:1.45;animation:zsRise .6s .45s both}
-    .zs-moment button{margin-top:22px;background:linear-gradient(120deg,var(--k),var(--k2));color:#fff;border:0;border-radius:999px;padding:13px 32px;font-weight:800;font-size:15px;cursor:pointer;
-      box-shadow:0 10px 24px color-mix(in srgb,var(--k) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.5);animation:zsRise .6s .55s both}
+    .zs-moment-title{font-family:Sora,system-ui,sans-serif;font-weight:700;font-size:21px;margin-top:8px;line-height:1.25;animation:zsRise .6s .35s both}
+    .zs-moment-sub{color:#C9C4BA;margin-top:8px;font-size:15px;line-height:1.45;animation:zsRise .6s .45s both}
+    .zs-moment button{margin-top:22px;background:linear-gradient(135deg,#FFF1CF,#D8B56A 45%,#9C7A34);color:#1A1408;border:0;border-radius:999px;padding:13px 32px;font-weight:800;font-size:15px;cursor:pointer;
+      box-shadow:0 10px 24px rgba(216,181,106,.3);animation:zsRise .6s .55s both}
     .zs-moment.big .zs-moment-icon{width:110px;height:110px;border-radius:36px;background:linear-gradient(140deg,#ffd66b,#ffa53a 45%,#ff4f9a)}
     .zs-moment.big .zs-moment-icon svg{width:56px;height:56px}
+    .zs-moment-card{--k:#D8B56A;--k2:#9C7A34}.zs-moment-icon{color:#1A1408}.zs-moment-icon svg{filter:none}
     @keyframes zsIn{from{opacity:0}to{opacity:1}}
     @keyframes zsPop{from{transform:translateY(40px) scale(.7) rotateX(30deg);opacity:0}to{transform:none;opacity:1}}
     @keyframes zsSpinIn{from{transform:scale(0) rotateY(-180deg) rotateZ(-20deg)}to{transform:none}}
     @keyframes zsBob{0%,100%{transform:translateY(0) rotateZ(0)}50%{transform:translateY(-8px) rotateZ(-4deg)}}
     @keyframes zsRing{from{transform:scale(.85);opacity:.6}to{transform:scale(1.5);opacity:0}}
-    .zs-welcome{position:fixed;inset:0;z-index:10000;background:linear-gradient(180deg,#f7f4ff,#ece6ff);display:grid;place-items:center;overflow:auto;padding:28px 20px;color:#1e1835;font-family:-apple-system,'Inter Tight',system-ui,sans-serif;transition:opacity .5s,transform .5s;perspective:1000px}
+    .zs-welcome{position:fixed;inset:0;z-index:10000;background:#0B0D14;display:grid;place-items:center;overflow:auto;padding:28px 20px;color:#F2EEE6;font-family:Inter,system-ui,sans-serif;transition:opacity .5s,transform .5s;perspective:1000px}
     .zs-welcome.out{opacity:0;transform:scale(1.06)}
-    .zs-w-glow{position:fixed;inset:-30%;background:radial-gradient(circle at 30% 30%,rgba(124,92,255,.3),transparent 40%),radial-gradient(circle at 70% 70%,rgba(255,79,154,.25),transparent 40%),radial-gradient(circle at 70% 20%,rgba(255,165,58,.25),transparent 35%);animation:zsSpin 18s linear infinite;pointer-events:none}
-    .zs-w-orb{position:fixed;border-radius:50%;pointer-events:none;animation:zsFloat 9s ease-in-out infinite}
+    .zs-w-glow{position:fixed;inset:-30%;background:radial-gradient(circle at 50% 30%,rgba(216,181,106,.2),transparent 40%),radial-gradient(circle at 70% 75%,rgba(143,176,255,.07),transparent 40%);animation:zsSpin 18s linear infinite;pointer-events:none}
+    .zs-w-orb{display:none;position:fixed;border-radius:50%;pointer-events:none;animation:zsFloat 9s ease-in-out infinite}
     .zs-w-orb.o1{width:160px;height:160px;left:-40px;top:10%;background:radial-gradient(circle at 32% 28%,#fff 0 7%,rgba(255,255,255,.6) 13%,#a58bff 40%,#6a46ff 75%);box-shadow:0 30px 60px rgba(106,70,255,.3)}
     .zs-w-orb.o2{width:110px;height:110px;right:-20px;top:22%;animation-delay:-3s;background:radial-gradient(circle at 32% 28%,#fff 0 7%,rgba(255,255,255,.6) 13%,#ff8cc0 40%,#ff4f9a 75%);box-shadow:0 24px 50px rgba(255,79,154,.3)}
     .zs-w-orb.o3{width:90px;height:90px;right:18%;bottom:6%;animation-delay:-6s;background:radial-gradient(circle at 32% 28%,#fff 0 8%,rgba(255,255,255,.6) 14%,#ffc77a 42%,#ffa53a 75%);box-shadow:0 20px 40px rgba(255,165,58,.3)}
-    .zs-w-inner{position:relative;max-width:460px;width:100%;text-align:center;padding:30px 22px;border-radius:36px;background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,.4));
-      -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);border:1px solid #fff;box-shadow:0 30px 80px rgba(76,52,170,.2),inset 0 1px 0 #fff;animation:zsPop 1s cubic-bezier(.2,1.2,.35,1) both}
+    .zs-w-inner{position:relative;max-width:460px;width:100%;text-align:center;padding:30px 22px;border-radius:28px;background:linear-gradient(160deg,rgba(216,181,106,.1),rgba(255,255,255,.02));
+      border:1px solid rgba(216,181,106,.3);box-shadow:0 30px 80px rgba(0,0,0,.5);animation:zsPop 1s cubic-bezier(.2,1.2,.35,1) both}
     .zs-w-kicker,.zs-w-name,.zs-w-lines p,.zs-w-chips,.zs-welcome button{opacity:0;animation:zsRise .7s cubic-bezier(.2,.8,.2,1) forwards}
-    .zs-w-kicker{color:#736c8c;letter-spacing:3px;text-transform:uppercase;font-size:12px;font-weight:800}
-    .zs-w-logo{font-family:Unbounded,system-ui,sans-serif;font-weight:800;font-size:clamp(40px,13vw,62px);letter-spacing:-2px;margin:6px 0 4px}
-    .zs-w-logo span{display:inline-block;opacity:0;animation:zsDrop .8s cubic-bezier(.2,1.5,.4,1) forwards;background:linear-gradient(120deg,#7c5cff,#ff4f9a 55%,#ffa53a);-webkit-background-clip:text;background-clip:text;color:transparent}
-    .zs-w-logo b{color:#ff4f9a}
-    .zs-w-name{font-family:Unbounded,system-ui,sans-serif;font-weight:700;font-size:26px;color:#7c5cff}
+    .zs-w-kicker{color:#D8B56A;font-family:'JetBrains Mono',monospace;letter-spacing:3px;text-transform:uppercase;font-size:12px;font-weight:800}
+    .zs-w-logo{font-family:Sora,system-ui,sans-serif;font-weight:800;font-size:clamp(40px,13vw,62px);letter-spacing:-2px;margin:6px 0 4px}
+    .zs-w-logo span{display:inline-block;opacity:0;animation:zsDrop .8s cubic-bezier(.2,1.5,.4,1) forwards;background:linear-gradient(135deg,#FFF1CF,#D8B56A 45%,#9C7A34);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .zs-w-logo b{color:#D8B56A}
+    .zs-w-name{font-family:Sora,system-ui,sans-serif;font-weight:300;font-size:26px;color:#F3D9A0}
     .zs-w-lines{margin-top:18px;display:grid;gap:12px}
-    .zs-w-lines p{margin:0;font-size:16px;line-height:1.5;color:#3d355a}
+    .zs-w-lines p{margin:0;font-size:16px;line-height:1.5;color:#C9C4BA}
     .zs-w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
-    .zs-w-chips span{border:1px solid #fff;border-radius:18px;padding:10px 14px;min-width:96px;background:rgba(255,255,255,.7);box-shadow:0 8px 20px rgba(76,52,170,.12),inset 0 1px 0 #fff}
-    .zs-w-chips b{display:block;font-family:Unbounded,system-ui,sans-serif;font-size:18px;background:linear-gradient(120deg,#3a86ff,#7c5cff);-webkit-background-clip:text;background-clip:text;color:transparent}
-    .zs-w-chips small{color:#736c8c;font-size:12px}
-    .zs-welcome button{margin-top:26px;background:linear-gradient(120deg,#7c5cff,#ff4f9a 55%,#ffa53a);color:#fff;border:0;border-radius:999px;padding:16px 42px;font-weight:800;font-size:17px;cursor:pointer;box-shadow:0 14px 34px rgba(255,79,154,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+    .zs-w-chips span{border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:10px 14px;min-width:96px;background:rgba(255,255,255,.035)}
+    .zs-w-chips b{display:block;font-family:Sora,system-ui,sans-serif;font-size:18px;background:linear-gradient(135deg,#FFF1CF,#D8B56A);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .zs-w-chips small{color:#858A9C;font-size:12px}
+    .zs-welcome button{margin-top:26px;background:linear-gradient(135deg,#FFF1CF,#D8B56A 45%,#9C7A34);color:#1A1408;border:0;border-radius:999px;padding:16px 42px;font-weight:800;font-size:17px;cursor:pointer;box-shadow:0 14px 34px rgba(216,181,106,.3)}
     @keyframes zsDrop{from{opacity:0;transform:translateY(-60px) rotateX(90deg)}to{opacity:1;transform:none}}
     @keyframes zsRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
     @keyframes zsSpin{to{transform:rotate(360deg)}}
