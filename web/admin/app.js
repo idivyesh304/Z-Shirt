@@ -962,9 +962,7 @@
           <div class="row2"><div><label for="cName">Name</label><input id="cName" value="${esc(c.name || '')}"></div>
           <div><label for="cPhone">Phone</label><input id="cPhone" inputmode="numeric" value="${esc(c.phone || '')}"></div></div></details>` : `
         <div class="card">
-          <label for="paste" style="margin-top:0">Paste the customer's message (we pick out phone, pincode and name)</label>
-          <textarea id="paste" placeholder="Riya Shah\n12 Sunrise Flats, Bodakdev\nAhmedabad 380054\n98765 43210"></textarea>
-          <div class="row2"><div><label for="cName">Name</label><input id="cName" value="${esc(c.name || '')}"></div>
+          <div class="row2"><div><label for="cName" style="margin-top:0">Name</label><input id="cName" value="${esc(c.name || '')}"></div>
           <div><label for="cPhone">Phone</label><input id="cPhone" inputmode="numeric" value="${esc(c.phone || '')}"></div></div>
           <label for="cLine1">Address</label><input id="cLine1" value="${esc(c.line1 || '')}">
           <div class="row2"><div><label for="cPin">Pincode</label><input id="cPin" inputmode="numeric" maxlength="6" value="${esc(c.pincode || '')}"></div>
@@ -1058,21 +1056,8 @@
       });
     }
 
-    // Paste a DM → fields filled. Saves typing on every Instagram/WhatsApp order.
-    const paste = view.querySelector('#paste');
-    if (paste) {
-      paste.oninput = () => {
-        const txt = paste.value;
-        const phone = (txt.replace(/[\s-]/g, '').match(/(?:\+?91)?([6-9]\d{9})/) || [])[1];
-        const pin = (txt.match(/\b(\d{6})\b/) || [])[1];
-        const lines = txt.split(/\n/).map((l) => l.trim()).filter(Boolean)
-          .filter((l) => !(phone && l.replace(/\D/g, '').endsWith(phone) && l.replace(/[\d\s+-]/g, '').length < 3));
-        if (phone) view.querySelector('#cPhone').value = phone;
-        if (pin) { view.querySelector('#cPin').value = pin; lookupPin(pin); }
-        if (lines.length && !view.querySelector('#cName').value) view.querySelector('#cName').value = lines[0].replace(/^name\s*[:-]\s*/i, '');
-        const rest = lines.slice(1).map((l) => l.replace(new RegExp(`\\b${pin}\\b`), '').replace(/[,\s]+$/, '')).filter(Boolean);
-        if (rest.length) view.querySelector('#cLine1').value = rest.join(', ');
-      };
+    // pincode fills city and state
+    if (view.querySelector('#cPin')) {
       const lookupPin = async (pin) => {
         try {
           const r = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
