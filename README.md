@@ -136,7 +136,7 @@ Notes:
 ## Honest limits
 
 - **Alerts arrive while the team app is open** (on screen or in a background tab). Alerts to a fully closed phone app need push notifications — that's in the next phase.
-- **Instagram and WhatsApp orders are entered by the team**. Reading DMs automatically needs Meta's business API approval.
+- **Instagram and WhatsApp orders are entered by the team** (with the paste-a-DM shortcut). Reading DMs automatically needs Meta's business API approval.
 - **Courier booking** is manual for now (enter courier + AWB). Shiprocket/Delhivery integration can auto-book and auto-track.
 - **GST:** prices are treated as inclusive of GST and the invoice says so. A full GST tax invoice (HSN, CGST/SGST split) should be added once you register — check rates with your CA.
 - **The Supabase account owner can technically bypass rules.** Add all 4 partners to the Supabase organisation and watch the activity log for "system / database owner".
