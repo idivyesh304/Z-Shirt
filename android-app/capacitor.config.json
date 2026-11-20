@@ -2,14 +2,14 @@
   "appId": "in.zshirts.team",
   "appName": "SINDIICAT Team",
   "webDir": "www",
-  "backgroundColor": "#0B0D14",
+  "backgroundColor": "#06080A",
   "android": {
-    "backgroundColor": "#0B0D14",
+    "backgroundColor": "#06080A",
     "allowMixedContent": false
   },
   "plugins": {
     "StatusBar": {
-      "backgroundColor": "#0B0D14",
+      "backgroundColor": "#06080A",
       "style": "DARK",
       "overlaysWebView": false
     }

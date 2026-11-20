@@ -3173,15 +3173,15 @@
     </div>`;
   }
   const PO_CSS = `
-    .zpo{position:relative;width:210mm;min-height:297mm;box-sizing:border-box;padding:12mm 13mm 14mm;background:#fff;color:#1e1835;font-family:-apple-system,'Inter Tight',Segoe UI,system-ui,sans-serif;font-size:9.6pt;line-height:1.4;overflow:hidden}
+    .zpo{position:relative;width:210mm;min-height:297mm;box-sizing:border-box;padding:12mm 13mm 14mm;background:#fff;color:#06080A;font-family:-apple-system,'Inter Tight',Segoe UI,system-ui,sans-serif;font-size:9.6pt;line-height:1.4;overflow:hidden}
     .zpo *{box-sizing:border-box}
-    .zpo-band{position:absolute;left:0;right:0;top:0;height:6mm;background:linear-gradient(110deg,#7c5cff,#ff4f9a 55%,#ffa53a)}
+    .zpo-band{position:absolute;left:0;right:0;top:0;height:6mm;background:linear-gradient(110deg,#06080A,#7FA300 55%,#ffa53a)}
     .zpo-stamp{position:absolute;top:118mm;left:50%;transform:translateX(-50%) rotate(-24deg);font-weight:900;font-size:46pt;letter-spacing:4px;color:rgba(255,79,154,.11);border:6px solid rgba(255,79,154,.13);padding:4mm 10mm;border-radius:6mm;white-space:nowrap;pointer-events:none}
     .zpo-head{display:flex;justify-content:space-between;gap:10mm;margin-top:4mm;padding-bottom:5mm;border-bottom:1.5px solid #ece6ff}
-    .zpo-logo{font-family:Unbounded,system-ui,sans-serif;font-weight:800;font-size:22pt;letter-spacing:-1px;color:#1e1835}
-    .zpo-logo i{font-style:normal;color:#7c5cff}.zpo-logo span{color:#ff4f9a}
+    .zpo-logo{font-family:Unbounded,system-ui,sans-serif;font-weight:800;font-size:22pt;letter-spacing:-1px;color:#06080A}
+    .zpo-logo i{font-style:normal;color:#06080A}.zpo-logo span{color:#7FA300}
     .zpo-biz{font-size:8.6pt;color:#5d5675;margin-top:2mm;max-width:95mm}
-    .zpo-title{text-align:right}.zpo-title h1{margin:0;font-size:17pt;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#1e1835}
+    .zpo-title{text-align:right}.zpo-title h1{margin:0;font-size:17pt;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#06080A}
     .zpo-no{display:inline-block;margin-top:2mm;padding:1.5mm 4mm;border-radius:99px;background:#f1edff;color:#5b3fe0;font-weight:800;font-size:10.5pt;letter-spacing:.5px}
     .zpo-type{margin-top:1.5mm;font-size:8.6pt;color:#736c8c;font-weight:700;text-transform:uppercase;letter-spacing:1px}
     .zpo-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin:5mm 0}
@@ -3189,10 +3189,10 @@
     .zpo-meta b{font-size:9.6pt}
     .zpo-parties{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-bottom:5mm}
     .zpo-parties>div{border:1px solid #ece6ff;border-radius:3mm;padding:3mm 4mm;font-size:8.8pt}
-    .zpo-parties h3,.zpo-terms h3{margin:0 0 1.5mm;font-size:7.6pt;text-transform:uppercase;letter-spacing:1.2px;color:#7c5cff}
+    .zpo-parties h3,.zpo-terms h3{margin:0 0 1.5mm;font-size:7.6pt;text-transform:uppercase;letter-spacing:1.2px;color:#06080A}
     .zpo-parties em{font-style:normal;font-size:7.6pt;font-weight:800;color:#5b3fe0;background:#f1edff;border-radius:99px;padding:.5mm 2mm;margin-left:1mm}
     .zpo table{width:100%;border-collapse:collapse}
-    .zpo-items th{background:#1e1835;color:#fff;font-size:7.6pt;text-transform:uppercase;letter-spacing:.6px;padding:2.2mm 1.6mm;text-align:left}
+    .zpo-items th{background:#06080A;color:#fff;font-size:7.6pt;text-transform:uppercase;letter-spacing:.6px;padding:2.2mm 1.6mm;text-align:left}
     .zpo-items th:first-child{border-radius:2mm 0 0 2mm}.zpo-items th:last-child{border-radius:0 2mm 2mm 0}
     .zpo-items td{padding:2.2mm 1.6mm;border-bottom:1px solid #f0ecfa;vertical-align:top;font-size:8.6pt}
     .zpo-items tr:nth-child(even) td{background:#fbfaff}
@@ -3201,13 +3201,13 @@
     .zpo-hsn th{font-size:7.2pt;color:#8a83a3;text-transform:uppercase;text-align:left;padding:1.5mm;border-bottom:1px solid #ece6ff}.zpo-hsn td{font-size:8.2pt;padding:1.5mm;border-bottom:1px solid #f4f1fc}
     .zpo-total{border-radius:3mm;background:#f7f4ff;padding:3mm 4mm}
     .zpo-total div{display:flex;justify-content:space-between;padding:.8mm 0;font-size:9pt}.zpo-total span{color:#5d5675}
-    .zpo-total .zpo-grand{margin-top:2mm;padding:2.5mm 3mm;border-radius:2.5mm;background:linear-gradient(110deg,#7c5cff,#ff4f9a);color:#fff;font-size:11.5pt}.zpo-total .zpo-grand span{color:#fff;font-weight:700}
+    .zpo-total .zpo-grand{margin-top:2mm;padding:2.5mm 3mm;border-radius:2.5mm;background:linear-gradient(110deg,#06080A,#7FA300);color:#fff;font-size:11.5pt}.zpo-total .zpo-grand span{color:#fff;font-weight:700}
     .zpo-words{margin-top:3mm;font-weight:700;font-size:9pt;color:#5b3fe0}
     .zpo-pay{display:flex;flex-wrap:wrap;gap:3mm 8mm;margin-top:3mm;padding:3mm 4mm;border:1px dashed #d9d0fb;border-radius:3mm;font-size:9pt}
     .zpo-note{margin-top:3mm;font-size:8.8pt}
     .zpo-terms{margin-top:4mm}.zpo-terms ol{margin:0;padding-left:5mm;font-size:8pt;color:#3d355a;columns:1}.zpo-terms li{margin-bottom:.8mm;break-inside:avoid}
     .zpo-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;margin-top:9mm}
-    .zpo-sign div{border-top:1.5px solid #1e1835;padding-top:2mm;font-size:8.8pt}.zpo-sign small{display:block;color:#8a83a3}
+    .zpo-sign div{border-top:1.5px solid #06080A;padding-top:2mm;font-size:8.8pt}.zpo-sign small{display:block;color:#8a83a3}
     .zpo-appr b{color:#0b8f63}
     .zpo-foot{position:absolute;left:13mm;right:13mm;bottom:6mm;font-size:7.2pt;color:#a8a1bd;text-align:center;border-top:1px solid #f0ecfa;padding-top:2mm}
     .zpo-items tr,.zpo-sums,.zpo-pay,.zpo-sign,.zpo-terms li{break-inside:avoid;page-break-inside:avoid}
@@ -4284,7 +4284,7 @@
   });
   if (NATIVE) {
     // Android: light glass status bar, and the back button closes panels / goes back before leaving the app
-    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#0B0D14' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'DARK' }); } catch (_) { /* */ }
+    try { Plug.StatusBar && Plug.StatusBar.setBackgroundColor({ color: '#06080A' }); Plug.StatusBar && Plug.StatusBar.setStyle({ style: 'DARK' }); } catch (_) { /* */ }
     if (Plug.App) {
       Plug.App.addListener('backButton', () => {
         const dlg = document.querySelector('dialog[open]');

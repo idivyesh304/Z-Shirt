@@ -4,8 +4,8 @@
   "description": "Orders, stock, approvals and books for the SINDIICAT team",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0B0D14",
-  "theme_color": "#0B0D14",
+  "background_color": "#06080A",
+  "theme_color": "#06080A",
   "icons": [
     {
       "src": "icon.png",

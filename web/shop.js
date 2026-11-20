@@ -85,7 +85,7 @@
     const mark = light ? 'brand/cat-black.png' : 'brand/cat-white.png';
     const sh = SHAPES[fit] || SHAPES.oversized;
     return `<svg viewBox="0 0 400 500" role="img" aria-label="${esc(label)}" style="stroke:none">
-      <rect width="400" height="500" fill="${light ? '#e4e4de' : '#efefea'}"/>
+      <rect width="400" height="500" fill="${light ? '#1A1E22' : '#14181C'}"/>
       <ellipse cx="200" cy="462" rx="${sh === SHAPES.regular ? 96 : 136}" ry="12" fill="rgba(0,0,0,.07)"/>
       <path d="${sh.body}" fill="${c}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>
       <path d="${sh.neck}" fill="none" stroke="${stroke}" stroke-width="5"/>
