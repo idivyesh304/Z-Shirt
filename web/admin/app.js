@@ -373,7 +373,8 @@
     $app.innerHTML = `
       <div class="shell">
         <header class="top">
-          <div class="brand"><img class="brand-wm" src="${BR}wordmark-white.png" alt="SINDIICAT"><small>Team</small></div>
+          <small class="team-tag">Team</small>
+          <div class="brand brand-full"><img class="brand-logo" src="${BR}logo-white.png" alt="SINDIICAT"></div>
           <div class="top-right">
             <button class="bell" id="bell" aria-label="Alerts">${ICON.bell}<span class="badge" id="bellBadge" hidden></span></button>
             <button class="me-chip" id="me" title="Sign out">${esc(state.me.name.split(' ')[0])}</button>
