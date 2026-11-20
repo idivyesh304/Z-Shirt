@@ -41,6 +41,10 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      - name: Keep the app clear of the status bar
+        working-directory: android-app
+        run: cp native/MainActivity.java android/app/src/main/java/in/zshirts/team/MainActivity.java
+
       - name: Camera (QR scan, selfie) and location (attendance) permissions
         run: |
           M=android/app/src/main/AndroidManifest.xml

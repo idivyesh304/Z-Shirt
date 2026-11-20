@@ -875,3 +875,11 @@ header.top .top-right { justify-self: end; }
 .brand-full::after { display: none; }
 .brand-logo { height: 54px; width: auto; display: block; }
 @media (min-width: 700px) { .brand-logo { height: 64px; } }
+
+/* neon strap at the very top, below the phone's status bar / notch */
+.top-strap { position: fixed; top: 0; left: 0; right: 0; z-index: 30; pointer-events: none;
+  height: calc(5px + env(safe-area-inset-top)); background: linear-gradient(to top, var(--neon) 0 5px, #06080A 5px); }
+.top-strap::after { content: ''; position: absolute; right: 18px; bottom: 0; width: 26px; height: 5px;
+  background: linear-gradient(105deg, transparent 0 18%, #06080A 18% 44%, transparent 44% 56%, #06080A 56% 82%, transparent 82%); }
+.shell { padding-top: calc(5px + env(safe-area-inset-top)); }
+header.top { top: calc(5px + env(safe-area-inset-top)); }
