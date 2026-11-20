@@ -1,8 +1,9 @@
-/* Z-SHIRTS Team app · orders, selling, stock, returns, live alerts, approvals and books.
+/* SINDIICAT Team app · orders, selling, stock, returns, live alerts, approvals and books.
  * Every rule (approvals, stock, refunds, locks) is enforced in the database; this file only shows screens.
  */
 (() => {
   'use strict';
+  const BR = location.pathname.includes('/admin') ? '../brand/' : 'brand/';
   const cfg = window.ZS_CONFIG || {};
   const $app = document.getElementById('app');
   const C = window.ZSCelebrate || { confetti() {}, chime() {}, moment() {}, welcome() { return Promise.resolve(); } };
@@ -74,7 +75,7 @@
     employee_petty_limit: 'Spend without approval', all_partner_limit: 'All-partner approval above', shipping_fee: 'Delivery charge',
     free_shipping_above: 'Free delivery above', cod_enabled: 'Cash on delivery (1 on / 0 off)', max_store_discount_pct: 'Max discount on manual orders (%)',
     low_stock_alert: 'Low-stock alert at (pieces)', return_window_days: 'Exchange / return window (days)',
-    loyalty_points_per_100: 'Z-Club points per ₹100', loyalty_max_redeem_pct: 'Max % of an order paid by points',
+    loyalty_points_per_100: 'SINDIICAT Club points per ₹100', loyalty_max_redeem_pct: 'Max % of an order paid by points',
     income_tax_rate_pct: 'Income tax on profit (%)',
   };
   const MONEY_SETTINGS = ['employee_petty_limit', 'all_partner_limit', 'shipping_fee', 'free_shipping_above'];
@@ -124,7 +125,7 @@
     if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'No internet connection. Check your network and try again.';
     return m;
   };
-  const biz = () => ({ name: (state.settings && state.settings.business_name) || cfg.BUSINESS_NAME || 'Z-SHIRTS', address: (state.settings && state.settings.business_address) || cfg.BUSINESS_ADDRESS || '',
+  const biz = () => ({ name: (state.settings && state.settings.business_name) || cfg.BUSINESS_NAME || 'SINDIICAT', address: (state.settings && state.settings.business_address) || cfg.BUSINESS_ADDRESS || '',
     gstin: (state.settings && state.settings.gstin) || cfg.GSTIN || '' });
 
   // Small form dialog
@@ -188,7 +189,7 @@
 
   // ================================================================ setup
   if (!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes('YOUR-PROJECT')) {
-    $app.innerHTML = `<div class="login"><div class="logo">Z<b>-</b>SHIRTS</div>
+    $app.innerHTML = `<div class="login"><div class="logo"><img src="${BR}logo-white.png" alt="SINDIICAT"></div>
       <div class="card warnbox" style="margin-top:24px"><b>Almost there.</b><p class="muted">Open <code>web/config.js</code> and paste your Supabase project URL and anon key. The README explains where to find them.</p></div></div>`;
     return;
   }
@@ -229,7 +230,7 @@
   function renderLogin(message = '') {
     $app.innerHTML = `
       <div class="login">
-        <div class="logo">Z<b>-</b>SHIRTS</div>
+        <div class="logo"><img src="${BR}logo-white.png" alt="SINDIICAT"></div>
         <p class="sub">Team app · orders, stock, approvals and books.</p>
         ${message ? `<div class="card">${esc(message)}</div>` : ''}
         <form id="loginForm" class="card">
@@ -264,7 +265,7 @@
       state.members = await q(sb.from('members').select('*').order('role').order('name'));
       state.me = state.members.find((m) => m.auth_user_id === state.session.user.id) || null;
       if (!state.me) {
-        $app.innerHTML = `<div class="login"><div class="logo">Z<b>-</b>SHIRTS</div>
+        $app.innerHTML = `<div class="login"><div class="logo"><img src="${BR}logo-white.png" alt="SINDIICAT"></div>
           <div class="card warnbox" style="margin-top:24px"><b>No access yet.</b>
           <p class="muted">${esc(state.session.user.email)} is not registered on the team. Ask a partner to add this e-mail, then sign in again.</p>
           <button class="btn ghost" id="out">Sign out</button></div></div>`;
@@ -314,7 +315,7 @@
       toast(n.title);
     }
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      try { new Notification(n.title, { body: [n.amount ? inr(n.amount) : '', n.body].filter(Boolean).join(' · '), icon: 'icon.svg', tag: `zs-${n.id}` }); } catch (_) { /* */ }
+      try { new Notification(n.title, { body: [n.amount ? inr(n.amount) : '', n.body].filter(Boolean).join(' · '), icon: 'icon.png', tag: `zs-${n.id}` }); } catch (_) { /* */ }
     }
     if (['order', 'sale', 'dispatch', 'client', 'status', 'service', 'payment'].includes(n.kind) && ['home', 'orders', 'sales', 'store'].includes(state.tab) && !panelEl) render();
   }
@@ -372,7 +373,7 @@
     $app.innerHTML = `
       <div class="shell">
         <header class="top">
-          <div class="brand">Z<b>-</b>SHIRTS<small>Team</small></div>
+          <div class="brand"><img class="brand-wm" src="${BR}wordmark-white.png" alt="SINDIICAT"><small>Team</small></div>
           <div class="top-right">
             <button class="bell" id="bell" aria-label="Alerts">${ICON.bell}<span class="badge" id="bellBadge" hidden></span></button>
             <button class="me-chip" id="me" title="Sign out">${esc(state.me.name.split(' ')[0])}</button>
@@ -755,13 +756,13 @@
     const first = (o.customer_name || '').split(' ')[0];
     const link = `${shopUrl()}?track=${o.order_no}`;
     const m = {
-      placed: `Hi ${first}! Thanks for ordering from Z-SHIRTS. Your order ${o.order_no} is received.`,
-      confirmed: `Hi ${first}! Your Z-SHIRTS order ${o.order_no} is confirmed. We'll pack it soon.`,
-      packed: `Hi ${first}! Your Z-SHIRTS order ${o.order_no} is packed and leaves today.`,
-      shipped: `Hi ${first}! Your Z-SHIRTS order ${o.order_no} is on the way${o.courier ? ` with ${o.courier}` : ''}${o.tracking_no ? ` (AWB ${o.tracking_no})` : ''}. Track it here: ${link}`,
-      delivered: `Hi ${first}! Your Z-SHIRTS order ${o.order_no} was delivered. Hope you love the fit! Size not right? Request an exchange within ${state.settings.return_window_days || 7} days: ${link}`,
+      placed: `Hi ${first}! Thanks for ordering from SINDIICAT. Your order ${o.order_no} is received.`,
+      confirmed: `Hi ${first}! Your SINDIICAT order ${o.order_no} is confirmed. We'll pack it soon.`,
+      packed: `Hi ${first}! Your SINDIICAT order ${o.order_no} is packed and leaves today.`,
+      shipped: `Hi ${first}! Your SINDIICAT order ${o.order_no} is on the way${o.courier ? ` with ${o.courier}` : ''}${o.tracking_no ? ` (AWB ${o.tracking_no})` : ''}. Track it here: ${link}`,
+      delivered: `Hi ${first}! Your SINDIICAT order ${o.order_no} was delivered. Hope you love the fit! Size not right? Request an exchange within ${state.settings.return_window_days || 7} days: ${link}`,
     };
-    return m[status] || `Hi ${first}, about your Z-SHIRTS order ${o.order_no}.`;
+    return m[status] || `Hi ${first}, about your SINDIICAT order ${o.order_no}.`;
   };
 
   async function openOrder(id, rows) {
@@ -792,7 +793,7 @@
         <div class="row" style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><span class="muted">Items</span><span>${esc(inr(o.subtotal))}</span></div>
         ${Number(o.bundle_discount) ? `<div class="row"><span class="muted">Combo · ${esc(o.bundle_name)}</span><span class="neg">− ${esc(inr(o.bundle_discount))}</span></div>` : ''}
         ${Number(o.coupon_discount) ? `<div class="row"><span class="muted">Coupon ${esc(o.coupon_code)}</span><span class="neg">− ${esc(inr(o.coupon_discount))}</span></div>` : ''}
-        ${Number(o.points_used) ? `<div class="row"><span class="muted">Z-Club points</span><span class="neg">− ${esc(inr(o.points_used))}</span></div>` : ''}
+        ${Number(o.points_used) ? `<div class="row"><span class="muted">SINDIICAT Club points</span><span class="neg">− ${esc(inr(o.points_used))}</span></div>` : ''}
         ${Number(o.discount) - Number(o.bundle_discount || 0) - Number(o.coupon_discount || 0) - Number(o.points_used || 0) > 0 ? `<div class="row"><span class="muted">Discount</span><span class="neg">− ${esc(inr(Number(o.discount) - Number(o.bundle_discount || 0) - Number(o.coupon_discount || 0) - Number(o.points_used || 0)))}</span></div>` : ''}
         ${Number(o.shipping) ? `<div class="row"><span class="muted">Delivery</span><span>${esc(inr(o.shipping))}</span></div>` : ''}
         <div class="row"><b>Total</b><span class="amt">${esc(inr(o.total))}</span></div>
@@ -801,7 +802,7 @@
 
       ${o.courier ? `<div class="card"><div class="row"><span class="muted">Courier</span><b>${esc(o.courier)}</b></div>${o.tracking_no ? `<div class="row"><span class="muted">AWB</span><b>${esc(o.tracking_no)}</b></div>` : ''}</div>` : ''}
       ${o.note ? `<div class="card"><span class="muted">Note</span><div>${esc(o.note)}</div></div>` : ''}
-      ${o.account_name || o.utm_campaign ? `<div class="card">${o.account_name ? `<div class="row"><span class="muted">Z-Club member</span><b>${esc(o.account_name)}</b></div>` : ''}${o.utm_source || o.utm_campaign ? `<div class="row"><span class="muted">Came from</span><b>${esc([o.utm_source, o.utm_campaign].filter(Boolean).join(' · '))}</b></div>` : ''}</div>` : ''}
+      ${o.account_name || o.utm_campaign ? `<div class="card">${o.account_name ? `<div class="row"><span class="muted">SINDIICAT Club member</span><b>${esc(o.account_name)}</b></div>` : ''}${o.utm_source || o.utm_campaign ? `<div class="row"><span class="muted">Came from</span><b>${esc([o.utm_source, o.utm_campaign].filter(Boolean).join(' · '))}</b></div>` : ''}</div>` : ''}
       ${o.production_status ? `<div class="card" style="border-color:rgba(0,229,255,.4)"><b>Made to order · customer sees this</b>
         <div class="chipset" style="margin-top:10px">${MAKING.map(([k, l]) => `<button data-make="${k}" class="${o.production_status === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>` : ''}
 
@@ -1672,7 +1673,7 @@
           <div style="margin-top:8px">“${esc(r.reason)}”</div>
           ${r.resolution ? `<div class="muted" style="margin-top:4px">Reply: ${esc(r.resolution)}</div>` : ''}
           <div class="actions">
-            ${r.customer_phone ? `<a class="btn small outline" target="_blank" rel="noopener" href="https://wa.me/91${esc(r.customer_phone)}?text=${encodeURIComponent(`Hi ${(r.customer_name || '').split(' ')[0]}, about your ${r.kind === 'replacement' ? 'exchange' : 'return'} request for Z-SHIRTS order ${r.order_no}: `)}">WhatsApp</a>` : ''}
+            ${r.customer_phone ? `<a class="btn small outline" target="_blank" rel="noopener" href="https://wa.me/91${esc(r.customer_phone)}?text=${encodeURIComponent(`Hi ${(r.customer_name || '').split(' ')[0]}, about your ${r.kind === 'replacement' ? 'exchange' : 'return'} request for SINDIICAT order ${r.order_no}: `)}">WhatsApp</a>` : ''}
             ${r.status === 'open' ? `<button class="btn small bad" data-act="reject">Reject</button><button class="btn small" data-act="approve">Approve</button>` : ''}
             ${r.status === 'approved' ? `<button class="btn small cyan" data-act="complete">${r.kind === 'replacement' ? 'Received old · sent new' : 'Received · refunded'}</button>` : ''}
           </div>
@@ -1731,7 +1732,7 @@
     await loadSettings();
     const P = isPartner();
     const rows = (state.settingRows || []).filter((r) => r.kind !== 'object' && !['custom_split', 'profit_rule', 'loss_rule'].includes(r.key));
-    const groups = ['Business', 'Selling', 'Tax & GST', 'Money & approvals', 'Z-Club', 'Shop'];
+    const groups = ['Business', 'Selling', 'Tax & GST', 'Money & approvals', 'SINDIICAT Club', 'Shop'];
     const show = (r) => {
       const v = r.value;
       if (r.kind === 'switch') return Number(v) ? 'On' : 'Off';
@@ -2087,7 +2088,7 @@
       const lines = ['id,date,type,description,partner,amount,order,reverses_entry'].concat(rows.slice().reverse().map((r) =>
         [r.id, r.entry_date, KIND[r.kind], r.description, r.partner_id ? memberName(r.partner_id) : '', r.amount, r.order_id, r.reverses_entry].map(cell).join(',')));
       const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
-      Object.assign(document.createElement('a'), { href: url, download: `zshirts-books-${todayKey()}.csv` }).click();
+      Object.assign(document.createElement('a'), { href: url, download: `sindiicat-books-${todayKey()}.csv` }).click();
       URL.revokeObjectURL(url);
     };
     view.querySelectorAll('[data-rev]').forEach((b) => {
@@ -2252,10 +2253,10 @@
     try { await loadScript('https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'); } catch (e) { w.close(); return toast(errText(e), true); }
     const qr = (txt) => { const g = window.qrcode(0, 'M'); g.addData(txt); g.make(); return g.createSvgTag({ cellSize: 3, margin: 0, scalable: true }); };
     const tags = list.flatMap(({ v, n }) => Array.from({ length: n }, () => `
-      <div class="t"><div class="b">Z-SHIRTS</div><div class="n">${esc(v.product_name)}</div><div class="s">${esc(v.colour)} · <b>${esc(v.size)}</b></div>
+      <div class="t"><div class="b">SINDIICAT</div><div class="n">${esc(v.product_name)}</div><div class="s">${esc(v.colour)} · <b>${esc(v.size)}</b></div>
         <div class="q">${qr(v.sku)}</div><div class="p">${esc(inr(v.price))}${Number(v.mrp) > Number(v.price) ? ` <s>${esc(inr(v.mrp))}</s>` : ''}</div><div class="k">${esc(v.sku)}</div></div>`)).join('');
     w.document.open();
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Z-SHIRTS tags</title><style>
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>SINDIICAT tags</title><style>
       @page{margin:8mm}body{margin:0;font-family:system-ui,sans-serif;color:#000}.g{display:flex;flex-wrap:wrap;gap:4mm}
       .t{width:38mm;height:62mm;border:1px dashed #999;border-radius:3mm;padding:3mm;box-sizing:border-box;text-align:center;page-break-inside:avoid;display:flex;flex-direction:column;gap:1mm}
       .b{font-weight:900;letter-spacing:.5px;font-size:11px}.n{font-size:9px;line-height:1.15;height:21px;overflow:hidden}.s{font-size:10px}.q svg{width:24mm;height:24mm}
@@ -2391,7 +2392,7 @@
         kicker: 'Welcome to the team',
         name: `Welcome, ${first}!`,
         lines: [
-          `You run the Z-SHIRTS store: sales, stock, production and the cash counter. The partners trust you with all of it.`,
+          `You run the SINDIICAT store: sales, stock, production and the cash counter. The partners trust you with all of it.`,
           `Your day: ${sh.shift_start || '10:00'} to ${sh.shift_end || '21:00'} with a ${sh.lunch_min || 30}-minute lunch. Punch in with a selfie on the Home screen.`,
           'Tap the big + to bill any sale in seconds. Pick who sold it, add a coupon, done.',
           'Every sale you make shows on the leaderboard. Go top it!',
@@ -3127,7 +3128,7 @@
       ${stamp ? `<div class="zpo-stamp">${stamp}</div>` : ''}
       <div class="zpo-band"></div>
       <header class="zpo-head">
-        <div><div class="zpo-logo"><i>Z</i><span>-</span>SHIRTS</div><div class="zpo-biz">${esc(b.name)}<br>${esc(b.address || '')}${b.gstin ? `<br>GSTIN ${esc(b.gstin)}` : ''} · State ${esc(stateName(myStateCode()))} (${esc(myStateCode())})
+        <div><div class="zpo-logo"><i>S</i>INDII<span>CAT</span></div><div class="zpo-biz">${esc(b.name)}<br>${esc(b.address || '')}${b.gstin ? `<br>GSTIN ${esc(b.gstin)}` : ''} · State ${esc(stateName(myStateCode()))} (${esc(myStateCode())})
           ${state.settings.business_phone || state.settings.business_email ? `<br>${esc(state.settings.business_phone || '')} ${esc(state.settings.business_email || '')}` : ''}</div></div>
         <div class="zpo-title"><h1>Purchase Order</h1><div class="zpo-no">${esc(po.po_no)}</div><div class="zpo-type">${esc(PO_TYPES[po.po_type].label)}</div></div>
       </header>
@@ -3168,7 +3169,7 @@
         <div class="zpo-appr"><span>Approved by</span><b>${approvers.length ? approvers.map((x) => esc(x.name)).join(', ') : '—'}</b><small>${po.approved_at ? d(po.approved_at) : ''}</small></div>
         <div><span>Vendor acceptance</span><b>&nbsp;</b><small>Sign, stamp and date</small></div>
       </div>
-      <footer class="zpo-foot">This is a computer-generated purchase order from the Z-SHIRTS team app. Please quote ${esc(po.po_no)} on your invoice.</footer>
+      <footer class="zpo-foot">This is a computer-generated purchase order from the SINDIICAT team app. Please quote ${esc(po.po_no)} on your invoice.</footer>
     </div>`;
   }
   const PO_CSS = `
@@ -3647,7 +3648,7 @@
     }).catch(() => {});
     view.querySelectorAll('[data-more]').forEach((b) => { b.onclick = () => go('more', b.dataset.more); });
     view.querySelector('#toClose').onclick = () => go('more', 'close');
-    view.querySelector('#finPrint').onclick = () => printDoc(`Z-SHIRTS P&L ${label}`, `<h1>${esc(biz().name)} · Profit & loss</h1><p class="muted">${esc(label)}: ${esc(day(from))} to ${esc(day(f.to))}</p>${pnl.replace('class="pnl"', '')}`);
+    view.querySelector('#finPrint').onclick = () => printDoc(`SINDIICAT P&L ${label}`, `<h1>${esc(biz().name)} · Profit & loss</h1><p class="muted">${esc(label)}: ${esc(day(from))} to ${esc(day(f.to))}</p>${pnl.replace('class="pnl"', '')}`);
     view.querySelector('#taxRate').onclick = async () => {
       const v = await ask({ title: 'Income tax on profit (%)', html: '<p class="muted">Partnership firm: 30% + 4% cess = 31.2% (more if profit crosses ₹1 crore). All partners approve.</p>', fields: [{ name: 'value', label: 'Rate %', type: 'number', value: f.tax_rate, required: true }, { name: 'why', label: 'Why?', required: true, placeholder: 'As advised by CA' }], ok: 'Send for approval' });
       if (!v) return;
@@ -3903,7 +3904,7 @@
     view.querySelectorAll('[data-share]').forEach((b) => {
       b.onclick = async () => {
         const url = `${shopUrl()}?coupon=${encodeURIComponent(b.dataset.share)}`;
-        try { if (navigator.share) await navigator.share({ title: 'Z-SHIRTS', text: `Use code ${b.dataset.share} on Z-SHIRTS`, url }); else { await navigator.clipboard.writeText(url); toast('Link copied: the code applies itself at checkout'); } } catch (_) { /* */ }
+        try { if (navigator.share) await navigator.share({ title: 'SINDIICAT', text: `Use code ${b.dataset.share} on SINDIICAT`, url }); else { await navigator.clipboard.writeText(url); toast('Link copied: the code applies itself at checkout'); } } catch (_) { /* */ }
       };
     });
     view.querySelectorAll('[data-tog]').forEach((b) => { b.onclick = async () => { try { await q(sb.rpc('set_coupon_active', { p_id: Number(b.dataset.tog), p_active: b.dataset.on === '1' })); VIEWS.coupons(view); } catch (e) { toast(errText(e), true); } }; });
@@ -4165,8 +4166,8 @@
           <span><button class="btn small outline" id="repPrint">${NATIVE ? 'Share' : 'Print / PDF'}</button> <button class="btn small good" id="repWa">WhatsApp summary</button></span></div>
         <div class="card report">${html}</div>`;
       el.querySelector('#repM').onchange = (e) => { state.repMonth = e.target.value; REPORT_VIEWS.monthly(el); };
-      el.querySelector('#repPrint').onclick = () => printDoc(`Z-SHIRTS ${monthName(m)}`, html);
-      el.querySelector('#repWa').onclick = () => openExternal(`https://wa.me/?text=${encodeURIComponent([`*Z-SHIRTS · ${monthName(m)}*`, `Sales ${inr(r.sales)} · ${r.orders} orders · ${r.pieces} pcs`,
+      el.querySelector('#repPrint').onclick = () => printDoc(`SINDIICAT ${monthName(m)}`, html);
+      el.querySelector('#repWa').onclick = () => openExternal(`https://wa.me/?text=${encodeURIComponent([`*SINDIICAT · ${monthName(m)}*`, `Sales ${inr(r.sales)} · ${r.orders} orders · ${r.pieces} pcs`,
         `Expenses ${inr(r.expenses)} (ads ${inr(r.ad_spend)})`, `*Net ${inr(net)}*`, ...pos.map((p) => `${p.name}: ${inr(Math.round(net * share(p)))}`),
         `New customers ${r.new_customers} · repeat ${r.repeat_customers} · RTO ${r.rto_orders}`].join('\n'))}`);
     },
@@ -4256,7 +4257,7 @@
       el.innerHTML = `<div class="actions" style="margin:0 0 10px"><button class="btn small outline" id="invPrint">${NATIVE ? 'Share' : 'Print / save PDF'}</button></div>
         <div class="card report investor">${html}</div>
         <h2>Monthly net sales</h2>${months.length ? bars(months.slice(-6).map((m) => ({ ...m, net: Number(m.sales) - Number(m.refunds) })), 'net', (m) => shortMonth(m.month)) : ''}`;
-      el.querySelector('#invPrint').onclick = () => printDoc('Z-SHIRTS key numbers', html);
+      el.querySelector('#invPrint').onclick = () => printDoc('SINDIICAT key numbers', html);
     },
   };
 

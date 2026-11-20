@@ -2,7 +2,7 @@
   "name": "zshirts-team-android",
   "version": "1.0.0",
   "private": true,
-  "description": "Z-SHIRTS Team app for Android (wraps web/admin)",
+  "description": "SINDIICAT Team app for Android (wraps web/admin)",
   "scripts": {
     "www": "node build-www.mjs"
   },

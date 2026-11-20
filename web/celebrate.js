@@ -1,4 +1,4 @@
-/* Z-SHIRTS celebrations: liquid-glass confetti, a short chime, and a big moment for milestones.
+/* SINDIICAT celebrations: liquid-glass confetti, a short chime, and a big moment for milestones.
  * window.ZSCelebrate.confetti(), .chime(), .moment({title, sub, amount, big})
  */
 (() => {
@@ -119,7 +119,7 @@
       el.className = 'zs-welcome';
       el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
-      const logo = 'Z-SHIRTS'.split('').map((ch, i) => `<span style="animation-delay:${0.15 + i * 0.08}s">${ch === '-' ? '<b>-</b>' : ch}</span>`).join('');
+      const logo = 'SINDIICAT'.split('').map((ch, i) => `<span style="animation-delay:${0.15 + i * 0.08}s">${ch === '-' ? '<b>-</b>' : ch}</span>`).join('');
       el.innerHTML = `<div class="zs-w-glow"></div><i class="zs-w-orb o1"></i><i class="zs-w-orb o2"></i><i class="zs-w-orb o3"></i><div class="zs-w-inner">
         <div class="zs-w-kicker" style="animation-delay:.05s"></div>
         <div class="zs-w-logo">${logo}</div>

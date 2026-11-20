@@ -1,4 +1,4 @@
-# Builds the Z-SHIRTS Team Android app (APK) whenever the team app changes,
+# Builds the SINDIICAT Team Android app (APK) whenever the team app changes,
 # and publishes it on the repo's Releases page so the team can download it on their phones.
 name: Android app
 on:
@@ -75,21 +75,21 @@ jobs:
             -Pandroid.injected.signing.key.password="$PASS"
 
       - name: Name the APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk ../Z-SHIRTS-Team.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk ../SINDIICAT-Team.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Z-SHIRTS-Team-apk
-          path: Z-SHIRTS-Team.apk
+          name: SINDIICAT-Team-apk
+          path: SINDIICAT-Team.apk
 
       - name: Publish download link
         uses: softprops/action-gh-release@v2
         with:
           tag_name: team-app-v1.0.${{ github.run_number }}
-          name: Z-SHIRTS Team app 1.0.${{ github.run_number }}
+          name: SINDIICAT Team app 1.0.${{ github.run_number }}
           body: |
-            Download **Z-SHIRTS-Team.apk** on your Android phone and open it to install.
+            Download **SINDIICAT-Team.apk** on your Android phone and open it to install.
             First time: allow "Install unknown apps" for your browser when Android asks.
             Updating: just install the new APK over the old one — your login stays.
-          files: Z-SHIRTS-Team.apk
+          files: SINDIICAT-Team.apk
           make_latest: true

@@ -11,7 +11,8 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 cpSync(join(web, 'admin'), out, { recursive: true });
-for (const f of ['config.js', 'celebrate.js', 'icon.svg']) cpSync(join(web, f), join(out, f));
+cpSync(join(web, 'brand'), join(out, 'brand'), { recursive: true });
+for (const f of ['config.js', 'celebrate.js']) cpSync(join(web, f), join(out, f));
 rmSync(join(out, 'sw.js'), { force: true });          // no service worker inside the app
 rmSync(join(out, 'manifest.json'), { force: true });
 
@@ -19,6 +20,7 @@ const html = join(out, 'index.html');
 writeFileSync(html, readFileSync(html, 'utf8')
   .replaceAll('../config.js', 'config.js')
   .replaceAll('../celebrate.js', 'celebrate.js')
+  .replaceAll('../brand/', 'brand/')
   .replace('<link rel="manifest" href="manifest.json">\n', ''));
 
 if (!existsSync(join(out, 'app.js'))) throw new Error('web/admin/app.js missing');

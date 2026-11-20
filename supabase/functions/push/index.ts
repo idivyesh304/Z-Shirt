@@ -1,4 +1,4 @@
-// Z-SHIRTS · phone notifications (Supabase Edge Function)
+// SINDIICAT · phone notifications (Supabase Edge Function)
 //
 // Sends everything waiting in push_outbox to phones, even when the app is closed:
 //   · team alerts (new order, approvals, low stock…) → partners / Mahendra

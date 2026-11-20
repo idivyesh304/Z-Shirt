@@ -21,6 +21,7 @@ psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/013_purchase_orders.
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/014_shop_experience.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/015_regular_fit.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/016_full_listing.sql >/dev/null
+psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/017_rename_sindiicat.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f tests/test_members.sql >/dev/null
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/rules_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/commerce_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

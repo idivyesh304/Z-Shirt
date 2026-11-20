@@ -1,5 +1,5 @@
 /* =====================================================================
-   Z-SHIRTS STORE
+   SINDIICAT STORE
    Clean white canvas, ink type, one loud brand colour (lime), Indian
    shopping cues (MRP strike, % OFF, COD, pincode ETA, easy exchange).
    ===================================================================== */
@@ -737,3 +737,25 @@ h1.page { font-size: clamp(26px, 6vw, 40px); letter-spacing: -.03em; }
 .hl li { padding-left: 20px; position: relative; }
 .hl li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 8px; height: 8px; border-radius: 2px; background: var(--blue); }
 .tee-offer b { background: var(--sticker); padding: 0 4px; border-radius: 3px; }
+
+/* =====================================================================
+   SINDIICAT — black, white and the cat's neon-green eyes
+   ===================================================================== */
+:root {
+  --blue: #000000;
+  --sticker: #a6ff00;
+  --lime: #a6ff00;
+}
+.logo img { height: 22px; width: auto; display: block; }
+@media (min-width: 960px) { .logo img { height: 26px; } }
+.announce b { color: var(--sticker); }
+.htag.regular { background: var(--sticker); color: #000; }
+.htag.oversized { background: #000; color: #fff; }
+.club { background: #000; }
+.club .btn { background: var(--sticker); color: #000; border-color: var(--sticker); }
+.count { background: var(--sticker); color: #000; }
+.fit-chip.regular.on { background: var(--sticker); color: #000; border-color: var(--sticker); }
+.foot .wordmark { padding-top: 40px; }
+.wordmark img { width: min(520px, 78vw); height: auto; display: block; margin: 0 auto; }
+.ticket #heroClock { color: #000; background: var(--sticker); padding: 0 6px; border-radius: 4px; }
+.best { background: #f3ffe0; border-color: #c8f27a; }

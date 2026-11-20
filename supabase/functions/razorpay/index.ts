@@ -1,4 +1,4 @@
-// Z-SHIRTS · Razorpay payments (Supabase Edge Function)
+// SINDIICAT · Razorpay payments (Supabase Edge Function)
 //
 // The shop never decides an order is "paid". Only this server function can,
 // after checking Razorpay's signature AND asking Razorpay for the real amount.

@@ -1,7 +1,7 @@
-/* Z-SHIRTS STORE
+/* SINDIICAT STORE
  * Home, smart search, listing with filters + sort, product page (gallery, size finder, pincode ETA,
  * offers, reviews), wishlist, compare, bag, checkout (saved addresses, prepaid offer, COD), Razorpay,
- * Google account, Z-Club points, order tracking, exchange / return, reviews.
+ * Google account, SINDIICAT Club points, order tracking, exchange / return, reviews.
  * Prices, stock, coupons and totals are always worked out again by the database.
  */
 (() => {
@@ -77,19 +77,19 @@
     oversized: { body: 'M116 98 L168 76 Q200 102 232 76 L284 98 L364 172 L328 236 L296 216 L298 440 Q200 454 102 440 L104 216 L72 236 L36 172 Z', neck: 'M168 76 Q200 116 232 76', mark: 'translate(0 8)' },
     regular: { body: 'M140 86 L172 70 Q200 94 228 70 L260 86 L322 118 L302 178 L270 166 L270 418 Q200 428 130 418 L130 166 L98 178 L78 118 Z', neck: 'M172 70 Q200 106 228 70', mark: 'translate(0 -6)' },
   };
-  function tee(hex = '#111', label = 'Z-SHIRTS tee', fit = 'oversized') {
+  function tee(hex = '#111', label = 'SINDIICAT tee', fit = 'oversized') {
     const c = /^#[0-9a-f]{6}$/i.test(hex || '') ? hex : '#111111';
     const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16);
     const light = (r * 299 + g * 587 + b * 114) / 1000 > 150;
     const stroke = light ? 'rgba(0,0,0,.14)' : 'rgba(255,255,255,.14)';
-    const mark = light ? '#000' : '#FFD60A';
+    const mark = light ? 'brand/cat-black.png' : 'brand/cat-white.png';
     const sh = SHAPES[fit] || SHAPES.oversized;
     return `<svg viewBox="0 0 400 500" role="img" aria-label="${esc(label)}" style="stroke:none">
       <rect width="400" height="500" fill="${light ? '#e4e4de' : '#efefea'}"/>
       <ellipse cx="200" cy="462" rx="${sh === SHAPES.regular ? 96 : 136}" ry="12" fill="rgba(0,0,0,.07)"/>
       <path d="${sh.body}" fill="${c}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>
       <path d="${sh.neck}" fill="none" stroke="${stroke}" stroke-width="5"/>
-      <path transform="${sh.mark}" d="M182 170h36v7l-26 26h26v8h-36v-7l26-26h-26z" fill="${mark}"/>
+      <image transform="${sh.mark}" href="${mark}" x="166" y="150" width="68" height="63" preserveAspectRatio="xMidYMid meet"/>
     </svg>`;
   }
   const firstHex = (p) => (p.variants[0] && p.variants[0].hex) || '#111111';
@@ -522,7 +522,7 @@
     };
 
     const wa = cfg.STORE_WHATSAPP || s.store_whatsapp;
-    if (wa) { $('waFloat').hidden = false; $('waFloat').href = `https://wa.me/${String(wa).replace(/\D/g, '')}?text=${encodeURIComponent('Hi Z-SHIRTS!')}`; }
+    if (wa) { $('waFloat').hidden = false; $('waFloat').href = `https://wa.me/${String(wa).replace(/\D/g, '')}?text=${encodeURIComponent('Hi SINDIICAT!')}`; }
     const ig = cfg.INSTAGRAM || s.instagram;
     $('foot').innerHTML = `<div class="wrap">
       <div><p>Oversized and Regular Fit tees in heavy cotton, printed or plain. Made in Ahmedabad, delivered across India.</p>
@@ -530,7 +530,7 @@
       <div><h4>Shop</h4><a href="#/shop?fit=oversized">Oversized</a><a href="#/shop?fit=regular">Regular Fit</a>${plain ? '<a href="#/shop?line=plain">Pure Essence</a>' : ''}<a href="#/shop?tag=new">New collection</a><a href="#/shop?tag=sale">Sale</a></div>
       <div><h4>Help</h4><a href="#/track">Track order</a><a href="#/help">Size guide</a><a href="#/help#returns">Returns & exchange</a><a href="#/help#shipping">Shipping</a><a href="#/help">FAQs</a></div>
       <div><h4>Talk to us</h4>${wa ? `<a target="_blank" rel="noopener" href="https://wa.me/${esc(String(wa).replace(/\D/g, ''))}">WhatsApp</a>` : ''}${ig ? `<a target="_blank" rel="noopener" href="https://instagram.com/${esc(ig)}">Instagram</a>` : ''}<a href="#/account">My account</a></div>
-    </div><div class="wordmark" aria-hidden="true">Z-SHIRTS</div>`;
+    </div><div class="wordmark"><img src="brand/logo-white.png" alt="SINDIICAT"></div>`;
   }
 
   // ================================================================ HOME
@@ -598,7 +598,7 @@
 
         <section class="sec" id="homeReviews"></section>
 
-        <section class="sec"><div class="club"><div><h3>Z-Club</h3><p>${s.loyalty_points_per_100 || 5} points on every ₹100. 1 point is ₹1 off your next order. Your orders, addresses and wishlist on every phone.</p></div>
+        <section class="sec"><div class="club"><div><h3>SINDIICAT Club</h3><p>${s.loyalty_points_per_100 || 5} points on every ₹100. 1 point is ₹1 off your next order. Your orders, addresses and wishlist on every phone.</p></div>
           <a class="btn" href="#/account">${state.account ? `You have ${state.account.points} points` : 'Join with Google'}</a></div></section>
 
         ${recent.length ? `<section class="sec"><div class="sec-h"><h2>Recently viewed</h2></div><div class="rail">${recent.map(card).join('')}</div></section>` : ''}
@@ -906,7 +906,7 @@
     const p = bySlug(route.arg);
     if (!p) { main.innerHTML = '<div class="wrap empty-box"><h3>This tee is not here anymore</h3><p>It may be sold out or renamed.</p><a class="btn" href="#/shop">See all tees</a></div>'; return; }
     pushViewed(p.id);
-    document.title = `${p.name} · Z-SHIRTS`;
+    document.title = `${p.name} · SINDIICAT`;
     const cols = coloursOf(p);
     let colour = route.params.c && cols.some(([n]) => n === route.params.c) ? route.params.c
       : (cols.find(([n]) => p.variants.some((v) => v.colour === n && canBuy(p, v))) || cols[0] || [''])[0];
@@ -1005,7 +1005,7 @@
     gm.querySelectorAll('img').forEach((im) => { im.onclick = () => zoom(`<img src="${esc(im.src)}" alt="">`); });
     $('share').onclick = async () => {
       const url = `${location.origin}${location.pathname}#/p/${p.slug}`;
-      const text = `${p.name} · ${inr(p.price)} on Z-SHIRTS`;
+      const text = `${p.name} · ${inr(p.price)} on SINDIICAT`;
       if (navigator.share) { try { await navigator.share({ title: p.name, text, url }); } catch (_) { /* cancelled */ } }
       else window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, '_blank', 'noopener');
     };
@@ -1043,7 +1043,7 @@
         colour = b.dataset.col;
         main.querySelectorAll('[data-col]').forEach((x) => x.classList.toggle('on', x === b));
         $('colName').textContent = colour;
-        if (p.line === 'plain') { $('pTitle').textContent = colour; document.title = `${colour} · Pure Essence ${fitName(p)} · Z-SHIRTS`; }
+        if (p.line === 'plain') { $('pTitle').textContent = colour; document.title = `${colour} · Pure Essence ${fitName(p)} · SINDIICAT`; }
         if (!(p.images && p.images.length)) gm.innerHTML = `<div>${tee(cols.find(([n]) => n === colour)[1], p.name)}</div>`;
         history.replaceState(null, '', `#/p/${p.slug}?c=${encodeURIComponent(colour)}`);
         paintSizes();
@@ -1249,13 +1249,13 @@
       ${q.bundle_discount > 0 ? `<div><span>Combo · ${esc(q.bundle_name)}</span><span class="g">− ${esc(inr(q.bundle_discount))}</span></div>` : ''}
       ${q.coupon_discount > 0 ? `<div><span>Coupon ${esc(q.coupon_code)}</span><span class="g">− ${esc(inr(q.coupon_discount))}</span></div>` : ''}
       ${q.prepaid_discount > 0 ? `<div><span>Online payment offer</span><span class="g">− ${esc(inr(q.prepaid_discount))}</span></div>` : ''}
-      ${q.points_used > 0 ? `<div><span>Z-Club points</span><span class="g">− ${esc(inr(q.points_used))}</span></div>` : ''}
+      ${q.points_used > 0 ? `<div><span>SINDIICAT Club points</span><span class="g">− ${esc(inr(q.points_used))}</span></div>` : ''}
       <div><span>Delivery</span><span>${q.shipping ? esc(inr(q.shipping)) : '<span class="g">FREE</span>'}</span></div>
       ${q.cod_fee > 0 ? `<div><span>Cash on delivery fee</span><span>${esc(inr(q.cod_fee))}</span></div>` : ''}
       <div class="tot"><span>Total amount</span><span>${esc(inr(q.total))}</span></div>
       ${saved > 0 ? `<div class="saved">You save ${esc(inr(saved))} on this order</div>` : ''}
       ${opts.offerHint && q.prepaid_offer > 0 && !q.prepaid_discount ? `<div class="hint good" style="justify-content:flex-start">Pay online and save ${esc(inr(q.prepaid_offer))} more</div>` : ''}
-      ${q.points_earn > 0 ? `<div class="hint" style="justify-content:flex-start">${state.account ? `+${q.points_earn} Z-Club points after delivery` : `<span>Sign in to earn <b>${q.points_earn}</b> Z-Club points</span>`}</div>` : ''}
+      ${q.points_earn > 0 ? `<div class="hint" style="justify-content:flex-start">${state.account ? `+${q.points_earn} SINDIICAT Club points after delivery` : `<span>Sign in to earn <b>${q.points_earn}</b> SINDIICAT Club points</span>`}</div>` : ''}
     </div>`;
   }
   function comboNudge(q) {
@@ -1391,7 +1391,7 @@
       <div class="bag-layout">
         <div>
           ${acc ? '' : `<div class="box"><h3>Faster checkout</h3><button class="google" id="coG" type="button">${googleIcon()} Continue with Google</button>
-            <p class="muted small" style="text-align:center;margin:8px 0 0">Earn Z-Club points, save addresses and track orders. Or continue as guest below.</p></div>`}
+            <p class="muted small" style="text-align:center;margin:8px 0 0">Earn SINDIICAT Club points, save addresses and track orders. Or continue as guest below.</p></div>`}
           <div class="box"><h3>Delivery address ${saved.length ? '<button class="link small" id="addNew" type="button">+ Add new</button>' : ''}</h3>
             <div id="addrList">${saved.map((x) => `<label class="addr${x.id === addrId ? ' on' : ''}"><input type="radio" name="ad" value="${x.id}" ${x.id === addrId ? 'checked' : ''}>
               <span><b>${esc(x.name)}</b><span class="tag">${esc(x.label)}</span><div class="small" style="margin-top:4px">${esc([x.line1, x.line2, x.city, x.state].filter(Boolean).join(', '))} - ${esc(x.pincode)}</div><div class="small muted">Mobile: ${esc(x.phone)}</div></span></label>`).join('')}</div>
@@ -1413,7 +1413,7 @@
             <label class="pay-opt on" id="poOn"><input type="radio" name="pay" value="online" checked><span><b>Pay online <span class="tagg" id="preTag" hidden></span></b><span class="muted small">UPI, cards, wallets, netbanking</span>
               <div class="pay-logos"><span>GPay</span><span>PhonePe</span><span>Paytm</span><span>Visa</span><span>Mastercard</span><span>RuPay</span></div></span></label>
             ${s.cod_enabled ? `<label class="pay-opt" id="poCod"><input type="radio" name="pay" value="cod"><span><b>Cash on delivery</b><span class="muted small" id="codNote">Pay in cash or UPI when it arrives${s.cod_fee ? ` · ₹${s.cod_fee} handling fee` : ''}</span></span></label>` : ''}
-            ${acc && acc.points > 0 ? `<label class="pay-opt" style="margin-top:14px"><input type="checkbox" id="coPts"><span><b>Use Z-Club points</b><span class="muted small" id="ptsNote">You have ${acc.points} points (worth ${esc(inr(acc.points))})</span></span></label>` : ''}
+            ${acc && acc.points > 0 ? `<label class="pay-opt" style="margin-top:14px"><input type="checkbox" id="coPts"><span><b>Use SINDIICAT Club points</b><span class="muted small" id="ptsNote">You have ${acc.points} points (worth ${esc(inr(acc.points))})</span></span></label>` : ''}
           </div>
         </div>
         <div class="side">
@@ -1559,7 +1559,7 @@
       const [o] = await Promise.all([callPay({ action: 'create', order_no: orderNo }), loadRazorpay()]);
       const rz = new window.Razorpay({
         key: o.key, amount: o.amount, currency: o.currency, order_id: o.razorpay_order_id,
-        name: 'Z-SHIRTS', description: `Order ${orderNo}`,
+        name: 'SINDIICAT', description: `Order ${orderNo}`,
         prefill: { name: customer.name, contact: customer.phone, email: customer.email || undefined },
         theme: { color: '#0e0e10' },
         handler: async (resp) => {
@@ -1637,7 +1637,7 @@
       ${o.status === 'delivered' && !canAsk && days && daysLeft <= 0 ? `<p class="muted small">The ${days}-day exchange window for this order has closed.</p>` : ''}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
         ${['delivered', 'shipped', 'packed', 'confirmed'].includes(o.status) || o.payment_status === 'paid' ? '<button class="btn line sm" id="inv">Download invoice</button>' : ''}
-        ${wa ? `<a class="btn line sm" target="_blank" rel="noopener" href="https://wa.me/${esc(String(wa).replace(/\D/g, ''))}?text=${encodeURIComponent(`Hi Z-SHIRTS, about my order ${o.order_no}`)}">Help with this order</a>` : ''}
+        ${wa ? `<a class="btn line sm" target="_blank" rel="noopener" href="https://wa.me/${esc(String(wa).replace(/\D/g, ''))}?text=${encodeURIComponent(`Hi SINDIICAT, about my order ${o.order_no}`)}">Help with this order</a>` : ''}
       </div></div>`;
     if (fresh && !waiting) { if (window.ZSCelebrate) { window.ZSCelebrate.confetti(1.2); if (window.ZSCelebrate.chime) window.ZSCelebrate.chime(); } history.replaceState(null, '', `#/order/${o.order_no}`); }
     if ($('sPush')) $('sPush').onclick = async () => { try { await enablePush(); toast("You'll get updates on this phone"); $('sPush').remove(); } catch (e) { toast(errText(e), true); } };
@@ -1652,7 +1652,7 @@
     const w = window.open('', '_blank');
     if (!w) { toast('Allow pop-ups to download the invoice', true); return; }
     w.document.write(`<!doctype html><title>Invoice ${esc(o.order_no)}</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:720px;margin:30px auto;padding:0 16px;color:#111}h1{font-size:28px;margin:0}table{width:100%;border-collapse:collapse;margin-top:18px}td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}td:last-child,th:last-child{text-align:right}.t td{font-weight:800;border:0}</style>
-      <h1>Z-SHIRTS</h1><p>Tax invoice / bill of supply<br>Order <b>${esc(o.order_no)}</b> · ${esc(dateOf(o.created_at))}<br>${esc(o.customer_name || '')}</p>
+      <h1>SINDIICAT</h1><p>Tax invoice / bill of supply<br>Order <b>${esc(o.order_no)}</b> · ${esc(dateOf(o.created_at))}<br>${esc(o.customer_name || '')}</p>
       <table><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>${(o.items || []).map((i) => `<tr><td>${esc(i.name)} · ${esc(i.variant)}</td><td>${i.qty}</td><td>${esc(inr(i.price * i.qty))}</td></tr>`).join('')}
       ${o.discount > 0 ? `<tr><td>Discounts</td><td></td><td>− ${esc(inr(o.discount))}</td></tr>` : ''}<tr><td>Delivery</td><td></td><td>${esc(inr(o.shipping || 0))}</td></tr>
       <tr class="t"><td>Total (inclusive of all taxes)</td><td></td><td>${esc(inr(o.total))}</td></tr></table>
@@ -1758,7 +1758,7 @@
     const u = state.user || {};
     const meta = u.user_metadata || {};
     const a = state.account || {};
-    return `<h2>${first ? 'Welcome to Z-Club' : 'Your details'}</h2>
+    return `<h2>${first ? 'Welcome to SINDIICAT Club' : 'Your details'}</h2>
       ${first ? '<p class="muted">One last step: your mobile number links your orders, including ones placed on WhatsApp or at the store.</p>' : ''}
       <form class="form" id="pfF">
         <label for="pfN">Name</label><input id="pfN" autocomplete="name" value="${esc(a.name || meta.full_name || meta.name || '')}">
@@ -1776,7 +1776,7 @@
       if (error) { root.querySelector('#pfE').textContent = errText(error); return; }
       await refreshAccount();
       if (first && window.ZSCelebrate) window.ZSCelebrate.confetti(0.8);
-      toast(first ? "You're in Z-Club!" : 'Saved');
+      toast(first ? "You're in SINDIICAT Club!" : 'Saved');
       closeSheet();
       const back = session.get('zs_after_login', '');
       session.set('zs_after_login', '');
@@ -1786,7 +1786,7 @@
   PAGES.account = () => {
     if (!state.user) {
       const per = S().loyalty_points_per_100 || 5;
-      main.innerHTML = `<div class="wrap" style="max-width:520px"><div class="club" style="margin-top:24px"><div><h3>Join <span>Z-Club</span></h3>
+      main.innerHTML = `<div class="wrap" style="max-width:520px"><div class="club" style="margin-top:24px"><div><h3>Join <span>SINDIICAT Club</span></h3>
         <ul><li>${per} points on every ₹100</li><li>1 point = ₹1 off</li><li>Saved addresses, 1-tap checkout</li><li>All orders & tracking in one place</li><li>Wishlist on every device</li></ul></div></div>
         <div class="box" style="margin-top:14px"><button class="google" id="accG">${googleIcon()} Continue with Google</button>
         <p class="muted small" style="text-align:center;margin:10px 0 0">No password, no OTP wait. We only see your name and e-mail.</p></div>
@@ -1820,7 +1820,7 @@
     };
     main.innerHTML = `<div class="wrap" style="max-width:760px">
       <div class="acct-hero"><div><h2>Hey ${esc((a.name || '').split(' ')[0] || 'there')}</h2><div class="small" style="opacity:.7">${esc(a.email || '')} · ${esc(a.phone || '')}</div></div>
-        <div class="pts"><b>${a.points}</b><span class="small" style="opacity:.7">Z-Club points · worth ${esc(inr(a.points))}</span></div></div>
+        <div class="pts"><b>${a.points}</b><span class="small" style="opacity:.7">SINDIICAT Club points · worth ${esc(inr(a.points))}</span></div></div>
       <div class="acct-tabs">${[['orders', `Orders (${orders.length})`], ['addresses', 'Addresses'], ['points', 'Points'], ['profile', 'Profile']].map(([k, l]) => `<a class="chip${tab === k ? ' on' : ''}" href="#/account?t=${k}">${l}</a>`).join('')}
         <a class="chip" href="#/wishlist">Wishlist (${state.wish.size})</a></div>
       <div id="accBody">${body[tab] ? body[tab]() : body.orders()}</div>
@@ -1880,7 +1880,7 @@
       ['When will my order arrive?', 'We ship in 1–2 days. Metro cities usually get it in 3–5 days, other places in 5–7 days. Enter your pincode on a product to see the date.'],
       ['How do I exchange a size?', `Open your order (My account or Track order) and tap "Exchange size" within ${s.return_window_days || 15} days of delivery. Keep the tags on.`],
       ['When do I get my refund?', 'For online payments, refunds go back to the same account within 5–7 working days after we receive the return. For COD orders we refund to your UPI.'],
-      ['How do Z-Club points work?', `You earn ${s.loyalty_points_per_100 || 5} points per ₹100 once the order is delivered. 1 point = ₹1 off on your next order.`],
+      ['How do SINDIICAT Club points work?', `You earn ${s.loyalty_points_per_100 || 5} points per ₹100 once the order is delivered. 1 point = ₹1 off on your next order.`],
     ];
     main.innerHTML = `<div class="wrap" style="max-width:760px"><h1 class="page" style="margin-top:24px">Help</h1>
       <div class="chips" style="margin:14px 0"><a class="chip" href="#/track">Track order</a><a class="chip" href="#/help#size">Size guide</a><a class="chip" href="#/help#returns">Returns</a><a class="chip" href="#/help#shipping">Shipping</a></div>

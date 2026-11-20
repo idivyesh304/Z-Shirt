@@ -1,4 +1,4 @@
-# Z-SHIRTS — one place for everything
+# SINDIICAT — one place for everything
 
 Shop, orders, stock, returns, money and partner trust — in one system.
 
@@ -122,7 +122,7 @@ Each partner and Mahendra opens `…/Z-Shirt/admin/`, taps **Create account** wi
 
 The team app is also an installable Android app. GitHub builds a new APK automatically every time the app changes.
 
-**Install:** on the phone, open **github.com/idivyesh304/Z-Shirt/releases** → latest *Z-SHIRTS Team app* → tap **Z-SHIRTS-Team.apk** → open it. The first time, Android asks to allow "Install unknown apps" for your browser — allow it.
+**Install:** on the phone, open **github.com/idivyesh304/Z-Shirt/releases** → latest *SINDIICAT Team app* → tap **SINDIICAT-Team.apk** → open it. The first time, Android asks to allow "Install unknown apps" for your browser — allow it.
 **Update:** install the newer APK over the old one; you stay logged in.
 
 Notes:

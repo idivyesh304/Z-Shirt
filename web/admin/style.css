@@ -1,5 +1,5 @@
 /* =====================================================================
-   Z-SHIRTS Team · Lucy Midnight Gold
+   SINDIICAT Team · Lucy Midnight Gold
    Deep navy, gold accents, thin lines, calm motion. Same look as Lucy.
    ===================================================================== */
 :root {
@@ -828,3 +828,9 @@ details.card > summary::before { color: var(--gold); }
 .label-pick button.on b::before { content: '✓ '; color: var(--gold); }
 .stk-in { width: 58px !important; height: 40px !important; padding: 0 6px !important; text-align: center; }
 .lst-sum { margin: 18px 0 12px; padding: 12px 14px; border-radius: 12px; background: rgba(216, 181, 106, .08); border: 1px dashed var(--gline); font-size: 13.5px; color: var(--text); }
+
+/* ---------- SINDIICAT logo ---------- */
+.brand { display: flex; align-items: center; }
+.brand-wm { height: 20px; width: auto; display: block; }
+.login .logo img { width: min(260px, 70vw); height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 8px 30px rgba(0, 0, 0, .5)); }
+.login .logo { text-align: center; }

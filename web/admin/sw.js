@@ -5,9 +5,9 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', () => {});
 self.addEventListener('push', (e) => {
   let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'Z-SHIRTS', body: e.data && e.data.text() }; }
-  e.waitUntil(self.registration.showNotification(d.title || 'Z-SHIRTS', {
-    body: d.body || '', tag: d.tag, icon: 'icon.svg', badge: 'icon.svg', vibrate: [80, 40, 80], data: { url: self.registration.scope },
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'SINDIICAT', body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'SINDIICAT', {
+    body: d.body || '', tag: d.tag, icon: 'icon.png', badge: 'icon.png', vibrate: [80, 40, 80], data: { url: self.registration.scope },
   }));
 });
 self.addEventListener('notificationclick', (e) => {

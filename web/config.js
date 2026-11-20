@@ -5,7 +5,7 @@ window.ZS_CONFIG = {
   SUPABASE_ANON_KEY: 'sb_publishable_7YLqao8VZFrsr_sFoJA2fg_XOCV0ZkJ',
 
   // Business details printed on invoices
-  BUSINESS_NAME: 'Z-SHIRTS',
+  BUSINESS_NAME: 'SINDIICAT',
   BUSINESS_ADDRESS: '',        // e.g. 'Ahmedabad, Gujarat 380051'
   GSTIN: '',                   // add once registered
 
@@ -14,7 +14,7 @@ window.ZS_CONFIG = {
 
   // Shop details shown to customers
   STORE_WHATSAPP: '',          // e.g. '919876543210' (country code + number, no +). Leave '' to hide the button.
-  INSTAGRAM: '',               // e.g. 'zshirts.in'
+  INSTAGRAM: '',               // e.g. 'sindiicat.in'
 
   // Oversized size guide in inches (edit to match your actual pattern)
   SIZE_GUIDE: [
