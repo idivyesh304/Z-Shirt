@@ -857,3 +857,13 @@ h1 b { background: none; -webkit-text-fill-color: var(--neon); color: var(--neon
 .login .logo::after { content: ''; display: block; width: 64px; height: 10px; margin: 14px auto 0; background: linear-gradient(105deg, transparent 0 18%, var(--neon) 18% 44%, transparent 44% 56%, var(--neon) 56% 82%, transparent 82%); }
 .fit-pill.oversized { background: rgba(199, 255, 0, .12); color: var(--neon); border-color: rgba(199, 255, 0, .35); }
 .fit-pill.regular { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .25); }
+
+/* type: Saira — Expanded Bold Italic matches the SINDIICAT wordmark */
+:root { --display: 'Saira', system-ui, sans-serif; --font: 'Saira', system-ui, sans-serif; --mono: 'Saira', system-ui, sans-serif; }
+body { font-family: var(--font); }
+h1, .btn, .fab { font-family: var(--display); font-stretch: 125%; font-style: italic; }
+h1 { font-size: 26px; letter-spacing: -.01em; }
+.btn { font-size: 14px; letter-spacing: .02em; }
+.btn.small { font-size: 12px; }
+.stat .v, .kpi b, .cash-hero .v, .amt { font-family: var(--display); font-stretch: 112%; font-style: normal; font-weight: 700; }
+.stat .v, .kpi b { font-size: clamp(20px, 5.6vw, 28px); }

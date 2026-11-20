@@ -960,3 +960,18 @@ h1.page { font-size: clamp(34px, 8vw, 52px); }
 .foot .paybadges span { color: var(--ink-2); border-color: #2a2f34; }
 .gal .share { background: rgba(6, 8, 10, .75); color: var(--ink); }
 .marquee { background: #0B0E10; }
+
+/* type: Saira — Expanded Bold Italic matches the SINDIICAT wordmark */
+:root { --display: 'Saira', system-ui, sans-serif; --font: 'Saira', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+body { font-family: var(--font); font-stretch: 100%; font-weight: 400; }
+h1, h2, h3, .sec-h h2, h1.page, .info h1, .done h1, .hero2 h1, .pe-band h2, .htag-name, .combo2 b, .club h3, .empty-box h3, .acct-hero h2,
+.btn, .pprice b, .acct-hero .pts b, .fit-res b, .done .ono { font-family: var(--display); font-stretch: 125%; font-style: italic; }
+.hero2 h1 { font-weight: 800; font-size: clamp(46px, 12.5vw, 112px); line-height: .9; letter-spacing: -.02em; }
+.sec-h h2 { font-size: clamp(20px, 5vw, 30px); letter-spacing: -.01em; }
+h1.page { font-size: clamp(26px, 6.5vw, 42px); }
+.info h1 { font-size: clamp(24px, 5.6vw, 36px); line-height: 1; }
+.htag-name { font-size: clamp(19px, 5.2vw, 36px); }
+.btn { font-size: 15px; letter-spacing: .02em; }
+.btn.sm { font-size: 12.5px; }
+.pe-band h2 { font-size: clamp(28px, 7vw, 52px); }
+.combo2 b { font-size: clamp(18px, 4.6vw, 28px); }
