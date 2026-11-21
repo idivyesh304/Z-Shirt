@@ -883,3 +883,47 @@ header.top .top-right { justify-self: end; }
   background: linear-gradient(105deg, transparent 0 18%, #06080A 18% 44%, transparent 44% 56%, #06080A 56% 82%, transparent 82%); }
 .shell { padding-top: calc(5px + env(safe-area-inset-top)); }
 header.top { top: calc(5px + env(safe-area-inset-top)); }
+
+/* ===================== LOGO PLAY ===================== */
+/* top bar: full logo on the left, controls on the right */
+header.top { display: flex; justify-content: space-between; }
+.brand-full { display: flex; align-items: center; gap: 10px; }
+.brand-full .team-tag { align-self: flex-end; margin-bottom: 4px; font-family: var(--display); font-stretch: 125%; font-style: italic;
+  font-weight: 700; font-size: 10px; letter-spacing: .08em; color: #06080A; background: var(--neon); padding: 2px 7px 2px 6px;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+.brand-logo { height: 46px; }
+@media (min-width: 700px) { .brand-logo { height: 54px; } }
+
+/* cat watermark behind every screen */
+.cat-mark { position: fixed; z-index: -1; pointer-events: none; right: -18vw; bottom: 9vh; width: min(92vw, 560px); aspect-ratio: 664 / 616;
+  background: url('../brand/cat-white.png') center / contain no-repeat; opacity: .045; transform: rotate(-8deg); }
+@media (min-width: 900px) { .cat-mark { right: 4vw; bottom: 6vh; } }
+.login { position: relative; }
+
+/* boot loader */
+#boot { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: #06080A; transition: opacity .5s ease, visibility .5s; }
+#boot.gone { opacity: 0; visibility: hidden; }
+.boot-cat { position: relative; width: 132px; }
+.boot-cat img { width: 100%; display: block; animation: bootIn .8s cubic-bezier(.2, .9, .3, 1.2) both; }
+.boot-cat::after { content: ''; position: absolute; inset: -18%; z-index: -1; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(199, 255, 0, .28), rgba(199, 255, 0, 0)); animation: bootGlow 1.6s ease-in-out infinite; }
+.boot-wm { width: 168px; opacity: 0; animation: bootUp .5s .45s ease forwards; }
+.boot-bar { width: 120px; height: 4px; overflow: hidden; background: rgba(255, 255, 255, .08); transform: skewX(-20deg); }
+.boot-bar i { display: block; width: 40%; height: 100%; background: var(--neon); animation: bootBar 1s ease-in-out infinite; }
+@keyframes bootIn { from { opacity: 0; transform: scale(.7) rotate(-6deg); } to { opacity: 1; transform: none; } }
+@keyframes bootUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes bootGlow { 0%, 100% { opacity: .5; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.05); } }
+@keyframes bootBar { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
+
+/* empty screens and loading: the cat shows up */
+.empty::before { content: ''; display: block; width: 58px; aspect-ratio: 664 / 616; margin: 0 auto 12px;
+  background: url('../brand/cat-white.png') center / contain no-repeat; opacity: .18; }
+.empty.loading::before { opacity: .6; animation: catBreath 1.2s ease-in-out infinite; }
+@keyframes catBreath { 0%, 100% { transform: scale(.94); opacity: .35; } 50% { transform: scale(1.04); opacity: .75; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-cat img, .boot-cat::after, .boot-wm, .boot-bar i, .empty.loading::before { animation: none; opacity: 1; }
+}
+.brand-full .team-tag { -webkit-text-fill-color: #06080A; color: #06080A; line-height: 1.3; margin-left: 0; text-transform: uppercase; }
+.cat-mark { opacity: .07; }

@@ -373,14 +373,13 @@
     $app.innerHTML = `
       <div class="shell">
         <header class="top">
-          <small class="team-tag">Team</small>
-          <div class="brand brand-full"><img class="brand-logo" src="${BR}logo-white.png" alt="SINDIICAT"></div>
+          <div class="brand brand-full"><img class="brand-logo" src="${BR}logo-white.png" alt="SINDIICAT"><small class="team-tag">Team</small></div>
           <div class="top-right">
             <button class="bell" id="bell" aria-label="Alerts">${ICON.bell}<span class="badge" id="bellBadge" hidden></span></button>
             <button class="me-chip" id="me" title="Sign out">${esc(state.me.name.split(' ')[0])}</button>
           </div>
         </header>
-        <main id="view"><div class="empty">Loading…</div></main>
+        <main id="view"><div class="empty loading">Loading…</div></main>
       </div>
       ${state.tab !== 'sell' ? '<button class="fab" id="fabBill" aria-label="New bill">+ Bill</button>' : ''}
       <nav class="tabs">${tabsFor().map(([k, label]) => `
@@ -4038,7 +4037,7 @@
     const list = isPartner() ? REPORTS : REPORTS.filter(([k]) => k === 'demand');
     const r = list.some(([k]) => k === state.report) ? state.report : 'demand';
     view.innerHTML = `${state.tab === 'more' ? backBtn : ''}<h1>Reports</h1>
-      <div class="seg">${list.map(([k, l]) => `<button data-r="${k}" class="${r === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="rep"><div class="empty">Loading…</div></div>`;
+      <div class="seg">${list.map(([k, l]) => `<button data-r="${k}" class="${r === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="rep"><div class="empty loading">Loading…</div></div>`;
     wireBack(view);
     view.querySelectorAll('[data-r]').forEach((b) => { b.onclick = () => { state.report = b.dataset.r; VIEWS.reports(view); }; });
     const el = view.querySelector('#rep');

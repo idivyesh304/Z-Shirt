@@ -23,5 +23,8 @@ writeFileSync(html, readFileSync(html, 'utf8')
   .replaceAll('../brand/', 'brand/')
   .replace('<link rel="manifest" href="manifest.json">\n', ''));
 
+const css = join(out, 'style.css');
+writeFileSync(css, readFileSync(css, 'utf8').replaceAll('../brand/', 'brand/'));
+
 if (!existsSync(join(out, 'app.js'))) throw new Error('web/admin/app.js missing');
 console.log('www/ ready');

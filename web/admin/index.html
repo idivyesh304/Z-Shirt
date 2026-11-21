@@ -15,14 +15,29 @@
 </head>
 <body>
   <div class="top-strap" aria-hidden="true"></div>
-  <div id="app">
-    <div class="boot">Loading…</div>
+  <div class="cat-mark" aria-hidden="true"></div>
+  <div id="boot" role="status" aria-label="Loading SINDIICAT">
+    <div class="boot-cat"><img src="../brand/cat-white.png" alt=""></div>
+    <img class="boot-wm" src="../brand/wordmark-white.png" alt="SINDIICAT">
+    <div class="boot-bar"><i></i></div>
   </div>
+  <div id="app"></div>
   <div id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../config.js"></script>
   <script src="../celebrate.js"></script>
   <script src="app.js"></script>
+  <script>
+    // boot loader: stays at least 1.2s, leaves once the app has drawn its first screen
+    (function () {
+      var boot = document.getElementById('boot'), app = document.getElementById('app'), t0 = Date.now(), done = false;
+      function go() { if (done) return; done = true;
+        setTimeout(function () { boot.classList.add('gone'); setTimeout(function () { boot.remove(); }, 600); }, Math.max(0, 1200 - (Date.now() - t0))); }
+      function ready() { return app.querySelector('.shell, .login, .zs-welcome'); }
+      if (ready()) go(); else new MutationObserver(function (m, o) { if (ready()) { o.disconnect(); go(); } }).observe(app, { childList: true, subtree: true });
+      setTimeout(go, 9000);
+    })();
+  </script>
 </body>
 </html>
