@@ -546,6 +546,7 @@
     const plainCols = [...new Map(plain.flatMap((p) => coloursOf(p))).entries()];
     main.innerHTML = `
       <section class="hero2">
+        <canvas class="hero-dust" aria-hidden="true"></canvas>
         <div class="wrap hero2-in">
           <div class="hero2-copy">
             <h1>Pick your fit.</h1>
@@ -586,9 +587,38 @@
       </div>`;
     bindCards(main);
     main.querySelectorAll('[data-copy]').forEach((b) => { b.onclick = () => { store.set('zs_coupon', b.dataset.copy); try { navigator.clipboard.writeText(b.dataset.copy); } catch (_) { /* */ } toast(`${b.dataset.copy} will be applied in your bag`); }; });
+    heroDust(main.querySelector('.hero-dust'));
     if (drop) route.timer = setInterval(() => { const c = $('heroClock'); if (c) c.textContent = countdown(drop.drop_at); }, 1000);
     homeReviews();
   };
+  // ---------------------------------------------------------------- neon dust behind the hero
+  // A slow, quiet loop of neon specks. Pauses off-screen and in background tabs;
+  // one still frame for people who ask their phone for less motion.
+  function heroDust(cv) {
+    if (!cv || !cv.getContext) return;
+    const ctx = cv.getContext('2d'); const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2); let W = 0, H = 0, dots = [], on = true, raf = 0, last = 0;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const make = (y) => { const big = Math.random() < 0.12; return { x: rnd(0, W), y: y ?? rnd(0, H), r: big ? rnd(2.5, 5) : rnd(0.6, 1.8), a: big ? rnd(0.05, 0.11) : rnd(0.22, 0.75),
+      vy: big ? rnd(0.06, 0.14) : rnd(0.12, 0.4), sw: rnd(0.2, 0.9), ph: rnd(0, 6.28), tw: rnd(0.4, 1.4), big }; };
+    const size = () => { const b = cv.getBoundingClientRect(); W = b.width; H = b.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = Math.max(22, Math.min(70, Math.round((W * H) / 9000))); dots = Array.from({ length: n }, () => make()); };
+    const draw = (t) => {
+      ctx.clearRect(0, 0, W, H);
+      for (const d of dots) {
+        if (!still) { d.y -= d.vy; d.x += Math.sin(t / 2400 * d.sw + d.ph) * 0.15; if (d.y < -8) Object.assign(d, make(H + 6)); }
+        const a = d.a * (still ? 1 : 0.65 + 0.35 * Math.sin(t / 900 * d.tw + d.ph));
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.283);
+        ctx.fillStyle = `rgba(199,255,0,${a.toFixed(3)})`; ctx.shadowColor = 'rgba(199,255,0,.8)'; ctx.shadowBlur = d.big ? 14 : 6; ctx.fill();
+      }
+    };
+    const loop = (t) => { if (!cv.isConnected) return; raf = requestAnimationFrame(loop); if (!on || document.hidden || t - last < 33) return; last = t; draw(t); };
+    size(); draw(0);
+    if (still) return;
+    new IntersectionObserver((e) => { on = e[0].isIntersecting; }, { threshold: 0 }).observe(cv);
+    let rt = 0; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (cv.isConnected) size(); }, 200); });
+    raf = requestAnimationFrame(loop);
+  }
   async function homeReviews() {
     const { data } = await sb.from('public_reviews').select('*').gte('rating', 4).order('created_at', { ascending: false }).limit(8);
     const box = $('homeReviews');
