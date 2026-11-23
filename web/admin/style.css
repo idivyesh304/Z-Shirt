@@ -895,7 +895,7 @@ header.top { display: flex; justify-content: space-between; }
 @media (min-width: 700px) { .brand-logo { height: 54px; } }
 
 /* cat watermark behind every screen */
-.cat-mark { position: fixed; z-index: -1; pointer-events: none; right: -18vw; bottom: 9vh; width: min(92vw, 560px); aspect-ratio: 664 / 616;
+.cat-mark { position: fixed; z-index: -1; pointer-events: none; right: -18vw; bottom: 9vh; width: min(92vw, 560px); aspect-ratio: 664 / 619;
   background: url('../brand/cat-white.png') center / contain no-repeat; opacity: .045; transform: rotate(-8deg); }
 @media (min-width: 900px) { .cat-mark { right: 4vw; bottom: 6vh; } }
 .login { position: relative; }
@@ -917,7 +917,7 @@ header.top { display: flex; justify-content: space-between; }
 @keyframes bootBar { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
 
 /* empty screens and loading: the cat shows up */
-.empty::before { content: ''; display: block; width: 58px; aspect-ratio: 664 / 616; margin: 0 auto 12px;
+.empty::before { content: ''; display: block; width: 58px; aspect-ratio: 664 / 619; margin: 0 auto 12px;
   background: url('../brand/cat-white.png') center / contain no-repeat; opacity: .18; }
 .empty.loading::before { opacity: .6; animation: catBreath 1.2s ease-in-out infinite; }
 @keyframes catBreath { 0%, 100% { transform: scale(.94); opacity: .35; } 50% { transform: scale(1.04); opacity: .75; } }
