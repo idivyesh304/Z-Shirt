@@ -1661,6 +1661,16 @@
   // Tick-box notes taken while meeting t-shirt manufacturers on sourcing trips.
   const VISIT_CITIES = ['Ludhiana', 'Mumbai', 'Delhi', 'Tiruppur', 'Surat', 'Ahmedabad'];
   const VISIT_KINDS = ['Own factory', 'Trader / wholesaler', 'Job worker (stitching)', 'Printer / embellisher', 'Fabric supplier', 'Packaging / labels'];
+  // 40 tee colours selling in the Indian market right now
+  const VISIT_COLOURS = {
+    'Black': '#0b0b0b', 'White': '#ffffff', 'Off-white': '#f3efe4', 'Cream': '#efe3c4', 'Beige': '#d8c3a0', 'Sand': '#c9b48a', 'Khaki': '#a89a6a',
+    'Navy blue': '#1c2541', 'Royal blue': '#2747b8', 'Sky blue': '#7cb8e8', 'Baby blue': '#b9d7f0', 'Teal': '#167b7b', 'Turquoise': '#2fbfb5',
+    'Bottle green': '#0f4d32', 'Olive green': '#5f6b2e', 'Mint green': '#a8e6c4', 'Sage green': '#9caf88', 'Pista green': '#b5d68a',
+    'Maroon': '#6b1e2a', 'Wine': '#5a1834', 'Red': '#c8202f', 'Cherry red': '#a3122a', 'Coral': '#f07a63', 'Peach': '#f6c3a4',
+    'Baby pink': '#f6cbd6', 'Pink': '#ec6f9c', 'Lavender': '#c3b3e3', 'Lilac': '#b79ccf', 'Purple': '#5e2d82',
+    'Mustard': '#d1a01f', 'Yellow': '#f4d03f', 'Lemon yellow': '#f6eb7a', 'Orange': '#ee7d22', 'Rust': '#a4471f',
+    'Brown': '#6b4329', 'Coffee': '#4a3022', 'Charcoal grey': '#3a3d40', 'Grey melange': '#a3a5a6', 'Steel grey': '#6f7b84', 'Ash grey': '#c7c9c8',
+  };
   const VISIT_TICKS = [
     ['What they make', ['Oversized tee', 'Regular fit tee', 'Drop shoulder', 'Polo', 'Hoodie', 'Sweatshirt', 'Joggers / shorts', 'Women / crop fit', 'Kids', 'Acid / washed tees', 'Blank tees (ready stock)']],
     ['Fabric', ['100% cotton combed', '100% cotton carded', 'Bio-washed cotton', 'Cotton Lycra', 'Poly-cotton', 'Polyester / dri-fit', 'French terry', 'Loop knit', 'Fleece', 'Pique', 'Slub', 'Organic cotton']],
@@ -1668,8 +1678,9 @@
     ['Yarn count', ['20s', '24s', '26s', '30s', '34s', '40s']],
     ['Printing in-house', ['Screen print', 'Puff print', 'High density', 'DTF', 'DTG', 'Sublimation', 'Discharge', 'Foil', 'Reflective', 'Embroidery', 'Patch / applique', 'Heat transfer']],
     ['Wash & finish', ['Bio-wash', 'Silicone wash', 'Enzyme wash', 'Acid / stone wash', 'Garment dye', 'Tie-dye', 'Pre-shrunk', 'Compacted fabric', 'Anti-pilling']],
-    ['Sizes', ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL+']],
-    ['Colours', ['Ready colour card', 'Pantone matching', 'Custom dyeing', 'Deep black that stays black', 'Many colours in stock']],
+    ['Sizes', ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL', '6XL', '7XL']],
+    ['Colours available', Object.keys(VISIT_COLOURS)],
+    ['Colour services', ['Ready colour card', 'Pantone matching', 'Custom dyeing', 'Deep black that stays black', 'Many colours in stock']],
     ['Labels & packing', ['Printed neck label', 'Woven neck label', 'Size label', 'Wash care label', 'Hang tag', 'Polybag with our logo', 'Custom box / mailer', 'Barcode / SKU sticker', 'Fold & pack per piece']],
     ['Services', ['Free samples', 'Paid samples', 'Tech pack help', 'Pattern / fit making', 'Size set approval', 'Private / white label', 'Dropship to customer', 'Ready stock blanks', 'Small MOQ OK', 'Holds fabric for us', 'Re-order same shade']],
     ['Business terms', ['GST invoice', 'Credit possible', 'Ships all over India', 'Replaces defects', 'Written agreement OK', 'QC before dispatch', 'Has a catalogue', 'Works with other brands', 'Exports']],
@@ -1742,6 +1753,8 @@
             <tr><th>Type</th>${cols.map((r) => `<td>${esc(r.kind || '—')}</td>`).join('')}</tr>
             ${VISIT_FACTS.map(([k, l, u]) => `<tr><th>${esc(l)}</th>${cols.map((r) => cell(r, k, u)).join('')}</tr>`).join('')}
             ${VISIT_RATE.map(([k, l]) => `<tr><th>${esc(l)}</th>${cols.map((r) => `<td class="vv-stars">${stars((r.ratings || {})[k]) || '—'}</td>`).join('')}</tr>`).join('')}
+            <tr><th>Sizes</th>${cols.map((r) => { const z = G.Sizes.filter((i) => (r.ticks || []).includes(i)); return `<td>${z.length ? esc(z.length > 2 ? `${z[0]} to ${z[z.length - 1]}` : z.join(', ')) : '<span class="muted">—</span>'}</td>`; }).join('')}</tr>
+            <tr><th>Colours</th>${cols.map((r) => { const z = G['Colours available'].filter((i) => (r.ticks || []).includes(i)); const top = Math.max(...cols.map((x) => G['Colours available'].filter((i) => (x.ticks || []).includes(i)).length)); return `<td class="${z.length && z.length === top && cols.length > 1 ? 'vv-best' : ''}">${z.length ? `<b>${z.length}</b> · ${esc(z.join(', '))}` : '<span class="muted">—</span>'}</td>`; }).join('')}</tr>
             ${['What they make', 'GSM they offer', 'Printing in-house', 'Wash & finish', 'Labels & packing', 'Services', 'Business terms'].map((g) => `<tr><th>${esc(g)}</th>${cols.map((r) => groupCell(r, G[g])).join('')}</tr>`).join('')}
           </tbody></table></div>`;
       body.querySelectorAll('th[data-id]').forEach((th) => { th.onclick = () => openVisit(rows.find((r) => r.id === Number(th.dataset.id)), reload); });
@@ -1796,7 +1809,7 @@
       ${VISIT_TICKS.map(([g, items], gi) => `
         <details class="vv-group" ${gi < 3 || items.some((i) => f.ticks.includes(i)) ? 'open' : ''}>
           <summary>${esc(g)} <span class="vv-gn" data-gn="${gi}"></span></summary>
-          <div class="vv-ticks">${items.map((i) => `<label class="vv-tick"><input type="checkbox" data-tick="${esc(i)}" ${f.ticks.includes(i) ? 'checked' : ''}><span>${esc(i)}</span></label>`).join('')}</div>
+          <div class="vv-ticks">${items.map((i) => `<label class="vv-tick"><input type="checkbox" data-tick="${esc(i)}" ${f.ticks.includes(i) ? 'checked' : ''}>${VISIT_COLOURS[i] ? `<i class="vv-sw" style="background:${VISIT_COLOURS[i]}"></i>` : ''}<span>${esc(i)}</span></label>`).join('')}</div>
         </details>`).join('')}
       <details class="vv-group" open><summary>Anything else they offer</summary>
         <div class="vv-ticks" id="vvExtra">${extra.map((i) => `<label class="vv-tick"><input type="checkbox" data-tick="${esc(i)}" checked><span>${esc(i)}</span></label>`).join('')}</div>
