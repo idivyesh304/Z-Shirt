@@ -447,7 +447,9 @@
     document.getElementById('gsBtn').onclick = openSearch;
     const fab = document.getElementById('fabBill'); if (fab) fab.onclick = () => go('sell');
     document.getElementById('me').onclick = async () => {
-      const ok = await ask({ title: 'Sign out?', html: `<p class="muted">Signed in as ${esc(state.me.name)} (${esc(state.me.role)}).</p>`, ok: 'Sign out', okClass: 'bad' });
+      const dz = window.ZSDust;
+      if (dz) setTimeout(() => { const b = document.getElementById('dustTog'); if (b) b.onclick = () => { dz.set(!dz.on()); b.textContent = `Neon dust: ${dz.on() ? 'On' : 'Off'}`; b.classList.toggle('on', dz.on()); }; }, 50);
+      const ok = await ask({ title: 'Sign out?', html: `<p class="muted">Signed in as ${esc(state.me.name)} (${esc(state.me.role)}).</p>${dz ? `<p class="muted" style="margin-top:14px">Background on this phone</p><button type="button" class="btn small outline dust-tog ${dz.on() ? 'on' : ''}" id="dustTog">Neon dust: ${dz.on() ? 'On' : 'Off'}</button>` : ''}`, ok: 'Sign out', okClass: 'bad' });
       if (ok) sb.auth.signOut();
     };
     document.querySelectorAll('nav.tabs button').forEach((b) => {
