@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 9 · Purchase orders
+-- SINDIICAT · Phase 9 · Purchase orders
 -- Vendors with codes, GST (CGST+SGST inside Gujarat, IGST outside, none for
 -- unregistered vendors), a terms library per PO type, partner approvals
 -- (a partner's PO needs the other 3, Mahendra's PO needs all 4), receiving
@@ -167,11 +167,11 @@ insert into po_terms (po_type, body, default_on, sort) values
   ('all', 'A proper GST tax invoice with our GSTIN, HSN/SAC codes and tax break-up is required for payment.', true, 5),
   ('all', 'Payment as per the payment terms, counted from the date all goods are received and accepted.', true, 6),
   ('all', 'Rates in this PO are final and include packing. No extra charges without prior written approval.', true, 7),
-  ('all', 'All designs, artwork and samples shared by Z-SHIRTS are confidential and may not be reused, sold or shown to anyone else.', true, 8),
+  ('all', 'All designs, artwork and samples shared by SINDIICAT are confidential and may not be reused, sold or shown to anyone else.', true, 8),
   ('all', 'Subject to Ahmedabad jurisdiction.', true, 99),
   ('plain', 'Fabric GSM, composition and colour must match the approved swatch. Variation of more than ±5 GSM will be rejected.', true, 10),
   ('plain', 'Garments must be pre-shrunk / bio-washed. Shrinkage above 5% after first wash will be returned.', true, 11),
-  ('plain', 'Size measurements as per the Z-SHIRTS oversized size chart, tolerance ±1 cm.', true, 12),
+  ('plain', 'Size measurements as per the SINDIICAT oversized size chart, tolerance ±1 cm.', true, 12),
   ('plain', 'Pack size-wise and colour-wise in polybags with a size sticker on each piece.', true, 13),
   ('plain', 'Shade variation within the same lot is not accepted.', false, 14),
   ('plain', 'No vendor labels or branding on the garments.', true, 15),
@@ -183,7 +183,7 @@ insert into po_terms (po_type, body, default_on, sort) values
   ('dtf', 'Hot-peel / cold-peel and pressing temperature to be mentioned with the delivery.', false, 25),
   ('embroidery', 'Stitch count, thread colours and size as per the approved design file and sample.', true, 30),
   ('embroidery', 'No loose threads, puckering or backing paper visible on the outside.', true, 31),
-  ('embroidery', 'Our garments sent for embroidery remain Z-SHIRTS property. Damaged garments will be charged at cost.', true, 32),
+  ('embroidery', 'Our garments sent for embroidery remain SINDIICAT property. Damaged garments will be charged at cost.', true, 32),
   ('embroidery', 'Return every garment sent with a count sheet. Shortage will be charged at cost.', true, 33),
   ('embroidery', 'Thread must be colour-fast and not bleed in wash.', true, 34),
   ('patchwork', 'Patch type, size, backing and colours exactly as per the approved sample.', true, 40),

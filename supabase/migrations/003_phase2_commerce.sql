@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 2 · Shop, stock, orders, payments, returns,
+-- SINDIICAT · Phase 2 · Shop, stock, orders, payments, returns,
 --                     notifications, milestones + editable profit split
 -- Run after 001 and 002.
 -- =====================================================================
@@ -272,7 +272,7 @@ begin
       perform _notify('milestone',
         case when m >= 100000 then '₹' || rtrim(to_char(m / 100000, 'FM999990.##'), '.') || ' lakh in sales!'
              else '₹' || trim(to_char(m, 'FM99,99,999')) || ' in sales!' end,
-        'Z-SHIRTS just crossed a new sales milestone.', o.id, m, true);
+        'SINDIICAT just crossed a new sales milestone.', o.id, m, true);
     end if;
   end loop;
 
@@ -281,7 +281,7 @@ begin
     perform _notify('milestone',
       case when v_orders = 1 then 'FIRST ORDER EVER!' else v_orders || ' paid orders!' end,
       case when v_orders = 1 then 'Day one. ' || o.customer_name || ' is customer number one.'
-           else 'Another milestone for Z-SHIRTS.' end,
+           else 'Another milestone for SINDIICAT.' end,
       o.id, null, true);
   end if;
 end $$;
@@ -909,7 +909,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the Z-SHIRTS rules test against a fresh local Postgres database.
+# Runs the SINDIICAT rules test against a fresh local Postgres database.
 # Usage: PGHOST=... PGPORT=... bash supabase/tests/run_tests.sh
 set -eo pipefail
 cd "$(dirname "$0")/.."
@@ -23,6 +23,9 @@ psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/015_regular_fit.sql 
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/016_full_listing.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/017_rename_sindiicat.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/018_vendor_visits.sql >/dev/null
+psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/019_auto_labels.sql >/dev/null
+psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/020_small_changes_no_vote.sql >/dev/null
+psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f migrations/021_sc_prefix.sql >/dev/null
 psql -U postgres -d $DB -q -v ON_ERROR_STOP=1 -f tests/test_members.sql >/dev/null
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/rules_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/commerce_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
@@ -35,3 +38,6 @@ psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/shop_test.sql 2>&1 | sed 's/
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/fit_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/listing_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/visits_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/labels_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/novote_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+psql -U postgres -d $DB -v ON_ERROR_STOP=1 -f tests/prefix_test.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

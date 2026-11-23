@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · review photos (public bucket). Run after 014.
+-- SINDIICAT · review photos (public bucket). Run after 014.
 -- Shoppers upload into their own folder: reviews/<login-id>/...
 -- =====================================================================
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

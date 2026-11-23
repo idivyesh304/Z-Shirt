@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · 016 · Full listing: many collections per tee, product details,
+-- SINDIICAT · 016 · Full listing: many collections per tee, product details,
 -- and offers that belong to one tee (a code that works only on that tee).
 -- =====================================================================
 
@@ -375,10 +375,10 @@ begin
   end if;
   v_base := v_base - v_preoff;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);

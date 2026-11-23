@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Product photos + automatic clean-up of unpaid online orders
+-- SINDIICAT · Product photos + automatic clean-up of unpaid online orders
 -- Run after 003 (Supabase only).
 -- =====================================================================
 

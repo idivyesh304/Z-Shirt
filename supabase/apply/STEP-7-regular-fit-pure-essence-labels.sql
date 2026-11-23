@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · 015 · Regular Fit, Pure Essence plain tees, shop labels
+-- SINDIICAT · 015 · Regular Fit, Pure Essence plain tees, shop labels
 -- Every tee now has a fit. Blank (plain) tee stock, purchase orders, damage
 -- claims, production, SKUs, the shop catalogue and the profit reports all
 -- keep Oversized and Regular apart.
@@ -776,10 +776,10 @@ begin
   end if;
   v_base := v_base - v_preoff;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);

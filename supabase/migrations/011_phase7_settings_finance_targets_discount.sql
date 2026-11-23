@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 7 · settings for everything, GST slabs + HSN, product
+-- SINDIICAT · Phase 7 · settings for everything, GST slabs + HSN, product
 -- cost sheet + per-tee finance, partners' finance inputs, daily / weekly /
 -- monthly targets, partner discount rule
 -- Run after 010. Run the ALTER TYPE line on its own first in Supabase.
@@ -21,7 +21,7 @@ insert into settings (key, value, label) values
   ('discount_free_pct',        '10'::jsonb,         'Discount a partner can give without approval (%)'),
   ('discount_bulk_pcs',        '25'::jsonb,         'Bulk deal: tees in one bill for a bigger approved discount'),
   ('max_partner_discount_pct', '50'::jsonb,         'Highest discount a partner can ever give (%)'),
-  ('business_name',            '"Z-SHIRTS"'::jsonb, 'Business name on bills'),
+  ('business_name',            '"SINDIICAT"'::jsonb, 'Business name on bills'),
   ('business_address',         '""'::jsonb,         'Business address on bills'),
   ('gstin',                    '""'::jsonb,         'GSTIN'),
   ('store_whatsapp',           '""'::jsonb,         'Store WhatsApp number (91XXXXXXXXXX)'),
@@ -34,7 +34,7 @@ on conflict (key) do nothing;
 update settings set grp = 'Money & approvals', protected = true
  where key in ('employee_petty_limit', 'all_partner_limit', 'profit_rule', 'loss_rule', 'custom_split', 'discount_free_pct', 'discount_bulk_pcs', 'max_partner_discount_pct');
 update settings set grp = 'Selling'  where key in ('shipping_fee', 'free_shipping_above', 'cod_enabled', 'max_store_discount_pct', 'return_window_days', 'low_stock_alert');
-update settings set grp = 'Z-Club'   where key like 'loyalty%';
+update settings set grp = 'SINDIICAT Club'   where key like 'loyalty%';
 update settings set grp = 'Tax & GST' where key in ('gst_threshold', 'gst_rate_low', 'gst_rate_high', 'hsn_cotton', 'hsn_synthetic', 'income_tax_rate_pct', 'gstin');
 update settings set grp = 'Business' where key in ('business_name', 'business_address', 'store_whatsapp', 'instagram', 'store_open_time', 'store_close_time', 'delivery_days');
 update settings set grp = 'Team & HR' where key = 'hr_policy';
@@ -340,7 +340,7 @@ begin
     select x.member_id, x.target_pcs, x.target_amount from sales_targets x where p_period = 'month' and x.month = d0
       and not exists (select 1 from standing_targets st2 where st2.period = 'month' and st2.member_id is not distinct from x.member_id)
   )
-  select null::uuid, 'Z-SHIRTS (all sales)'::text, 'business'::text,
+  select null::uuid, 'SINDIICAT (all sales)'::text, 'business'::text,
     coalesce((select tp from tg where mid is null limit 1), 0), coalesce((select ta from tg where mid is null limit 1), 0),
     coalesce((select sum(o.pcs) from o), 0)::bigint, coalesce((select sum(o.value) from o), 0), (select count(*) from o), d0, d1 - 1
   union all
@@ -480,10 +480,10 @@ begin
   end if;
   v_base := v_base - v_cdisc;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);
@@ -624,7 +624,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;

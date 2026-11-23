@@ -1,4 +1,4 @@
--- Z-SHIRTS · phase 10 test: wishlist, addresses, reviews, offers, prepaid / COD pricing
+-- SINDIICAT · phase 10 test: wishlist, addresses, reviews, offers, prepaid / COD pricing
 \set ON_ERROR_STOP on
 \set QUIET on
 \o /dev/null

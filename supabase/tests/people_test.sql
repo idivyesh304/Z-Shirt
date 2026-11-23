@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · phase 4 test: who sold it, channels, targets, cash counter,
+-- SINDIICAT · phase 4 test: who sold it, channels, targets, cash counter,
 -- blank tees, Mahendra's shift rules (runs after growth_test.sql)
 -- =====================================================================
 \set ON_ERROR_STOP on

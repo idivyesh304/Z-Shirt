@@ -1,6 +1,6 @@
 /* SINDIICAT STORE
  * Home, smart search, listing with filters + sort, product page (gallery, size finder, pincode ETA,
- * offers, reviews), wishlist, compare, bag, checkout (saved addresses, prepaid offer, COD), Razorpay,
+ * offers, reviews), wishlist, bag, checkout (saved addresses, prepaid offer, COD), Razorpay,
  * Google account, SINDIICAT Club points, order tracking, exchange / return, reviews.
  * Prices, stock, coupons and totals are always worked out again by the database.
  */
@@ -60,7 +60,6 @@
     shield: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
     tag: '<svg viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg>',
     share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
-    cmp: '<svg viewBox="0 0 24 24"><path d="M9 4v16M15 4v16M4 8h5M15 16h5"/></svg>',
     fabric: '<svg viewBox="0 0 24 24"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg>',
     star: '<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
     lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
@@ -112,7 +111,6 @@
     settings: { shipping_fee: 0, free_shipping_above: 0, cod_enabled: 1, return_window_days: 15, prepaid_discount_pct: 0, prepaid_discount_max: 0, cod_fee: 0, loyalty_points_per_100: 5 },
     bag: store.get('zs_bag', []),
     wish: new Set(store.get('zs_wish', [])),
-    cmp: store.get('zs_cmp', []),
     viewed: store.get('zs_viewed', []),
     searches: store.get('zs_searches', []),
     mySize: store.get('zs_my_size', null),
@@ -349,7 +347,6 @@
         ${p.rating_count ? `<span class="rate">${p.rating.toFixed(1)} <i>★</i><span>${p.rating_count}</span></span>` : ''}
       </a>
       <button class="heart${state.wish.has(p.id) ? ' on' : ''}" data-wish="${p.id}" aria-label="${state.wish.has(p.id) ? 'Remove from wishlist' : 'Add to wishlist'}">${I.heart}</button>
-      <button class="cmp-btn${state.cmp.includes(p.id) ? ' on' : ''}" data-cmp="${p.id}" aria-label="Compare">${I.cmp}${state.cmp.includes(p.id) ? 'Added' : 'Compare'}</button>
       ${available(p) && !p.coming_soon ? `<button class="qadd" data-qadd="${p.id}" ${p._colour ? `data-col="${esc(p._colour)}"` : ''} aria-label="Quick add ${esc(p.name)} to bag">${I.bag}</button>` : ''}</div>
       <a href="${esc(hrefOf(p))}" class="body">
         <div class="nm">${esc(p.name)}</div>
@@ -366,11 +363,10 @@
       b.onclick = (e) => { e.preventDefault(); const p0 = byId(Number(b.dataset.qadd)); const p = b.dataset.col ? asColour(p0, b.dataset.col) : p0; quickAdd(p, (v) => { if (addToBag(p, v)) toast(`Added ${v.colour}, ${v.size}`, false, ' <a href="#/bag">View bag</a>'); }); };
     });
     root.querySelectorAll('[data-wish]').forEach((b) => { b.onclick = (e) => { e.preventDefault(); toggleWish(Number(b.dataset.wish), b); }; });
-    root.querySelectorAll('[data-cmp]').forEach((b) => { b.onclick = (e) => { e.preventDefault(); toggleCompare(Number(b.dataset.cmp)); b.classList.toggle('on', state.cmp.includes(Number(b.dataset.cmp))); b.innerHTML = `${I.cmp}${state.cmp.includes(Number(b.dataset.cmp)) ? 'Added' : 'Compare'}`; }; });
   }
   const skeletonGrid = (n = 8) => `<div class="grid g4">${Array.from({ length: n }, () => '<div><div class="skel" style="aspect-ratio:4/5"></div><div class="skel" style="height:14px;margin-top:10px;width:70%"></div><div class="skel" style="height:14px;margin-top:6px;width:40%"></div></div>').join('')}</div>`;
 
-  // ================================================================ wishlist + compare
+  // ================================================================ wishlist
   function saveWish() {
     store.set('zs_wish', [...state.wish]);
     const n = state.wish.size;
@@ -391,24 +387,9 @@
     if (route.path === 'wishlist' && !on) render();
     return p;
   }
-  function toggleCompare(id) {
-    if (state.cmp.includes(id)) state.cmp = state.cmp.filter((x) => x !== id);
-    else {
-      if (state.cmp.length >= 4) { toast('Compare up to 4 tees at a time', true); return; }
-      state.cmp.push(id);
-    }
-    store.set('zs_cmp', state.cmp);
-    paintTray();
-  }
-  function paintTray() {
-    const t = $('compareTray');
-    const list = state.cmp.map(byId).filter(Boolean);
-    if (!list.length || ['compare', 'bag', 'checkout', 'order'].includes(route.path)) { t.hidden = true; return; }
-    t.hidden = false;
-    t.innerHTML = `<span class="thumbs">${list.map((p) => `<i>${imgOf(p)}</i>`).join('')}</span><span>${list.length} to compare</span>
-      <a class="btn lime sm" href="#/compare">Compare</a><button aria-label="Clear compare" id="cmpClear" style="color:#fff;padding:0 6px">${I.x}</button>`;
-    $('cmpClear').onclick = () => { state.cmp = []; store.set('zs_cmp', []); paintTray(); document.querySelectorAll('.cmp-btn.on').forEach((b) => { b.classList.remove('on'); b.innerHTML = `${I.cmp}Compare`; }); };
-  }
+  // compare was removed; old saved lists are cleared
+  function paintTray() {}
+  try { localStorage.removeItem('zs_cmp'); } catch (_) { /* fine */ }
 
   // ================================================================ bag
   function saveBag(silent) {
@@ -1204,38 +1185,8 @@
     });
   };
 
-  // ================================================================ COMPARE
-  PAGES.compare = () => {
-    const list = state.cmp.map(byId).filter(Boolean);
-    if (list.length < 2) {
-      main.innerHTML = `<div class="wrap"><h1 class="page" style="margin-top:20px">Compare</h1><div class="empty-box"><div class="big-ic">${I.cmp}</div><h3>Pick at least 2 tees</h3><p>Tap "Compare" on any tee card to put it side by side.</p><a class="btn" href="#/shop">Choose tees</a></div>
-        ${list.length ? `<div class="grid" style="max-width:300px">${list.map(card).join('')}</div>` : ''}</div>`;
-      bindCards(main); return;
-    }
-    const min = Math.min(...list.map((p) => p.price));
-    const maxR = Math.max(...list.map((p) => p.rating));
-    const maxG = Math.max(...list.map((p) => p.gsm || 0));
-    const maxOff = Math.max(...list.map((p) => p.discount_pct || 0));
-    const sizesOf = (p) => SIZE_ORDER.filter((z) => p.variants.some((v) => v.size === z && canBuy(p, v)));
-    const row = (label, fn) => `<tr><th>${label}</th>${list.map((p) => `<td>${fn(p)}</td>`).join('')}</tr>`;
-    main.innerHTML = `<div class="wrap"><div class="crumb"><a href="#/">Home</a> / Compare</div><h1 class="page">Compare ${list.length} tees</h1>
-      <div class="cmp"><table>
-        <tr><th></th>${list.map((p) => `<td><a href="#/p/${esc(p.slug)}" style="display:block;aspect-ratio:4/5;border-radius:12px;overflow:hidden;background:var(--soft)">${imgOf(p)}</a><b style="display:block;margin-top:8px">${esc(p.name)}</b><button class="link small" data-rmc="${p.id}">Remove</button></td>`).join('')}</tr>
-        ${row('Price', (p) => `<span class="${p.price === min ? 'best-v' : ''}">${esc(inr(p.price))}</span>${p.mrp > p.price ? ` <s class="muted small">${esc(inr(p.mrp))}</s>` : ''}`)}
-        ${row('Discount', (p) => (p.discount_pct ? `<span class="${p.discount_pct === maxOff ? 'best-v' : ''}">${p.discount_pct}% off</span>` : '—'))}
-        ${row('Best price', (p) => { const d = bestDeal(p); return d ? `${esc(inr(d.price))}${d.code ? ` <span class="muted small">with ${esc(d.code)}</span>` : ''}` : '—'; })}
-        ${row('Rating', (p) => (p.rating_count ? `<span class="${p.rating === maxR ? 'best-v' : ''}">${p.rating.toFixed(1)} ★</span> <span class="muted small">(${p.rating_count})</span>` : '<span class="muted">No ratings yet</span>'))}
-        ${row('Fit', (p) => esc(fitName(p)))}
-        ${row('Fabric', (p) => esc(p.fabric || '—'))}
-        ${row('Weight', (p) => (p.gsm ? `<span class="${p.gsm === maxG ? 'best-v' : ''}">${p.gsm} GSM</span>` : '—'))}
-        ${row('Colours', (p) => `<div class="dots">${coloursOf(p).map(([n, h]) => `<i title="${esc(n)}" style="background:${esc(h)}"></i>`).join('')}</div>`)}
-        ${row('Sizes in stock', (p) => (sizesOf(p).join(', ') || '<span style="color:var(--bad)">Sold out</span>'))}
-        ${row('Fit feedback', (p) => { const t = (p.fit_small || 0) + (p.fit_true || 0) + (p.fit_large || 0); return t ? `${Math.round((p.fit_true / t) * 100)}% say true to size` : '—'; })}
-        ${row('Bought', (p) => (p.sold_count ? `${p.sold_count}+ times` : 'New'))}
-        <tr><th></th>${list.map((p) => `<td><a class="btn sm full" href="#/p/${esc(p.slug)}">View & buy</a></td>`).join('')}</tr>
-      </table></div></div>`;
-    main.querySelectorAll('[data-rmc]').forEach((b) => { b.onclick = () => { toggleCompare(Number(b.dataset.rmc)); render(); }; });
-  };
+  // ================================================================ COMPARE (removed; old links go to the shop)
+  PAGES.compare = () => { location.replace('#/shop'); };
 
   // ================================================================ BAG
   function priceDetails(q, opts = {}) {
@@ -1708,7 +1659,7 @@
     const no = route.params.no || last.order_no || '';
     main.innerHTML = `<div class="wrap" style="max-width:520px"><h1 class="page" style="margin-top:24px">Track order</h1>
       <form class="form box" id="trF" style="margin-top:14px">
-        <label for="trNo" style="margin-top:0">Order number</label><input id="trNo" placeholder="ZS1001" autocapitalize="characters" value="${esc(no)}">
+        <label for="trNo" style="margin-top:0">Order number</label><input id="trNo" placeholder="SC1001" autocapitalize="characters" value="${esc(no)}">
         <label for="trPh">Mobile number used for the order</label><input id="trPh" inputmode="numeric" maxlength="10" value="${esc(no === last.order_no ? last.phone || '' : '')}">
         <div class="err" id="trE"></div>
         <button class="btn full" style="margin-top:16px" type="submit">Track</button>
@@ -1910,7 +1861,7 @@
     });
   });
 
-  // old links: ?p=slug, ?track=ZS1001
+  // old links: ?p=slug, ?track=SC1001
   (() => {
     const q = new URLSearchParams(location.search);
     let h = '';

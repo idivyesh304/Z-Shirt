@@ -1,8 +1,8 @@
--- STEP 2 of 2: Z-SHIRTS updates 007-011 (targets, sold-by, cash, welcome, best sellers, finance, store, DTF, settings, GST, discounts).
+-- STEP 2 of 2: SINDIICAT updates 007-011 (targets, sold-by, cash, welcome, best sellers, finance, store, DTF, settings, GST, discounts).
 
 -- ===================== 007 =====================
 -- =====================================================================
--- Z-SHIRTS · Phase 4 · who sold it, targets, more sales channels, cash counter,
+-- SINDIICAT · Phase 4 · who sold it, targets, more sales channels, cash counter,
 -- blank tee stock, Mahendra's shift rules, partner settle-up support
 -- Run after 001-006.
 -- =====================================================================
@@ -158,10 +158,10 @@ begin
   end if;
   v_base := v_base - v_cdisc;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);
@@ -410,7 +410,7 @@ begin
   ), pc as (
     select o.id, o.sold_by, o.value, (select coalesce(sum(i.qty), 0) from order_items i where i.order_id = o.id) as pcs from o
   )
-  select null::uuid, 'Z-SHIRTS (all sales)'::text, 'business'::text,
+  select null::uuid, 'SINDIICAT (all sales)'::text, 'business'::text,
          coalesce((select t.target_pcs from sales_targets t where t.month = m0 and t.member_id is null), 0),
          coalesce((select t.target_amount from sales_targets t where t.month = m0 and t.member_id is null), 0),
          coalesce((select sum(pc.pcs) from pc), 0)::bigint, coalesce((select sum(pc.value) from pc), 0), (select count(*) from pc)
@@ -745,7 +745,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;
@@ -918,7 +918,7 @@ grant execute on function staff_create_order(text, jsonb, jsonb, text, numeric, 
 
 -- ===================== 008 =====================
 -- =====================================================================
--- Z-SHIRTS · Phase 5 · first-login welcome, more celebration moments,
+-- SINDIICAT · Phase 5 · first-login welcome, more celebration moments,
 -- demand + best-seller insights
 -- Run after 001-007.
 -- =====================================================================
@@ -1088,7 +1088,7 @@ revoke execute on function moments_on_order(), moments_on_product() from public,
 
 -- ===================== 009 =====================
 -- =====================================================================
--- Z-SHIRTS · Store cash rules
+-- SINDIICAT · Store cash rules
 --   · Cash enters the drawer only through sales. No cash in, no other cash out.
 --   · Cash leaves only as a handover to a named partner, recorded by Mahendra
 --     (for any partner) or by the partner who takes it (for himself).
@@ -1210,7 +1210,7 @@ grant select on cash_with_partners to authenticated;
 
 -- ===================== 010 =====================
 -- =====================================================================
--- Z-SHIRTS · Phase 6 · DTF print stock, store day (open/close), petty cash,
+-- SINDIICAT · Phase 6 · DTF print stock, store day (open/close), petty cash,
 -- company finance (P&L, EBITDA, EBIT, PBT, PAT, GST)
 -- Run after 009.
 -- =====================================================================
@@ -1498,7 +1498,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;
@@ -1650,7 +1650,7 @@ grant execute on function add_dtf(bigint, int, text, numeric, text), store_open(
 
 -- ===================== 011 =====================
 -- =====================================================================
--- Z-SHIRTS · Phase 7 · settings for everything, GST slabs + HSN, product
+-- SINDIICAT · Phase 7 · settings for everything, GST slabs + HSN, product
 -- cost sheet + per-tee finance, partners' finance inputs, daily / weekly /
 -- monthly targets, partner discount rule
 -- Run after 010. Run the ALTER TYPE line on its own first in Supabase.
@@ -1671,7 +1671,7 @@ insert into settings (key, value, label) values
   ('discount_free_pct',        '10'::jsonb,         'Discount a partner can give without approval (%)'),
   ('discount_bulk_pcs',        '25'::jsonb,         'Bulk deal: tees in one bill for a bigger approved discount'),
   ('max_partner_discount_pct', '50'::jsonb,         'Highest discount a partner can ever give (%)'),
-  ('business_name',            '"Z-SHIRTS"'::jsonb, 'Business name on bills'),
+  ('business_name',            '"SINDIICAT"'::jsonb, 'Business name on bills'),
   ('business_address',         '""'::jsonb,         'Business address on bills'),
   ('gstin',                    '""'::jsonb,         'GSTIN'),
   ('store_whatsapp',           '""'::jsonb,         'Store WhatsApp number (91XXXXXXXXXX)'),
@@ -1684,7 +1684,7 @@ on conflict (key) do nothing;
 update settings set grp = 'Money & approvals', protected = true
  where key in ('employee_petty_limit', 'all_partner_limit', 'profit_rule', 'loss_rule', 'custom_split', 'discount_free_pct', 'discount_bulk_pcs', 'max_partner_discount_pct');
 update settings set grp = 'Selling'  where key in ('shipping_fee', 'free_shipping_above', 'cod_enabled', 'max_store_discount_pct', 'return_window_days', 'low_stock_alert');
-update settings set grp = 'Z-Club'   where key like 'loyalty%';
+update settings set grp = 'SINDIICAT Club'   where key like 'loyalty%';
 update settings set grp = 'Tax & GST' where key in ('gst_threshold', 'gst_rate_low', 'gst_rate_high', 'hsn_cotton', 'hsn_synthetic', 'income_tax_rate_pct', 'gstin');
 update settings set grp = 'Business' where key in ('business_name', 'business_address', 'store_whatsapp', 'instagram', 'store_open_time', 'store_close_time', 'delivery_days');
 update settings set grp = 'Team & HR' where key = 'hr_policy';
@@ -1990,7 +1990,7 @@ begin
     select x.member_id, x.target_pcs, x.target_amount from sales_targets x where p_period = 'month' and x.month = d0
       and not exists (select 1 from standing_targets st2 where st2.period = 'month' and st2.member_id is not distinct from x.member_id)
   )
-  select null::uuid, 'Z-SHIRTS (all sales)'::text, 'business'::text,
+  select null::uuid, 'SINDIICAT (all sales)'::text, 'business'::text,
     coalesce((select tp from tg where mid is null limit 1), 0), coalesce((select ta from tg where mid is null limit 1), 0),
     coalesce((select sum(o.pcs) from o), 0)::bigint, coalesce((select sum(o.value) from o), 0), (select count(*) from o), d0, d1 - 1
   union all
@@ -2130,10 +2130,10 @@ begin
   end if;
   v_base := v_base - v_cdisc;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);
@@ -2274,7 +2274,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;

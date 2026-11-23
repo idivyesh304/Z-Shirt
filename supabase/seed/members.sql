@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Add the 4 partners and the employee
+-- SINDIICAT · Add the 4 partners and the employee
 -- 1. Replace each e-mail below with that person's real e-mail.
 -- 2. Run this once in Supabase → SQL Editor.
 -- Then create each login in Supabase → Authentication → Users → Add user

@@ -1,4 +1,4 @@
--- Z-SHIRTS · phase 8 test: damaged goods → vendor claims, overtime, paid leave, delete product
+-- SINDIICAT · phase 8 test: damaged goods → vendor claims, overtime, paid leave, delete product
 \set ON_ERROR_STOP on
 \set QUIET on
 \o /dev/null
@@ -62,7 +62,8 @@ alter table employee_pay disable trigger user;
 insert into employee_pay (member_id, monthly_salary) values (:'mahendra', 20000) on conflict (member_id) do update set monthly_salary = 20000;
 alter table employee_pay enable trigger user;
 alter table attendance disable trigger user;
-delete from attendance where member_id = :'mahendra' and day = today_ist() - 1;
+-- only the test day counts: other tests may have clocked Mahendra out late tonight
+delete from attendance where member_id = :'mahendra' and date_trunc('month', day) = date_trunc('month', today_ist() - 1);
 insert into attendance (member_id, day, in_at, out_at) values (:'mahendra', today_ist() - 1,
   ((today_ist() - 1) + time '10:00') at time zone 'Asia/Kolkata', ((today_ist() - 1) + time '23:00') at time zone 'Asia/Kolkata');
 alter table attendance enable trigger user;

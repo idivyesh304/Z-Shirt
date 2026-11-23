@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 10 · Shop experience
+-- SINDIICAT · Phase 10 · Shop experience
 -- Wishlist, saved addresses, verified-buyer reviews (with fit feedback),
 -- public offers, "customers also bought", optional prepaid discount and
 -- COD fee (Indian checkout logic), ratings in the catalogue.
@@ -167,10 +167,10 @@ begin
   end if;
   v_base := v_base - v_preoff;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);

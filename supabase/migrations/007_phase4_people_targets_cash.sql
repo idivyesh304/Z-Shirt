@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 4 · who sold it, targets, more sales channels, cash counter,
+-- SINDIICAT · Phase 4 · who sold it, targets, more sales channels, cash counter,
 -- blank tee stock, Mahendra's shift rules, partner settle-up support
 -- Run after 001-006.
 -- =====================================================================
@@ -155,10 +155,10 @@ begin
   end if;
   v_base := v_base - v_cdisc;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);
@@ -407,7 +407,7 @@ begin
   ), pc as (
     select o.id, o.sold_by, o.value, (select coalesce(sum(i.qty), 0) from order_items i where i.order_id = o.id) as pcs from o
   )
-  select null::uuid, 'Z-SHIRTS (all sales)'::text, 'business'::text,
+  select null::uuid, 'SINDIICAT (all sales)'::text, 'business'::text,
          coalesce((select t.target_pcs from sales_targets t where t.month = m0 and t.member_id is null), 0),
          coalesce((select t.target_amount from sales_targets t where t.month = m0 and t.member_id is null), 0),
          coalesce((select sum(pc.pcs) from pc), 0)::bigint, coalesce((select sum(pc.value) from pc), 0), (select count(*) from pc)
@@ -742,7 +742,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;

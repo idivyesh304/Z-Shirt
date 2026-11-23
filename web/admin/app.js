@@ -80,6 +80,7 @@
   };
   const MONEY_SETTINGS = ['employee_petty_limit', 'all_partner_limit', 'shipping_fee', 'free_shipping_above'];
   const ICON = {
+    search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     home: '<svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
     orders: '<svg viewBox="0 0 24 24"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 9h6M9 13h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     sales: '<svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M14 8h6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -365,6 +366,61 @@
     body.querySelectorAll('[data-order]').forEach((el) => { el.onclick = () => openOrder(Number(el.dataset.order)); });
   }
 
+  // ================================================================ ONE SEARCH: orders, customers, tees, vendors
+  async function openSearch() {
+    const body = panel(`
+      <div class="gs-bar"><span class="gs-ico">${ICON.search}</span><input id="gsIn" type="search" enterkeyhint="search" autocomplete="off"
+        placeholder="Order no, name, phone, tee, vendor…" aria-label="Search everything"></div>
+      <div id="gsOut"><p class="hint gs-hint">Search orders, customers, tees${isPartner() ? ', vendors and vendor visits' : ' and vendors'}. Type at least 2 letters.</p></div>`);
+    const input = body.querySelector('#gsIn'); const out = body.querySelector('#gsOut');
+    setTimeout(() => input.focus(), 60);
+    if (!state.stock || !state.stock.length) loadStock().catch(() => {});
+    let timer = 0; let seq = 0;
+    const like = (t) => `%${t.replace(/[%_,()*]/g, ' ').trim()}%`;
+    const run = async () => {
+      const raw = input.value.trim(); const my = ++seq;
+      if (raw.length < 2) { out.innerHTML = '<p class="hint gs-hint">Type at least 2 letters.</p>'; return; }
+      out.innerHTML = '<div class="empty loading">Searching…</div>';
+      const L = like(raw); const digits = raw.replace(/\D/g, '');
+      const ph = digits.length >= 4 ? `,customer_phone.ilike.%${digits}%` : '';
+      const safe = (p) => p.catch(() => []);
+      const [orders, customers, vendors, visits] = await Promise.all([
+        safe(q(sb.from('order_board').select('id,order_no,customer_name,customer_phone,total,status,created_at,pieces')
+          .or(`order_no.ilike.${L},customer_name.ilike.${L},tracking_no.ilike.${L}${ph}`).order('created_at', { ascending: false }).limit(8))),
+        safe(q(sb.from('customer_board').select('name,phone,orders,spend,last_order')
+          .or(`name.ilike.${L}${digits.length >= 4 ? `,phone.ilike.%${digits}%` : ''}`).order('spend', { ascending: false, nullsFirst: false }).limit(6))),
+        safe(q(sb.from('vendors').select('*').or(`name.ilike.${L},city.ilike.${L},code.ilike.${L}`).limit(6))),
+        isPartner() ? safe(q(sb.from('vendor_visits').select('*').or(`name.ilike.${L},city.ilike.${L},contact_person.ilike.${L}`).order('visited_on', { ascending: false }).limit(6))) : [],
+      ]);
+      if (my !== seq) return;
+      const t = raw.toLowerCase();
+      const tees = [...new Map((state.stock || []).filter((v) => v.product_active !== false && [v.product_name, v.sku, v.colour].some((x) => (x || '').toLowerCase().includes(t)))
+        .map((v) => [v.product_id, v])).values()].slice(0, 8)
+        .map((v) => ({ ...v, pcs: state.stock.filter((x) => x.product_id === v.product_id && x.active).reduce((s, x) => s + Math.max(0, x.stock), 0) }));
+      const sec = (title, n, html) => (n ? `<div class="gs-sec"><div class="gs-h">${title}<span>${n}</span></div>${html}</div>` : '');
+      const row = (attr, main, sub, side = '') => `<button class="gs-row" ${attr}><span class="work-main"><b>${main}</b><small>${sub}</small></span>${side ? `<span class="gs-side">${side}</span>` : ''}</button>`;
+      const html = [
+        sec('Orders', orders.length, orders.map((o) => row(`data-o="${o.id}"`, `${esc(o.order_no)} · ${esc(o.customer_name || 'Walk-in')}`,
+          `${esc(day(o.created_at))} · ${o.pieces} pc${o.customer_phone ? ` · ${esc(o.customer_phone)}` : ''}`, `${esc(inr(o.total))}<small>${esc(o.status)}</small>`)).join('')),
+        sec('Customers', customers.length, customers.map((c) => row(`data-c="${esc(c.phone || c.name)}"`, esc(c.name || 'No name'),
+          `${esc(c.phone || '')} · ${c.orders} order${c.orders === 1 ? '' : 's'}`, `${esc(inr(c.spend))}<small>see orders</small>`)).join('')),
+        sec('Tees', tees.length, tees.map((v) => row(`data-p="${v.product_id}"`, esc(v.product_name),
+          `${esc(v.fit === 'regular' ? 'Regular fit' : 'Oversized')}${v.line === 'plain' ? ' · Pure Essence' : ''}${v.sku ? ` · ${esc(v.sku)}` : ''}`, `${v.pcs} pcs<small>${esc(inr(v.price))}</small>`)).join('')),
+        sec('Vendors', vendors.length, vendors.map((v) => row(`data-v="${v.id}"`, esc(v.name), `${esc(v.code || '')}${v.city ? ` · ${esc(v.city)}` : ''}${v.phone ? ` · ${esc(v.phone)}` : ''}`)).join('')),
+        sec('Vendor visits', visits.length, visits.map((r) => row(`data-vv="${r.id}"`, esc(r.name), `${esc(r.city)} · ${esc(day(r.visited_on))}${r.kind ? ` · ${esc(r.kind)}` : ''}`,
+          r.verdict ? esc(VERDICT[r.verdict][0]) : '')).join('')),
+      ].join('');
+      out.innerHTML = html || `<div class="empty">Nothing found for “${esc(raw)}”.</div>`;
+      out.querySelectorAll('[data-o]').forEach((b) => { b.onclick = () => { closePanel(); openOrder(Number(b.dataset.o)); }; });
+      out.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => { input.value = b.dataset.c; run(); }; });
+      out.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => { closePanel(); state.tab = 'stock'; state.view = null; render(); setTimeout(() => openProductForm(Number(b.dataset.p)), 300); }; });
+      out.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => { const v = vendors.find((x) => x.id === Number(b.dataset.v)); closePanel(); if (isPartner() || v.created_by === state.me.id) vendorForm(v, () => {}); else { state.poTab = 'vendors'; go('more', 'po'); } }; });
+      out.querySelectorAll('[data-vv]').forEach((b) => { b.onclick = () => { const r = visits.find((x) => x.id === Number(b.dataset.vv)); closePanel(); openVisit(r, () => { if (state.view === 'visits') render(); }); }; });
+    };
+    input.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 250); };
+    input.onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(timer); run(); input.blur(); } };
+  }
+
   // ================================================================ shell
   const ALL_TABS = [['home', 'Home'], ['stock', 'Stock'], ['orders', 'Orders'], ['sales', 'Sales'], ['store', 'Store'], ['finance', 'Finance'], ['reports', 'Reports'], ['more', 'More']];
   const tabsFor = () => ALL_TABS.filter(([k]) => k !== 'finance' || isPartner());
@@ -375,6 +431,7 @@
         <header class="top">
           <div class="brand brand-full"><img class="brand-logo" src="${BR}logo-white.png" alt="SINDIICAT"><small class="team-tag">Team</small></div>
           <div class="top-right">
+            <button class="bell" id="gsBtn" aria-label="Search">${ICON.search}</button>
             <button class="bell" id="bell" aria-label="Alerts">${ICON.bell}<span class="badge" id="bellBadge" hidden></span></button>
             <button class="me-chip" id="me" title="Sign out">${esc(state.me.name.split(' ')[0])}</button>
           </div>
@@ -387,6 +444,7 @@
           <span class="ico">${ICON[k]}</span>${label}${k === 'orders' || k === 'more' ? `<span class="badge" id="badge-${k}" hidden></span>` : ''}</button>`).join('')}
       </nav>`;
     document.getElementById('bell').onclick = openNotifs;
+    document.getElementById('gsBtn').onclick = openSearch;
     const fab = document.getElementById('fabBill'); if (fab) fab.onclick = () => go('sell');
     document.getElementById('me').onclick = async () => {
       const ok = await ask({ title: 'Sign out?', html: `<p class="muted">Signed in as ${esc(state.me.name)} (${esc(state.me.role)}).</p>`, ok: 'Sign out', okClass: 'bad' });
@@ -545,20 +603,20 @@
         <div class="stat"><div class="k">Bills</div><div class="v">${mine.length}</div></div></div>`;
     const me = people.find((p) => p.member_id === state.me.id);
 
-    view.innerHTML = `
-      <h1>${hello}, ${esc(state.me.name.split(' ')[0])}</h1>
-      <p class="sub">${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}</p>
-      ${emp && pol ? `<div id="punchBox">${punchHtml(a, pol)}</div>` : ''}
-      ${emp ? `<h2>My sales</h2>${mineCard}${(() => { const md = (tDay || []).find((x) => x.member_id === state.me.id) || {}; const mw = (tWeek || []).find((x) => x.member_id === state.me.id) || {};
-        return `<div class="card">${md.target_pcs || md.target_amount ? `<div class="muted">Today</div>${md.target_pcs ? meter(Number(md.pcs), Number(md.target_pcs), false) : ''}${md.target_amount ? meter(Number(md.amount), Number(md.target_amount), true) : ''}` : ''}
-          ${mw.target_pcs ? `<div class="muted" style="margin-top:8px">This week</div>${meter(Number(mw.pcs), Number(mw.target_pcs), false)}` : ''}
-          ${me ? `<div class="muted" style="margin-top:8px">${esc(monthName(m0))}</div>${meter(Number(me.pcs), Number(me.target_pcs), false)}` : ''}</div>`; })()}` : ''}
-      <h2>Today · whole business</h2>
-      <div class="today">
-        <div class="stat"><div class="k">Sold today</div><div class="v">${esc(inr(t.value))}</div></div>
-        <div class="stat"><div class="k">Orders</div><div class="v">${t.orders}</div></div>
-        <div class="stat"><div class="k">Pieces</div><div class="v">${t.pieces}</div></div>
-      </div>
+    // ---------- extra data: Mahendra's work list, partners' money due
+    const [packList, openPOs, codRoad, pays] = await Promise.all([
+      !P ? safe(q(sb.from('order_board').select('id,order_no,customer_name,items,status,payment_method,payment_status,created_at,pieces,channel')
+        .in('status', ['placed', 'confirmed', 'packed']).order('created_at', { ascending: true }).limit(40))) : none,
+      P ? safe(q(sb.from('po_board').select('id,po_no,vendor,grand_total,status').in('status', ['approved', 'sent', 'partly_received']))) : none,
+      P ? safe(q(sb.from('order_board').select('total').eq('payment_method', 'cod').eq('status', 'shipped'))) : none,
+      P ? safe(q(sb.from('employee_pay').select('monthly_salary'))) : none,
+    ]);
+    const dateLine = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' });
+    const newBill = '<button class="btn block" data-goto="sell" style="margin:14px 0 6px">+ New bill</button>';
+    const doNext = (list) => (list.length ? `<div class="action-list">${list.map(([n, c, t1, t2]) => `
+        <button class="action ${c}" data-a="${actions.findIndex((x) => x[2] === t1)}"><span class="n">${n}</span><span class="t"><b>${t1}</b><span>${t2}</span></span><span class="go">›</span></button>`).join('')}</div>`
+      : '<div class="all-clear"><b>All clear</b>Nothing waiting. Go make some content.</div>');
+    const targetCard = (() => { const html = `
       ${(() => {
         const d = (tDay || []).find((x) => !x.member_id) || {};
         const w = (tWeek || []).find((x) => !x.member_id) || {};
@@ -572,36 +630,113 @@
           ${people.length ? `<div class="muted" style="margin-top:10px">Each person today</div>${people.map((x) => `<div class="lb-row${x.member_id === state.me.id ? ' me' : ''}" style="grid-template-columns:1fr 70px auto"><span class="lb-name">${esc(x.name)}<small>${esc(inr(x.amount))}${Number(x.target_amount) ? ` of ${esc(inr(x.target_amount))}` : ''}</small></span>
             <span class="lb-bar"><span style="width:${x.target_pcs ? Math.min(100, (x.pcs / x.target_pcs) * 100) : 0}%"></span></span><b>${x.pcs}${x.target_pcs ? `<small>/${x.target_pcs}</small>` : ''}</b></div>`).join('')}` : ''}</div>`;
       })()}
-      <button class="btn block" data-goto="sell" style="margin:4px 0 6px">+ New bill</button>
-      ${cashCard}
-      <h2>Do next</h2>
-      ${actions.length ? `<div class="action-list">${actions.map(([n, c, t1, t2], i) => `
-        <button class="action ${c}" data-a="${i}"><span class="n">${n}</span><span class="t"><b>${t1}</b><span>${t2}</span></span><span class="go">›</span></button>`).join('')}</div>`
-        : `<div class="all-clear"><b>All clear</b>Nothing waiting. Go make some content.</div>`}
-      <h2>Best sellers & demand</h2>
-      <div id="demandBox"></div>
-      <h2>This month</h2>
-      ${milestoneCard}
-      ${people.length ? `<h2>Who's selling · ${esc(monthName(m0))}</h2>${leaderboard}` : ''}
-      ${P ? `<h2>Where sales came from</h2>${channelCard}` : ''}
-      <h2>Last 14 days</h2>
+`; return html; })();
+
+    if (!P) {
+      // ================= WORK HOME (Mahendra): today's jobs first
+      const work = (packList || []).filter((o) => !(o.payment_method === 'online' && o.payment_status === 'pending'));
+      const STEP = { placed: ['Confirm', 'lime'], confirmed: ['Pack', 'lime'], packed: ['Ship', 'cyan'] };
+      const itemsTxt = (o) => (o.items || []).map((i) => `${i.qty}× ${i.name}${i.variant ? ` · ${i.variant}` : ''}`).join(', ');
+      const lowRows = [
+        ...low.sort((x, y) => x.stock - y.stock).map((s) => ({ n: s.stock, t: s.product_name, d: `${s.colour || ''} · ${s.size}${s.fit === 'regular' ? ' · Regular' : ''}`, k: 'Printed' })),
+        ...lowBlanks.sort((x, y) => x.qty - y.qty).map((b) => ({ n: b.qty, t: `Blank ${b.fit_label || 'tee'}`, d: `${b.colour} · ${b.size}`, k: 'Blank' })),
+      ];
+      const otherJobs = actions.filter((x) => !['to confirm', 'to pack', 'to ship', 'printed sizes running low', 'blank tee sizes running low'].includes(x[2]));
+      view.innerHTML = `
+        <h1>${hello}, ${esc(state.me.name.split(' ')[0])}</h1>
+        <p class="sub">${dateLine}</p>
+        ${emp && pol ? `<div id="punchBox">${punchHtml(a, pol)}</div>` : ''}
+        <h2>Today's work</h2>
+        <div class="work-tiles">
+          ${[['placed', 'To confirm'], ['confirmed', 'To pack'], ['packed', 'To ship']].map(([k, l]) => `
+            <button class="work-tile ${count(k) ? 'hot' : ''}" data-of="${k}"><b>${count(k)}</b><span>${l}</span></button>`).join('')}
+        </div>
+        ${work.length ? `<div class="card work-list">${work.slice(0, 8).map((o) => `
+          <button class="work-row" data-order="${o.id}">
+            <span class="work-step ${STEP[o.status][1]}">${STEP[o.status][0]}</span>
+            <span class="work-main"><b>${esc(o.order_no)} · ${esc(o.customer_name || 'Walk-in')}</b><small>${esc(itemsTxt(o))}</small></span>
+            <span class="work-side">${o.payment_method === 'cod' ? '<span class="pill pending">COD</span>' : ''}<span class="muted">${o.pieces} pc</span></span>
+          </button>`).join('')}
+          ${work.length > 8 ? `<button class="linkish" data-goto="orders" style="margin-top:8px">See all ${work.length} orders ›</button>` : ''}</div>`
+          : '<div class="all-clear"><b>No parcels waiting</b>Every order is packed and shipped.</div>'}
+        ${otherJobs.length ? `<h2>Also waiting</h2>${doNext(otherJobs)}` : ''}
+        <h2>Running low${lowRows.length ? ` · ${lowRows.length}` : ''}</h2>
+        ${lowRows.length ? `<div class="card low-list">${lowRows.slice(0, 10).map((r) => `<div class="low-row"><span class="low-n ${r.n <= 0 ? 'out' : ''}">${r.n <= 0 ? 'Out' : r.n}</span>
+            <span class="work-main"><b>${esc(r.t)}</b><small>${esc(r.d)} · ${r.k}</small></span></div>`).join('')}
+          <button class="linkish" data-goto="stock" style="margin-top:8px">Open stock ›</button></div>`
+          : `<div class="all-clear"><b>Stock looks fine</b>Nothing at or below ${lim} pieces.</div>`}
+        ${newBill}
+        ${emp ? `<h2>My sales</h2>${mineCard}${(() => { const md = (tDay || []).find((x) => x.member_id === state.me.id) || {}; const mw = (tWeek || []).find((x) => x.member_id === state.me.id) || {};
+        return `<div class="card">${md.target_pcs || md.target_amount ? `<div class="muted">Today</div>${md.target_pcs ? meter(Number(md.pcs), Number(md.target_pcs), false) : ''}${md.target_amount ? meter(Number(md.amount), Number(md.target_amount), true) : ''}` : ''}
+          ${mw.target_pcs ? `<div class="muted" style="margin-top:8px">This week</div>${meter(Number(mw.pcs), Number(mw.target_pcs), false)}` : ''}
+          ${me ? `<div class="muted" style="margin-top:8px">${esc(monthName(m0))}</div>${meter(Number(me.pcs), Number(me.target_pcs), false)}` : ''}</div>`; })()}` : ''}
+        ${cashCard}
+        <h2>This month</h2>
+        ${milestoneCard}
+        ${people.length ? `<h2>Who's selling · ${esc(monthName(m0))}</h2>${leaderboard}` : ''}`;
+      view.querySelectorAll('[data-of]').forEach((b) => { b.onclick = () => { state.orderFilter = b.dataset.of; go('orders'); }; });
+      view.querySelectorAll('.work-row[data-order]').forEach((b) => { b.onclick = () => openOrder(Number(b.dataset.order)); });
+    } else {
+      // ================= MONEY HOME (partners): money first
+      const net = (o) => Number(o.total) - Number(o.shipping);
+      const monthSales = paidOrders.reduce((s2, o) => s2 + net(o), 0);
+      const todays = paidOrders.filter((o) => o.created_at >= istStart(todayKey()));
+      const tv = { value: todays.reduce((s2, o) => s2 + net(o), 0), orders: todays.length, pieces: todays.reduce((s2, o) => s2 + Number(o.pieces), 0) };
+      const cur = (months || []).find((m) => String(m.month).slice(0, 7) === m0.slice(0, 7));
+      const poDue = (openPOs || []).reduce((s2, x) => s2 + Number(x.grand_total || 0), 0);
+      const codDue = (codRoad || []).reduce((s2, x) => s2 + Number(x.total || 0), 0);
+      const salary = (pays || []).reduce((s2, x) => s2 + Number(x.monthly_salary || 0), 0);
+      const holding = (held || []).filter((h) => Number(h.collected) > 0);
+      const dueRow = (label, sub, amt, go2, cls = '') => `<button class="due-row" ${go2}><span class="work-main"><b>${label}</b><small>${sub}</small></span><span class="amt ${cls}">${esc(inr(amt))}</span><span class="go">›</span></button>`;
+      view.innerHTML = `
+        <h1>${hello}, ${esc(state.me.name.split(' ')[0])}</h1>
+        <p class="sub">${dateLine}</p>
+        <div class="money-hero">
+          <div class="mh-main"><div class="k">Sold today</div><div class="v">${esc(inr(tv.value))}</div><div class="s">${tv.orders} orders · ${tv.pieces} pcs</div></div>
+          <div class="mh-cell"><div class="k">${esc(monthName(m0))} sales</div><div class="v">${esc(inr(monthSales))}</div></div>
+          <div class="mh-cell"><div class="k">${esc(monthName(m0))} profit</div><div class="v">${cur ? signed(cur.net_result) : '—'}</div></div>
+          <div class="mh-cell wide"><div class="k">Money in the business (as per books)</div><div class="v">${summary ? esc(inr(summary.cash_balance)) : '—'}</div></div>
+        </div>
+        <h2>Money due</h2>
+        <div class="card due-list">
+          <div class="due-h">To pay</div>
+          ${poDue ? dueRow('Vendors · open POs', `${(openPOs || []).length} PO${(openPOs || []).length === 1 ? '' : 's'} approved, not fully received`, poDue, 'data-go="po"', 'neg') : ''}
+          ${salary ? dueRow('Salaries this month', 'Team monthly pay', salary, 'data-go="hr"', 'neg') : ''}
+          ${!poDue && !salary ? '<div class="due-row static"><span class="work-main"><small>Nothing to pay right now</small></span></div>' : ''}
+          <div class="due-h">Coming in</div>
+          ${codDue ? dueRow('COD on the way', `${(codRoad || []).length} shipped parcel${(codRoad || []).length === 1 ? '' : 's'}, cash not collected yet`, codDue, 'data-goto="orders"', 'pos')
+            : '<div class="due-row static"><span class="work-main"><small>No COD cash on the way</small></span></div>'}
+          ${holding.length ? `<div class="due-h">Store cash partners have taken</div>${holding.map((h) => `<div class="due-row static"><span class="work-main"><b>${esc(h.name)}</b><small>${h.handovers} handover${h.handovers === 1 ? '' : 's'}</small></span><span class="amt">${esc(inr(h.collected))}</span></div>`).join('')}` : ''}
+        </div>
+        ${partnerCards}
+        <h2>Do next</h2>
+        ${doNext(actions)}
+        ${targetCard}
+        ${newBill}
+        ${cashCard}
+        <h2>This month</h2>
+        ${milestoneCard}
+        ${people.length ? `<h2>Who's selling · ${esc(monthName(m0))}</h2>${leaderboard}` : ''}
+        <h2>Where sales came from</h2>${channelCard}
+        <h2>Best sellers & demand</h2>
+        <div id="demandBox"></div>
+        <h2>Last 14 days</h2>
       <div class="card">
         <div class="row"><span class="muted">Sales</span><span class="amt">${esc(inr(total14))}</span></div>
         <div class="bars" aria-label="Daily sales for the last 14 days">${days.map((d, i) =>
           `<div class="${i === 13 ? 'today-bar' : d.v ? 'has' : ''}" style="height:${Math.max(4, (d.v / max) * 100)}%" title="${esc(day(d.k))}: ${esc(inr(d.v))}"></div>`).join('')}</div>
         <div class="bars-x"><span>${esc(new Date(days[0].k).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}</span><span>Today</span></div>
       </div>
-      ${summary ? `
-        <h2>Money</h2>
-        <div class="grid">
-          <div class="stat hero"><div class="k">Money in the business (as per books)</div><div class="v">${esc(inr(summary.cash_balance))}</div></div>
-          <div class="stat"><div class="k">Total sales</div><div class="v">${esc(inr(summary.total_sales))}</div></div>
-          <div class="stat"><div class="k">Expenses</div><div class="v">${esc(inr(summary.total_expenses))}</div></div>
-          <div class="stat" style="grid-column:1/-1"><div class="k">Profit / loss so far</div><div class="v">${signed(summary.business_result)}</div></div>
-        </div>` : ''}
-      ${partnerCards}
-      ${closingCard ? `<h2>Last 6 months</h2>${closingCard}` : ''}
-      ${P ? `<h2>All reports</h2><div class="chipset">${REPORTS.map(([k, l]) => `<button data-rep="${k}">${l}</button>`).join('')}<button data-go="production">Production</button><button data-go="hr">Team & HR</button><button data-go="influencers">Influencers</button><button data-go="coupons">Coupons</button></div>` : ''}`;
+        ${summary ? `<h2>Since the start</h2>
+          <div class="grid">
+            <div class="stat"><div class="k">Total sales</div><div class="v">${esc(inr(summary.total_sales))}</div></div>
+            <div class="stat"><div class="k">Expenses</div><div class="v">${esc(inr(summary.total_expenses))}</div></div>
+            <div class="stat" style="grid-column:1/-1"><div class="k">Profit / loss so far</div><div class="v">${signed(summary.business_result)}</div></div>
+          </div>` : ''}
+        ${closingCard ? `<h2>Last 6 months</h2>${closingCard}` : ''}
+        <h2>All reports</h2><div class="chipset">${REPORTS.map(([k, l]) => `<button data-rep="${k}">${l}</button>`).join('')}<button data-go="production">Production</button><button data-go="hr">Team & HR</button><button data-go="influencers">Influencers</button><button data-go="coupons">Coupons</button></div>`;
+      demandCard(view.querySelector('#demandBox'));
+    }
     view.querySelectorAll('[data-a]').forEach((b) => { b.onclick = actions[Number(b.dataset.a)][4]; });
     view.querySelectorAll('[data-rep]').forEach((b) => { b.onclick = () => { state.report = b.dataset.rep; go('reports'); }; });
     view.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => go('more', b.dataset.go); });
@@ -610,7 +745,6 @@
     view.querySelectorAll('[data-hand]').forEach((b) => { b.onclick = () => cashHandover(() => VIEWS.home(view)); });
     const tc = view.querySelector('#toCash'); if (tc) tc.onclick = () => go('store');
     if (emp && pol) wirePunch(view.querySelector('#punchBox'), a, () => VIEWS.home(view));
-    demandCard(view.querySelector('#demandBox'));
     const st = view.querySelector('#setTargets'); if (st) st.onclick = () => go('more', 'targets');
   };
 
@@ -1033,7 +1167,7 @@
       redraw();
     };
     view.querySelector('#sScan').onclick = () => scanTag((code) => {
-      const v = state.stock.find((x) => x.sku === code || String(x.variant_id) === code.replace(/^ZS:/, ''));
+      const v = state.stock.find((x) => x.sku === code || String(x.variant_id) === code.replace(/^(ZS|SC):/, ''));
       if (!v) return toast(`Tag ${code} not found`, true);
       const line = s.cart.find((x) => x.variant_id === v.variant_id);
       if ((line ? line.qty : 0) + 1 > v.stock) return toast(`Only ${v.stock} of ${v.size} in stock`, true);
@@ -1167,7 +1301,7 @@
             }).join('')}</tr>`).join('')}</tbody></table>
           <div class="actions">
             <button class="btn small outline" data-edit="${g.product_id}">Edit</button>
-            <button class="btn small outline label-btn" data-label="${g.product_id}">${(g.labels && g.labels.length) ? esc(g.labels.map(labelName).join(', ')) : 'Add to collections'}</button>
+            <button class="btn small outline label-btn" data-label="${g.product_id}">${(g.labels && g.labels.length) ? esc(g.labels.map(labelName).join(' · ')) : 'Pick a badge'}</button>
             ${g.line === 'plain' ? `<button class="btn small" data-fromblank="${g.product_id}">+ Move from blanks</button>` : ''}
             ${!g.published && isPartner() ? `<button class="btn small" data-pub="${g.product_id}">Publish to shop</button>` : ''}
             ${g.published && isPartner() ? `<button class="btn small outline" data-price="${g.product_id}">Change price</button>` : ''}
@@ -1185,7 +1319,7 @@
           ${isPartner() ? `<button class="btn small outline" data-restore="${p.id}">Restore</button>` : ''}</div>`).join('')}</details>` : ''}`;
 
     view.querySelectorAll('[data-label]').forEach((b) => {
-      b.onclick = async () => { const g = state.stock.find((v) => v.product_id === Number(b.dataset.label)); if (await pickLabels(g.product_id, g.product_name, g.labels || (g.shop_label ? [g.shop_label] : []), false)) { await loadStock(); VIEWS.stock(view); } };
+      b.onclick = async () => { const g = state.stock.find((v) => v.product_id === Number(b.dataset.label)); if (await pickLabels(g.product_id, g.product_name, [badgeOf(g)])) { await loadStock(); VIEWS.stock(view); } };
     });
     view.querySelectorAll('[data-fromblank]').forEach((b) => {
       b.onclick = async () => {
@@ -1251,13 +1385,16 @@
       b.onclick = async () => {
         const g = state.stock.find((v) => v.product_id === Number(b.dataset.price));
         const v = await ask({
-          title: `New price for ${g.product_name}`, html: `<p class="muted">Live prices change only when all ${partners().length} partners approve.</p>`,
+          title: `New price for ${g.product_name}`, html: `<p class="muted">Changes of up to ${esc(inr(num(state.settings.no_vote_below) || 0))} on price and MRP go live straight away. Bigger changes need all ${partners().length} partners.</p>`,
           fields: [{ name: 'price', label: 'Selling price (₹)', type: 'number', required: true, value: g.price }, { name: 'mrp', label: 'MRP (₹)', type: 'number', required: true, value: g.mrp },
             { name: 'why', label: 'Why?', required: true, placeholder: 'e.g. Diwali sale' }],
           ok: 'Send for approval',
         });
         if (!v) return;
-        try { await q(sb.rpc('raise_request', { p_type: 'price_change', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { product_id: g.product_id, price: num(v.price), mrp: num(v.mrp) } })); toast('Sent to partners for approval'); } catch (e) { toast(errText(e), true); }
+        try { await q(sb.rpc('raise_request', { p_type: 'price_change', p_amount: null, p_description: v.why, p_proof_path: null, p_payload: { product_id: g.product_id, price: num(v.price), mrp: num(v.mrp) } }));
+          const lim = num(state.settings.no_vote_below) || 0;
+          if (Math.abs(num(v.price) - Number(g.price)) <= lim && Math.abs(num(v.mrp) - Number(g.mrp)) <= lim) { toast(`${g.product_name} is now ${inr(num(v.price))}. Small change, no vote needed.`); await loadStock(); VIEWS.stock(view); return; }
+          toast('Sent to partners for approval'); } catch (e) { toast(errText(e), true); }
       };
     });
   };
@@ -1314,35 +1451,32 @@
   const LABELS = [['new', 'New arrival'], ['premium', 'Premium'], ['bestseller', 'Bestseller'], ['limited', 'Limited edition'], ['restocked', 'Restocked'], ['prebook', 'Pre-book'], ['coming_soon', 'Coming soon'], ['none', 'No label']];
   const LABEL_HELP = { new: 'Shows in New arrivals', premium: 'Premium collection', bestseller: 'Pinned with bestsellers', limited: 'Few pieces, never restocked', restocked: 'Back in stock', prebook: 'Customers order now, you make it', coming_soon: 'Visible, cannot be ordered yet' };
   const labelName = (l) => (LABELS.find((x) => x[0] === (l || 'none')) || LABELS[LABELS.length - 1])[1];
-  // collections a tee sits in (many at once). Changed any time from the Stock card.
-  async function pickLabels(pid, name, current, first) {
-    const on = new Set((current || []).filter(Boolean));
+  // ONE hand-picked badge per tee. New, Restocked and Bestseller are added by the app.
+  const BADGES = [['none', 'No badge', 'Only the automatic labels'], ['premium', 'Premium', 'Premium collection'], ['limited', 'Limited edition', 'Few pieces, never restocked'],
+    ['prebook', 'Pre-book', 'Customers order now, you make it'], ['coming_soon', 'Coming soon', 'Visible, cannot be ordered yet']];
+  const BADGE_KEYS = BADGES.map((b) => b[0]);
+  const badgeOf = (g) => ((g.badge || g.labels || []).find((x) => BADGE_KEYS.includes(x) && x !== 'none') || 'none');
+  const autoNote = () => `<div class="hint auto-note"><b>Automatic:</b> <span class="lbl-auto">New</span> for ${num(state.settings.label_new_days) || 30} days after launch,
+    <span class="lbl-auto">Restocked</span> when a sold-out size comes back, <span class="lbl-auto">Bestseller</span> from real sales. You don't need to set these.</div>`;
+  const badgeButtons = (cur) => `<div class="label-pick">${BADGES.map(([k, l, h]) => `<button type="button" data-lp="${k}" class="${cur === k ? 'on' : ''}" aria-pressed="${cur === k}"><b>${l}</b><span>${h}</span></button>`).join('')}</div>`;
+  async function pickLabels(pid, name, current) {
+    let cur = (current || []).find((x) => BADGE_KEYS.includes(x)) || 'none';
     return new Promise((resolve) => {
       const draw = () => {
-        const body = panel(`<h1 style="margin-top:14px">${first ? `First stock for ${esc(name)}` : `Collections for ${esc(name)}`}</h1>
-          <p class="sub">${first ? 'Where should it show in the shop? Pick all that fit. You can change this any time from the Stock screen.' : 'The tee shows in every collection you tick. The most important one is its badge in the shop.'}</p>
-          <div class="label-pick">${LABELS.filter(([k]) => k !== 'none').map(([k, l]) => `<button type="button" data-lp="${k}" class="${on.has(k) ? 'on' : ''}"><b>${l}</b><span>${LABEL_HELP[k]}</span></button>`).join('')}</div>
-          <button class="btn block" id="lpSave" style="margin-top:16px">Save collections</button>`);
-        body.querySelectorAll('[data-lp]').forEach((x) => {
-          x.onclick = () => {
-            const k = x.dataset.lp;
-            if (on.has(k)) on.delete(k); else { on.add(k); if (k === 'prebook') on.delete('coming_soon'); if (k === 'coming_soon') on.delete('prebook'); }
-            draw();
-          };
-        });
+        const body = panel(`<h1 style="margin-top:14px">Badge for ${esc(name)}</h1>
+          <p class="sub">Pick one. It shows on the tee in the shop.</p>
+          ${badgeButtons(cur)}${autoNote()}
+          <button class="btn block" id="lpSave" style="margin-top:16px">Save badge</button>`);
+        body.querySelectorAll('[data-lp]').forEach((x) => { x.onclick = () => { cur = x.dataset.lp; draw(); }; });
         body.querySelector('#lpSave').onclick = async () => {
-          try { await q(sb.rpc('set_product_labels', { p_product: pid, p_labels: [...on] })); closePanel(); toast(on.size ? `${name}: ${[...on].map(labelName).join(', ')}` : `${name}: no collection`); resolve(true); } catch (e) { toast(errText(e), true); }
+          try { await q(sb.rpc('set_product_labels', { p_product: pid, p_labels: cur === 'none' ? [] : [cur] })); closePanel(); toast(`${name}: ${cur === 'none' ? 'no badge' : labelName(cur)}`); resolve(true); } catch (e) { toast(errText(e), true); }
         };
       };
       draw();
     });
   }
-  // the first time stock lands on a tee with no collection, ask where it goes
-  async function labelOnFirstStock(pid) {
-    const vars = state.stock.filter((v) => v.product_id === pid);
-    if (!vars.length || (vars[0].labels && vars[0].labels.length) || vars[0].shop_label) return;
-    await pickLabels(pid, vars[0].product_name, [], true);
-  }
+  // New is automatic now, so first stock no longer needs a question
+  async function labelOnFirstStock() {}
 
   const NECKS = ['Round neck', 'Rib crew neck', 'Polo collar', 'V neck', 'Henley'];
   const SLEEVES = ['Half sleeve', 'Full sleeve', 'Sleeveless'];
@@ -1365,7 +1499,7 @@
       fit: (prod && prod.fit) || (state.fitFilter === 'regular' ? 'regular' : 'oversized'),
       name: prod ? prod.name : '', cat: prod && prod.category_id ? String(prod.category_id) : '', type: prod ? prod.type : 'Oversized Tee',
       desc: prod ? prod.description : '', highlights: (d.highlights || []).join('\n'),
-      labels: new Set(prod ? (prod.labels && prod.labels.length ? prod.labels : prod.shop_label ? [prod.shop_label] : []) : ['new']),
+      labels: new Set(prod ? [badgeOf({ labels: prod.labels && prod.labels.length ? prod.labels : [prod.shop_label] })].filter((x) => x !== 'none') : []),
       mrp: prod ? prod.mrp : '', price: prod ? prod.price : '', cost: prod && Number(prod.cost_price) ? prod.cost_price : '', fab: (prod && prod.fabric_type) || 'cotton',
       fabric: prod ? prod.fabric || '' : '100% Cotton', gsm: prod && prod.gsm ? prod.gsm : '', neck: d.neck || 'Round neck', sleeve: d.sleeve || 'Half sleeve',
       print_type: d.print_type || '', print_place: d.print_place || '', care: d.care || 'Machine wash cold, inside out. Do not iron on print.', model: d.model || '',
@@ -1404,8 +1538,8 @@
           <div><label for="pType">Type</label><input id="pType" data-k="type" value="${esc(f.type)}" list="types"><datalist id="types"><option>Oversized Tee</option><option>Regular Fit Tee</option><option>Graphic Tee</option><option>Hoodie</option><option>Sweatshirt</option></datalist></div>
         </div>
 
-        ${step(3, 'Collections', 'Pick every one that applies')}
-        <div class="label-pick">${LABELS.filter(([k]) => k !== 'none').map(([k, l]) => `<button type="button" data-lp="${k}" class="${f.labels.has(k) ? 'on' : ''}"><b>${l}</b><span>${LABEL_HELP[k]}</span></button>`).join('')}</div>
+        ${step(3, 'Badge', 'Pick one, or none')}
+        ${badgeButtons([...f.labels][0] || 'none')}${autoNote()}
         ${P && (f.labels.has('coming_soon') || f.labels.has('limited') || f.drop || f.dropAt || f.limited) ? `<div class="row2">
           <div><label for="pDropAt">Launch date and time</label><input id="pDropAt" data-k="dropAt" type="datetime-local" value="${esc(f.dropAt)}"></div>
           <div><label for="pLimited">Limited to (pieces)</label><input id="pLimited" data-k="limited" type="number" inputmode="numeric" value="${esc(f.limited)}" placeholder="e.g. 50"></div></div>
@@ -1508,7 +1642,7 @@
       body.querySelectorAll('[data-lp]').forEach((x) => {
         x.onclick = () => {
           const k = x.dataset.lp;
-          if (f.labels.has(k)) f.labels.delete(k); else { f.labels.add(k); if (k === 'prebook') f.labels.delete('coming_soon'); if (k === 'coming_soon') f.labels.delete('prebook'); }
+          f.labels = new Set(k === 'none' ? [] : [k]);
           redraw();
         };
       });
@@ -2519,7 +2653,7 @@
       <p class="sub">Point the camera at the QR on the tag. Each scan adds one piece.</p>
       <div class="scan-box"><video id="scanV" playsinline muted></video><div class="scan-frame"></div></div>
       <label for="scanIn">Or type the code under the QR</label>
-      <div class="row2" style="grid-template-columns:1fr auto"><input id="scanIn" placeholder="ZS-12-BLA-L" style="text-transform:uppercase"><button class="btn" id="scanAdd">Add</button></div>
+      <div class="row2" style="grid-template-columns:1fr auto"><input id="scanIn" placeholder="SC-OS-12-BLA-L" style="text-transform:uppercase"><button class="btn" id="scanAdd">Add</button></div>
       <button class="btn outline block" id="scanDone" style="margin-top:16px">Done</button>`);
     const done = () => { stop = true; if (stream) stream.getTracks().forEach((t) => t.stop()); closePanel(); };
     body.querySelector('#scanDone').onclick = done;

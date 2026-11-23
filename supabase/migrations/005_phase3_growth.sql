@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 3 · Growth, operations and money features
+-- SINDIICAT · Phase 3 · Growth, operations and money features
 --   A. Customers (Google login), loyalty, coupons, bundles, drops,
 --      pre-orders, pincode delivery check, restock alerts, push outbox
 --   B. Production batches, cost price + profit, daily cash close,
@@ -18,7 +18,7 @@ create or replace function require_internal() returns trigger
 language plpgsql as $$
 begin
   if coalesce(current_setting('zs.internal', true), '') <> 'on' then
-    raise exception 'Direct changes to % are not allowed. Use the Z-SHIRTS app.', tg_table_name;
+    raise exception 'Direct changes to % are not allowed. Use the SINDIICAT app.', tg_table_name;
   end if;
   return coalesce(new, old);
 end $$;
@@ -26,7 +26,7 @@ end $$;
 select set_config('zs.internal', 'on', false);
 
 insert into settings (key, value, label) values
-  ('loyalty_points_per_100', '5'::jsonb,  'Z-Club points earned per ₹100 spent (1 point = ₹1)'),
+  ('loyalty_points_per_100', '5'::jsonb,  'SINDIICAT Club points earned per ₹100 spent (1 point = ₹1)'),
   ('loyalty_max_redeem_pct', '20'::jsonb, 'Max % of an order that can be paid with points'),
   ('delivery_days',          '{"city":"1-2","state":"2-4","india":"4-7","home_city":"Ahmedabad","home_state":"Gujarat"}'::jsonb,
                              'Delivery estimate by distance'),
@@ -320,10 +320,10 @@ begin
   end if;
   v_base := v_base - v_cdisc;
 
-  -- Z-Club points (logged-in customers only)
+  -- SINDIICAT Club points (logged-in customers only)
   if v_pts > 0 then
     if v_cust is null then
-      if p_lock then raise exception 'Sign in to use Z-Club points.'; end if;
+      if p_lock then raise exception 'Sign in to use SINDIICAT Club points.'; end if;
       v_pts := 0;
     else
       v_bal := points_of(v_cust);
@@ -550,7 +550,7 @@ begin
   perform set_config('zs.internal', 'on', true);
   update orders set production_status = p_status, updated_at = now() where id = o.id;
   perform _event(o.id, o.status, 'Making: ' || replace(initcap(p_status), '_', ' '));
-  perform _push_customer(o.customer_id, 'Your Z-SHIRTS order ' || o.order_no,
+  perform _push_customer(o.customer_id, 'Your SINDIICAT order ' || o.order_no,
     case p_status when 'printing' then 'Your tee is being printed.' when 'quality_check' then 'Your tee is in quality check.'
                   when 'ready' then 'Your tee is ready and will ship soon.' else 'Your order is in the making queue.' end,
     '?track=' || o.order_no);
@@ -1236,7 +1236,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;

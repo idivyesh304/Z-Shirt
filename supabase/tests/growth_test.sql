@@ -1,6 +1,6 @@
 -- =====================================================================
--- Z-SHIRTS · growth features test (runs after commerce_test.sql)
--- coupons, combos, Z-Club, Google customers, drops, pre-orders, push,
+-- SINDIICAT · growth features test (runs after commerce_test.sql)
+-- coupons, combos, SINDIICAT Club, Google customers, drops, pre-orders, push,
 -- production, profit, cash close, HR, partner decisions
 -- =====================================================================
 \set ON_ERROR_STOP on
@@ -113,7 +113,7 @@ select t.eq('combo + other tee total',
 select t.eq('2 tees: no combo yet',
   (quote_cart(jsonb_build_array(jsonb_build_object('variant_id', :bl, 'qty', 2))))->'bundle_discount', '0'::jsonb);
 
-\echo '\n== 29. Google customers + Z-Club =='
+\echo '\n== 29. Google customers + SINDIICAT Club =='
 :as_neha
 select t.eq('no account until profile saved', my_account(), null::jsonb);
 select save_my_profile('Neha Joshi', '98111 22233');

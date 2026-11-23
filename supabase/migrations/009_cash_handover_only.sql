@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Store cash rules
+-- SINDIICAT · Store cash rules
 --   · Cash enters the drawer only through sales. No cash in, no other cash out.
 --   · Cash leaves only as a handover to a named partner, recorded by Mahendra
 --     (for any partner) or by the partner who takes it (for himself).

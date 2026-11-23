@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 6 · DTF print stock, store day (open/close), petty cash,
+-- SINDIICAT · Phase 6 · DTF print stock, store day (open/close), petty cash,
 -- company finance (P&L, EBITDA, EBIT, PBT, PAT, GST)
 -- Run after 009.
 -- =====================================================================
@@ -287,7 +287,7 @@ declare
   k        text;
 begin
   m := current_member();
-  if m.id is null then raise exception 'You are not registered as a Z-SHIRTS member.'; end if;
+  if m.id is null then raise exception 'You are not registered as a SINDIICAT member.'; end if;
   if m.role = 'employee' and p_type::text not in ('expense', 'income', 'stock_writeoff') then
     raise exception 'Employees can only record expenses, income and damaged stock.';
   end if;

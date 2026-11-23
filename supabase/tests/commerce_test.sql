@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · shop / orders / stock rules test (runs after rules_test.sql)
+-- SINDIICAT · shop / orders / stock rules test (runs after rules_test.sql)
 -- =====================================================================
 \set ON_ERROR_STOP on
 \set QUIET on
@@ -173,6 +173,11 @@ select t.eq('return refunds what was actually paid (after 5% off)', (select amou
 select t.eq('order marked returned', (select status from orders where id = :id4), 'returned');
 
 \echo '\n== 22. Live price changes and damaged stock need all 4 =='
+-- this section checks voting itself, so switch off the small-change rule (tested in novote_test)
+reset role;
+select set_config('zs.internal', 'on', false);
+update settings set value = '0' where key = 'no_vote_below';
+select set_config('zs.internal', '', false);
 :as_aaryak
 select t.expect_error(format('select upsert_product(''{"id": %s, "name": "Acid Wash Drop", "mrp": 1999, "price": 999}'')', :p_acid), 'needs all partners');
 select raise_request('price_change', null, 'Festive price', null, jsonb_build_object('product_id', :p_acid, 'price', 1199, 'mrp', 1999)) as r_price \gset
@@ -198,6 +203,10 @@ select t.eq('still 5 at 3 of 4', stock_of(:wm), 5);
 select cast_vote(:r_wo, 'approve');
 select t.eq('written off: 4 left', stock_of(:wm), 4);
 
+reset role;
+select set_config('zs.internal', 'on', false);
+update settings set value = '100' where key = 'no_vote_below';
+select set_config('zs.internal', '', false);
 \echo '\n== 23. Custom profit split =='
 :as_aaryak
 select t.expect_error(format($$select raise_request('share_rule', null, 'custom', null, '{"profit_rule":"custom","loss_rule":"equal","split":{"%s":50}}')$$, :'aaryak'), 'every partner');

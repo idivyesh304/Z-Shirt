@@ -1,4 +1,4 @@
--- Z-SHIRTS · phase 6 test: DTF stock, store day, petty cash, finance statement
+-- SINDIICAT · phase 6 test: DTF stock, store day, petty cash, finance statement
 \set ON_ERROR_STOP on
 \set QUIET on
 \o /dev/null

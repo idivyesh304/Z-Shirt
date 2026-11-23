@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 8 · Damaged goods → vendor claims, overtime at the
+-- SINDIICAT · Phase 8 · Damaged goods → vendor claims, overtime at the
 -- hourly rate, 1 paid leave a month, delete (archive) a product.
 -- Run after 011.
 -- =====================================================================

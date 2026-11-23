@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS  ·  Phase 1  ·  Partner ledger, approvals and audit trail
+-- SINDIICAT  ·  Phase 1  ·  Partner ledger, approvals and audit trail
 -- =====================================================================
 -- The rules in this file are enforced INSIDE the database, not just in
 -- the app screens. Even someone who opens the database directly cannot
@@ -170,7 +170,7 @@ create function require_internal() returns trigger
 language plpgsql as $$
 begin
   if coalesce(current_setting('zs.internal', true), '') <> 'on' then
-    raise exception 'Direct changes to % are not allowed. Use the Z-SHIRTS app.', tg_table_name;
+    raise exception 'Direct changes to % are not allowed. Use the SINDIICAT app.', tg_table_name;
   end if;
   return new;
 end $$;
@@ -322,7 +322,7 @@ declare
 begin
   m := current_member();
   if m.id is null then
-    raise exception 'You are not registered as a Z-SHIRTS member.';
+    raise exception 'You are not registered as a SINDIICAT member.';
   end if;
   if m.role = 'employee' and p_type not in ('expense', 'income') then
     raise exception 'Employees can only record expenses and income.';

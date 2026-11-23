@@ -1,4 +1,4 @@
--- Z-SHIRTS · phase 11 test: Regular Fit tees next to Oversized
+-- SINDIICAT · phase 11 test: Regular Fit tees next to Oversized
 \set ON_ERROR_STOP on
 \set QUIET on
 \o /dev/null
@@ -15,7 +15,7 @@ select upsert_product(jsonb_build_object('name', 'Z Classic Regular Tee', 'type'
   'fabric', '100% Cotton', 'gsm', 180,
   'variants', jsonb_build_array(jsonb_build_object('colour', 'Navy', 'colour_hex', '#1f2a44', 'size', 'M'), jsonb_build_object('colour', 'Navy', 'colour_hex', '#1f2a44', 'size', 'L')))) as p_reg \gset
 select t.eq('product saved as Regular Fit', (select fit from products where id = :p_reg), 'regular');
-select t.eq('SKU carries the fit code', (select bool_and(sku like 'ZS-RF-%') from product_variants where product_id = :p_reg), true);
+select t.eq('SKU carries the fit code', (select bool_and(sku like 'SC-RF-%') from product_variants where product_id = :p_reg), true);
 select id as p_basic from products where name = 'Z Basic Tee' \gset
 select t.eq('older tees stay Oversized', (select fit from products where id = :p_basic), 'oversized');
 select upsert_product(jsonb_build_object('name', 'Z Plain Regular', 'type', 'Regular Fit Tee', 'mrp', 599, 'price', 399)) as p_reg2 \gset
@@ -76,9 +76,9 @@ select t.expect_error('select fit_summary()', 'Partners only');
 
 \echo '\n== 66. Pure Essence plain tees straight from blanks =='
 :as_aaryak
-select upsert_product(jsonb_build_object('name', 'Pure Essence Regular Fit', 'line', 'plain', 'fit', 'regular', 'type', 'Regular Fit Tee', 'mrp', 499, 'price', 349, 'shop_label', 'new',
+select upsert_product(jsonb_build_object('name', 'Pure Essence Regular Fit', 'line', 'plain', 'fit', 'regular', 'type', 'Regular Fit Tee', 'mrp', 499, 'price', 349, 'shop_label', 'premium',
   'variants', jsonb_build_array(jsonb_build_object('colour', 'Navy', 'colour_hex', '#1f2a44', 'size', 'M'), jsonb_build_object('colour', 'Navy', 'colour_hex', '#1f2a44', 'size', 'L')))) as p_pe \gset
-select t.eq('plain line saved with its first label', (select line || '/' || shop_label from products where id = :p_pe), 'plain/new');
+select t.eq('plain line saved with its badge', (select line || '/' || shop_label from products where id = :p_pe), 'plain/premium');
 select pv.id as pem from product_variants pv where pv.product_id = :p_pe and pv.size = 'M' \gset
 :as_mahendra
 select t.expect_error(format('select blanks_to_shop(%s, %L)', :p_pe, jsonb_build_array(jsonb_build_object('variant_id', :pem, 'qty', 999))), 'in blank stock');
@@ -94,7 +94,7 @@ select set_product_label(:p_pe, 'premium');
 select t.eq('label changed any time', (select shop_label from catalog where id = :p_pe), 'premium');
 select set_product_label(:p_reg, 'prebook');
 select t.eq('pre-book lets customers order with no stock', (select is_preorder from products where id = :p_reg), true);
-select set_product_label(:p_reg, 'restocked');
+select set_product_label(:p_reg, 'limited');
 select t.eq('moving off pre-book switches it off', (select is_preorder from products where id = :p_reg), false);
 select set_product_label(:p_pe, 'coming_soon');
 :as_guest

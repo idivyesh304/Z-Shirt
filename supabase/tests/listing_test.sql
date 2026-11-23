@@ -1,4 +1,4 @@
--- Z-SHIRTS · phase 12 test: full listing (collections, details, tee-only offers)
+-- SINDIICAT · phase 12 test: full listing (collections, details, tee-only offers)
 \set ON_ERROR_STOP on
 \set QUIET on
 \o /dev/null
@@ -13,8 +13,8 @@ select upsert_product(jsonb_build_object('name', 'Kesari Sunset Tee', 'fit', 'ov
   'details', jsonb_build_object('neck', 'Rib crew neck', 'sleeve', 'Half sleeve', 'print_type', 'Puff print', 'print_place', 'Front and back',
      'care', 'Wash cold, inside out', 'model', 'Model is 5''11" and wears L', 'highlights', jsonb_build_array('Heavy 240 GSM', 'Pre-shrunk'), 'junk', 'x'),
   'variants', jsonb_build_array(jsonb_build_object('colour', 'Saffron', 'colour_hex', '#f28c28', 'size', 'L')))) as p1 \gset
-select t.eq('two collections at once', (select array_to_string(labels, ',') from products where id = :p1), 'premium,new');
-select t.eq('main badge is the most important', (select shop_label from products where id = :p1), 'premium');
+select t.eq('one badge kept, New is automatic', (select array_to_string(labels, ',') from products where id = :p1), 'premium');
+select t.eq('badge is the main label', (select shop_label from products where id = :p1), 'premium');
 select t.eq('details saved, unknown keys dropped', (select details->>'print_type' || '/' || (details ? 'junk')::text from products where id = :p1), 'Puff print/false');
 :as_guest
 select t.eq('shop sees labels and details', (select array_length(labels, 1) || ' ' || (details->>'model') from catalog where id = :p1), '2 Model is 5''11" and wears L');
@@ -25,6 +25,7 @@ select set_product_labels(:p1, array['premium']);
 select t.eq('dropping pre-book turns it off', (select is_preorder from products where id = :p1), false);
 select t.expect_error(format('select set_product_labels(%s, array[''coming_soon'', ''prebook''])', :p1), 'same time');
 select t.expect_error(format('select set_product_labels(%s, array[''hot''])', :p1), 'Unknown label');
+select t.expect_error(format('select set_product_labels(%s, array[''premium'', ''limited''])', :p1), 'Pick one badge');
 
 \echo '\n== 69. An offer that works only on this tee =='
 :as_aaryak

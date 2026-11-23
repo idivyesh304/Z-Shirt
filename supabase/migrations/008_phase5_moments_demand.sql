@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 5 · first-login welcome, more celebration moments,
+-- SINDIICAT · Phase 5 · first-login welcome, more celebration moments,
 -- demand + best-seller insights
 -- Run after 001-007.
 -- =====================================================================

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · send phone notifications every minute (only when something waits)
+-- SINDIICAT · send phone notifications every minute (only when something waits)
 -- Needs the 'push' Edge Function deployed with Verify JWT off.
 -- =====================================================================
 create extension if not exists pg_net;

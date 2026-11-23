@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · Phase 1 · Private storage for bill photos and bank proofs
+-- SINDIICAT · Phase 1 · Private storage for bill photos and bank proofs
 -- Run after 001. Photos can be uploaded but never replaced or deleted.
 -- =====================================================================
 

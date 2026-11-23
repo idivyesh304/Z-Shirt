@@ -1,5 +1,5 @@
 -- =====================================================================
--- Z-SHIRTS · rules test. Every check raises an error if a rule is broken.
+-- SINDIICAT · rules test. Every check raises an error if a rule is broken.
 -- Run with: bash supabase/tests/run_tests.sh
 -- =====================================================================
 \set ON_ERROR_STOP on
