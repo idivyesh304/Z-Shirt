@@ -381,7 +381,7 @@
         </header>
         <main id="view"><div class="empty loading">Loading…</div></main>
       </div>
-      ${state.tab !== 'sell' ? '<button class="fab" id="fabBill" aria-label="New bill">+ Bill</button>' : ''}
+      ${state.tab !== 'sell' && state.view !== 'visits' ? '<button class="fab" id="fabBill" aria-label="New bill">+ Bill</button>' : ''}
       <nav class="tabs">${tabsFor().map(([k, label]) => `
         <button data-tab="${k}" class="${state.tab === k || (k === 'sales' && state.tab === 'sell') ? 'on' : ''}" aria-label="${label}">
           <span class="ico">${ICON[k]}</span>${label}${k === 'orders' || k === 'more' ? `<span class="badge" id="badge-${k}" hidden></span>` : ''}</button>`).join('')}
@@ -1633,6 +1633,7 @@
       isPartner() && ['approvals', 'Approvals', 'Expenses, payouts, price changes, damaged stock', c.approvals],
       ['requests', isPartner() ? 'New money entry' : 'Expenses', isPartner() ? 'Expense, income, capital, payout' : 'Record an expense with the bill photo'],
       ['po', 'Purchase orders', 'POs to vendors with GST, approvals and A4 PDF', c.po],
+      isPartner() && ['visits', 'Vendor visits', 'Tick-box notes from manufacturer meetings'],
       ['production', 'Production tracker', 'Batches from blanks to ready stock'],
       ['hr', isPartner() ? 'Team & HR' : 'My attendance', isPartner() ? 'Attendance, leave, salary, HR rules' : 'Check in, leave, my salary'],
       ['coupons', 'Coupons & combos', 'Online and store codes, combo offers'],
@@ -1655,6 +1656,239 @@
   };
   const backBtn = '<button class="linkish" id="back" style="margin-top:14px">‹ More</button>';
   const wireBack = (view) => { const b = view.querySelector('#back'); if (b) b.onclick = () => go('more'); };
+
+  // ================================================================ VENDOR VISITS (partners)
+  // Tick-box notes taken while meeting t-shirt manufacturers on sourcing trips.
+  const VISIT_CITIES = ['Ludhiana', 'Mumbai', 'Delhi', 'Tiruppur', 'Surat', 'Ahmedabad'];
+  const VISIT_KINDS = ['Own factory', 'Trader / wholesaler', 'Job worker (stitching)', 'Printer / embellisher', 'Fabric supplier', 'Packaging / labels'];
+  const VISIT_TICKS = [
+    ['What they make', ['Oversized tee', 'Regular fit tee', 'Drop shoulder', 'Polo', 'Hoodie', 'Sweatshirt', 'Joggers / shorts', 'Women / crop fit', 'Kids', 'Acid / washed tees', 'Blank tees (ready stock)']],
+    ['Fabric', ['100% cotton combed', '100% cotton carded', 'Bio-washed cotton', 'Cotton Lycra', 'Poly-cotton', 'Polyester / dri-fit', 'French terry', 'Loop knit', 'Fleece', 'Pique', 'Slub', 'Organic cotton']],
+    ['GSM they offer', ['160–180', '180–200', '200–220', '220–240', '240–260', '260–300', '300+']],
+    ['Yarn count', ['20s', '24s', '26s', '30s', '34s', '40s']],
+    ['Printing in-house', ['Screen print', 'Puff print', 'High density', 'DTF', 'DTG', 'Sublimation', 'Discharge', 'Foil', 'Reflective', 'Embroidery', 'Patch / applique', 'Heat transfer']],
+    ['Wash & finish', ['Bio-wash', 'Silicone wash', 'Enzyme wash', 'Acid / stone wash', 'Garment dye', 'Tie-dye', 'Pre-shrunk', 'Compacted fabric', 'Anti-pilling']],
+    ['Sizes', ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL+']],
+    ['Colours', ['Ready colour card', 'Pantone matching', 'Custom dyeing', 'Deep black that stays black', 'Many colours in stock']],
+    ['Labels & packing', ['Printed neck label', 'Woven neck label', 'Size label', 'Wash care label', 'Hang tag', 'Polybag with our logo', 'Custom box / mailer', 'Barcode / SKU sticker', 'Fold & pack per piece']],
+    ['Services', ['Free samples', 'Paid samples', 'Tech pack help', 'Pattern / fit making', 'Size set approval', 'Private / white label', 'Dropship to customer', 'Ready stock blanks', 'Small MOQ OK', 'Holds fabric for us', 'Re-order same shade']],
+    ['Business terms', ['GST invoice', 'Credit possible', 'Ships all over India', 'Replaces defects', 'Written agreement OK', 'QC before dispatch', 'Has a catalogue', 'Works with other brands', 'Exports']],
+    ['Certificates', ['OEKO-TEX', 'GOTS', 'ISO', 'SEDEX / BSCI', 'No certificates']],
+    ['What we checked', ['Felt the fabric', 'Checked stitching', 'Checked print quality', 'Saw a washed sample', 'Saw the factory floor', 'Took samples', 'Met the owner']],
+  ];
+  const VISIT_FACTS = [
+    ['moq_design', 'MOQ per design', 'pcs'], ['moq_colour', 'MOQ per colour', 'pcs'],
+    ['rate_os', 'Rate · oversized tee', '₹/pc'], ['rate_rf', 'Rate · regular tee', '₹/pc'],
+    ['rate_print', 'Print rate', '₹/pc'], ['rate_hoodie', 'Rate · hoodie', '₹/pc'],
+    ['sample_cost', 'Sample cost', '₹'], ['sample_days', 'Sample time', 'days'],
+    ['prod_days', 'Production time', 'days'], ['capacity', 'Daily capacity', 'pcs/day'],
+    ['advance', 'Advance', '%'], ['credit_days', 'Credit', 'days'],
+  ];
+  const VISIT_TEXT_FACTS = [['gstin', 'GST number'], ['brands', 'Brands they work for'], ['delivery', 'Delivery / transport'], ['payment', 'Payment terms in their words']];
+  const VISIT_RATE = [['quality', 'Quality'], ['price', 'Price'], ['talk', 'Communication'], ['setup', 'Factory / setup'], ['gut', 'Our gut feeling']];
+  const VERDICT = { shortlist: ['Shortlist', 'approved'], maybe: ['Maybe', 'pending'], no: ['Not for us', 'rejected'] };
+  const stars = (n) => (n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '');
+  const visitScore = (r) => { const v = Object.values(r.ratings || {}).filter((x) => x); return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null; };
+
+  async function shrinkPhoto(file) {
+    try {
+      if (!/^image\//.test(file.type) || file.size < 700 * 1024) return file;
+      const img = await createImageBitmap(file);
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.82));
+      return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+    } catch (_) { return file; }
+  }
+
+  VIEWS.visits = async (view) => {
+    if (!isPartner()) { view.innerHTML = `${backBtn}<div class="empty">Vendor visits are for partners.</div>`; wireBack(view); return; }
+    const rows = await q(sb.from('vendor_visits').select('*').order('visited_on', { ascending: false }).order('id', { ascending: false }));
+    const city = state.visitCity || 'all'; const vf = state.visitVerdict || 'all'; const mode = state.visitMode || 'list';
+    const cities = [...new Set([...VISIT_CITIES.slice(0, 3), ...rows.map((r) => r.city)])];
+    const list = rows.filter((r) => (city === 'all' || r.city === city) && (vf === 'all' || r.verdict === vf || (vf === 'none' && !r.verdict)));
+    const n = (c) => rows.filter((r) => c === 'all' || r.city === c).length;
+    view.innerHTML = `${backBtn}
+      <h1>Vendor visits</h1>
+      <p class="sub">Tick what each manufacturer offers while you sit with them. Everything is saved for all partners.</p>
+      <button class="btn block" id="vvNew" style="margin-top:0">+ New visit</button>
+      <div class="seg" id="vvCity" style="margin-top:14px">${['all', ...cities].map((c) => `<button data-c="${esc(c)}" class="${city === c ? 'on' : ''}">${c === 'all' ? 'All cities' : esc(c)}<span class="c">${n(c)}</span></button>`).join('')}</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <div class="chipset" id="vvVerdict">${[['all', 'All'], ['shortlist', 'Shortlist'], ['maybe', 'Maybe'], ['no', 'Not for us']].map(([k, l]) => `<button data-k="${k}" class="${vf === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <div class="chipset" id="vvMode">${[['list', 'List'], ['compare', 'Compare']].map(([k, l]) => `<button data-m="${k}" class="${mode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      </div>
+      <div id="vvBody" style="margin-top:12px"></div>`;
+    wireBack(view);
+    const body = view.querySelector('#vvBody');
+    const reload = () => VIEWS.visits(view);
+    view.querySelector('#vvNew').onclick = () => openVisit(null, reload, city !== 'all' ? city : null);
+    view.querySelectorAll('#vvCity [data-c]').forEach((b) => { b.onclick = () => { state.visitCity = b.dataset.c; reload(); }; });
+    view.querySelectorAll('#vvVerdict [data-k]').forEach((b) => { b.onclick = () => { state.visitVerdict = b.dataset.k; reload(); }; });
+    view.querySelectorAll('#vvMode [data-m]').forEach((b) => { b.onclick = () => { state.visitMode = b.dataset.m; reload(); }; });
+    if (!list.length) { body.innerHTML = `<div class="empty">${rows.length ? 'No visits match these filters.' : 'No visits yet. Tap “+ New visit” at your first factory.'}</div>`; return; }
+    const money = (v) => (v || v === 0 ? `₹${Number(v).toLocaleString('en-IN')}` : '—');
+    if (mode === 'compare') {
+      const cols = list.slice(0, 12);
+      const best = (key, low = true) => { const v = cols.map((r) => Number((r.facts || {})[key])).filter((x) => x > 0); return v.length > 1 ? (low ? Math.min(...v) : Math.max(...v)) : null; };
+      const cell = (r, key, unit) => { const v = (r.facts || {})[key]; if (v == null) return '<td class="muted">—</td>'; const b = best(key, key !== 'capacity'); const s = unit.startsWith('₹') ? money(v) : `${v} ${unit}`; return `<td class="${b != null && Number(v) === b ? 'vv-best' : ''}">${esc(s)}</td>`; };
+      const groupCell = (r, items) => { const t = items.filter((i) => (r.ticks || []).includes(i)); return `<td>${t.length ? esc(t.join(', ')) : '<span class="muted">—</span>'}</td>`; };
+      const G = Object.fromEntries(VISIT_TICKS);
+      body.innerHTML = `<p class="sub">Neon = best among these ${cols.length}. Swipe sideways to see every vendor.</p>
+        <div class="vv-cmp"><table>
+          <thead><tr><th></th>${cols.map((r) => `<th data-id="${r.id}"><b>${esc(r.name)}</b><span>${esc(r.city)}${r.verdict ? ` · ${VERDICT[r.verdict][0]}` : ''}</span></th>`).join('')}</tr></thead>
+          <tbody>
+            <tr><th>Score</th>${cols.map((r) => { const s = visitScore(r); const top = Math.max(...cols.map(visitScore).filter(Boolean)); return `<td class="${s && s === top && cols.length > 1 ? 'vv-best' : ''}">${s ? `${s} / 5` : '—'}</td>`; }).join('')}</tr>
+            <tr><th>Type</th>${cols.map((r) => `<td>${esc(r.kind || '—')}</td>`).join('')}</tr>
+            ${VISIT_FACTS.map(([k, l, u]) => `<tr><th>${esc(l)}</th>${cols.map((r) => cell(r, k, u)).join('')}</tr>`).join('')}
+            ${VISIT_RATE.map(([k, l]) => `<tr><th>${esc(l)}</th>${cols.map((r) => `<td class="vv-stars">${stars((r.ratings || {})[k]) || '—'}</td>`).join('')}</tr>`).join('')}
+            ${['What they make', 'GSM they offer', 'Printing in-house', 'Wash & finish', 'Labels & packing', 'Services', 'Business terms'].map((g) => `<tr><th>${esc(g)}</th>${cols.map((r) => groupCell(r, G[g])).join('')}</tr>`).join('')}
+          </tbody></table></div>`;
+      body.querySelectorAll('th[data-id]').forEach((th) => { th.onclick = () => openVisit(rows.find((r) => r.id === Number(th.dataset.id)), reload); });
+      return;
+    }
+    body.innerHTML = list.map((r) => {
+      const f = r.facts || {}; const s = visitScore(r);
+      const keys = [f.moq_design && `MOQ ${f.moq_design}`, f.rate_os && `Oversized ${money(f.rate_os)}`, f.rate_rf && `Regular ${money(f.rate_rf)}`, f.sample_days && `Sample ${f.sample_days}d`, f.prod_days && `Bulk ${f.prod_days}d`].filter(Boolean);
+      const ph = (r.whatsapp || r.phone || '').replace(/\D/g, '').slice(-10);
+      return `<div class="card vv-card" data-id="${r.id}">
+        <div class="row"><div><b class="vv-name">${esc(r.name)}</b>${r.verdict ? ` <span class="pill ${VERDICT[r.verdict][1]}">${VERDICT[r.verdict][0]}</span>` : ''}</div>${s ? `<span class="vv-score">${s}<small>/5</small></span>` : ''}</div>
+        <div class="muted">${esc(r.city)} · ${esc(new Date(`${r.visited_on}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}${r.kind ? ` · ${esc(r.kind)}` : ''}${r.contact_person ? ` · ${esc(r.contact_person)}` : ''}</div>
+        ${keys.length ? `<div class="vv-keys">${keys.map((k) => `<span>${esc(k)}</span>`).join('')}</div>` : ''}
+        <div class="muted" style="margin-top:6px">${(r.ticks || []).length} things ticked${r.photos && r.photos.length ? ` · ${r.photos.length} photo${r.photos.length > 1 ? 's' : ''}` : ''}${r.follow_up ? ` · follow up ${esc(new Date(`${r.follow_up}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}` : ''}${r.vendor_id ? ' · in PO vendors' : ''}</div>
+        ${r.next_step ? `<div style="margin-top:6px">Next: ${esc(r.next_step)}</div>` : ''}
+        <div class="actions">
+          ${ph.length === 10 ? `<a class="btn small outline" href="tel:+91${ph}" data-stop>Call</a><a class="btn small outline" target="_blank" rel="noopener" data-stop href="https://wa.me/91${ph}">WhatsApp</a>` : ''}
+          <button class="btn small">Open</button>
+        </div>
+      </div>`;
+    }).join('');
+    body.querySelectorAll('.vv-card').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-stop]')) return; openVisit(rows.find((r) => r.id === Number(c.dataset.id)), reload); }; });
+  };
+
+  function openVisit(row, done, presetCity) {
+    const dk = `zs_visit_draft_${row ? row.id : 'new'}`;
+    let draft = null; try { draft = JSON.parse(localStorage.getItem(dk) || 'null'); } catch (_) { /* no storage */ }
+    const base = row ? { ...row, facts: { ...(row.facts || {}) }, ratings: { ...(row.ratings || {}) }, ticks: [...(row.ticks || [])], photos: [...(row.photos || [])] }
+      : { city: presetCity || state.visitLastCity || 'Ludhiana', trip: state.visitLastTrip || '', visited_on: todayKey(), facts: {}, ratings: {}, ticks: [], photos: [] };
+    const f = draft && draft._at && (!row || !row.updated_at || draft._at > Date.parse(row.updated_at)) ? { ...base, ...draft } : base;
+    const restored = f !== base;
+    const known = new Set(VISIT_TICKS.flatMap(([, it]) => it));
+    const extra = (f.ticks || []).filter((t) => !known.has(t));
+    const saveDraft = () => { try { localStorage.setItem(dk, JSON.stringify({ ...f, _at: Date.now() })); } catch (_) { /* fine */ } };
+    const clearDraft = () => { try { localStorage.removeItem(dk); } catch (_) { /* fine */ } };
+    const inp = (k, label, attrs = '') => `<label for="vv_${k}">${label}</label><input id="vv_${k}" data-k="${k}" value="${esc(f[k] || '')}" ${attrs}>`;
+    const body = panel(`
+      <h1 style="margin-top:14px">${row ? esc(row.name) : 'New vendor visit'}</h1>
+      <p class="sub">${restored ? 'Your unsaved notes were brought back. ' : ''}Notes save on this phone as you type, even without internet.</p>
+      <div class="lst-h">Where</div>
+      <div class="chipset" id="vvCityPick">${[...new Set([...VISIT_CITIES, f.city].filter(Boolean))].map((c) => `<button type="button" data-c="${esc(c)}" class="${f.city === c ? 'on' : ''}">${esc(c)}</button>`).join('')}<button type="button" data-c="__other">+ Other city</button></div>
+      <div class="row2"><div>${inp('trip', 'Trip (optional)', 'placeholder="e.g. Dec sourcing trip"')}</div><div><label for="vv_visited_on">Date</label><input id="vv_visited_on" data-k="visited_on" type="date" value="${esc(f.visited_on || todayKey())}"></div></div>
+      <div class="lst-h">Vendor</div>
+      ${inp('name', 'Business name', 'placeholder="e.g. Punjab Knit Fab"')}
+      <label>Type</label>
+      <div class="chipset" id="vvKind">${VISIT_KINDS.map((k) => `<button type="button" data-v="${esc(k)}" class="${f.kind === k ? 'on' : ''}">${esc(k)}</button>`).join('')}</div>
+      <div class="row2"><div>${inp('contact_person', 'Contact person')}</div><div>${inp('phone', 'Phone', 'inputmode="tel" placeholder="98XXXXXXXX"')}</div></div>
+      <div class="row2"><div>${inp('whatsapp', 'WhatsApp (if different)', 'inputmode="tel"')}</div><div>${inp('email', 'Email', 'type="email"')}</div></div>
+      ${inp('address', 'Address / area', 'placeholder="e.g. Focal Point, Phase 8"')}
+      ${inp('website', 'Website / Instagram')}
+      <div class="lst-h">What they offer <span class="muted" id="vvTickN"></span></div>
+      ${VISIT_TICKS.map(([g, items], gi) => `
+        <details class="vv-group" ${gi < 3 || items.some((i) => f.ticks.includes(i)) ? 'open' : ''}>
+          <summary>${esc(g)} <span class="vv-gn" data-gn="${gi}"></span></summary>
+          <div class="vv-ticks">${items.map((i) => `<label class="vv-tick"><input type="checkbox" data-tick="${esc(i)}" ${f.ticks.includes(i) ? 'checked' : ''}><span>${esc(i)}</span></label>`).join('')}</div>
+        </details>`).join('')}
+      <details class="vv-group" open><summary>Anything else they offer</summary>
+        <div class="vv-ticks" id="vvExtra">${extra.map((i) => `<label class="vv-tick"><input type="checkbox" data-tick="${esc(i)}" checked><span>${esc(i)}</span></label>`).join('')}</div>
+        <div class="row" style="gap:8px;margin-top:8px"><input id="vvExtraIn" placeholder="Type and tap Add" style="flex:1"><button type="button" class="btn small outline" id="vvExtraAdd">Add</button></div>
+      </details>
+      <div class="lst-h">Their numbers</div>
+      <div class="vv-facts">${VISIT_FACTS.map(([k, l, u]) => `<label class="vv-fact"><span>${esc(l)} <small>${esc(u)}</small></span><input data-fact="${k}" type="number" inputmode="decimal" step="any" min="0" value="${esc(f.facts[k] ?? '')}"></label>`).join('')}</div>
+      ${VISIT_TEXT_FACTS.map(([k, l]) => `<label for="vvf_${k}">${esc(l)}</label><input id="vvf_${k}" data-fact="${k}" value="${esc(f.facts[k] || '')}">`).join('')}
+      <div class="lst-h">Our rating</div>
+      ${VISIT_RATE.map(([k, l]) => `<div class="vv-rate"><span>${esc(l)}</span><div data-rate="${k}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-n="${n}" class="${(f.ratings[k] || 0) >= n ? 'on' : ''}" aria-label="${n} of 5">★</button>`).join('')}</div></div>`).join('')}
+      <div class="lst-h">Verdict</div>
+      <div class="chipset" id="vvVer">${Object.entries(VERDICT).map(([k, [l]]) => `<button type="button" data-v="${k}" class="${f.verdict === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="row2"><div><label for="vv_follow_up">Follow up on</label><input id="vv_follow_up" data-k="follow_up" type="date" value="${esc(f.follow_up || '')}"></div><div>${inp('next_step', 'Next step', 'placeholder="e.g. Send tech pack"')}</div></div>
+      <label for="vv_notes">Notes</label><textarea id="vv_notes" data-k="notes" placeholder="Anything to remember about them">${esc(f.notes || '')}</textarea>
+      <div class="lst-h">Photos</div>
+      <p class="hint">Visiting card, fabric swatches, samples, the factory.</p>
+      <div class="vv-photos" id="vvPhotos"></div>
+      <label class="btn outline block" style="margin-top:8px">+ Add photo<input type="file" accept="image/*" capture="environment" id="vvPhotoIn" hidden multiple></label>
+      <button class="btn block" id="vvSave" style="margin-top:18px">${row ? 'Save changes' : 'Save visit'}</button>
+      ${row ? `<div class="row" style="gap:8px;margin-top:10px">${row.vendor_id ? '<span class="muted">Already in PO vendors</span>' : '<button class="btn small outline" id="vvToVendor">Add to PO vendors</button>'}<button class="btn small bad" id="vvDel">Delete visit</button></div>` : ''}`);
+
+    const countTicks = () => {
+      body.querySelector('#vvTickN').textContent = f.ticks.length ? `· ${f.ticks.length} ticked` : '';
+      VISIT_TICKS.forEach(([, items], gi) => { const n = items.filter((i) => f.ticks.includes(i)).length; body.querySelector(`[data-gn="${gi}"]`).textContent = n ? n : ''; });
+    };
+    countTicks();
+    const one = (sel, key) => body.querySelectorAll(`${sel} [data-v]`).forEach((b) => { b.onclick = () => { f[key] = f[key] === b.dataset.v ? null : b.dataset.v; body.querySelectorAll(`${sel} [data-v]`).forEach((y) => y.classList.toggle('on', y.dataset.v === f[key])); saveDraft(); }; });
+    one('#vvKind', 'kind'); one('#vvVer', 'verdict');
+    const wireCity = () => body.querySelectorAll('#vvCityPick [data-c]').forEach((b) => {
+      b.onclick = async () => {
+        let c = b.dataset.c;
+        if (c === '__other') { const v = await ask({ title: 'Which city?', fields: [{ name: 'c', label: 'City', required: true }], ok: 'Use this city' }); if (!v || !v.c.trim()) return; c = v.c.trim().replace(/^\w/, (x) => x.toUpperCase());
+          if (!body.querySelector(`#vvCityPick [data-c="${CSS.escape(c)}"]`)) b.insertAdjacentHTML('beforebegin', `<button type="button" data-c="${esc(c)}">${esc(c)}</button>`); wireCity(); }
+        f.city = c; body.querySelectorAll('#vvCityPick [data-c]').forEach((y) => y.classList.toggle('on', y.dataset.c === c)); saveDraft();
+      };
+    });
+    wireCity();
+    body.querySelectorAll('[data-k]').forEach((el) => { el.oninput = () => { f[el.dataset.k] = el.value; saveDraft(); }; });
+    body.querySelectorAll('[data-fact]').forEach((el) => { el.oninput = () => { const v = el.value.trim(); if (v === '') delete f.facts[el.dataset.fact]; else f.facts[el.dataset.fact] = el.type === 'number' ? Number(v) : v; saveDraft(); }; });
+    const wireTicks = () => body.querySelectorAll('[data-tick]').forEach((cb) => { cb.onchange = () => { const t = cb.dataset.tick; f.ticks = cb.checked ? [...new Set([...f.ticks, t])] : f.ticks.filter((x) => x !== t); countTicks(); saveDraft(); }; });
+    wireTicks();
+    const addExtra = () => { const i = body.querySelector('#vvExtraIn'); const t = i.value.trim(); if (!t) return; if (!f.ticks.includes(t)) { f.ticks.push(t); if (!known.has(t)) body.querySelector('#vvExtra').insertAdjacentHTML('beforeend', `<label class="vv-tick"><input type="checkbox" data-tick="${esc(t)}" checked><span>${esc(t)}</span></label>`); else { const cb = body.querySelector(`[data-tick="${CSS.escape(t)}"]`); if (cb) cb.checked = true; } } i.value = ''; wireTicks(); countTicks(); saveDraft(); };
+    body.querySelector('#vvExtraAdd').onclick = addExtra;
+    body.querySelector('#vvExtraIn').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addExtra(); } };
+    body.querySelectorAll('[data-rate]').forEach((g) => g.querySelectorAll('[data-n]').forEach((b) => {
+      b.onclick = () => { const k = g.dataset.rate; const n = Number(b.dataset.n); f.ratings[k] = f.ratings[k] === n ? undefined : n; if (!f.ratings[k]) delete f.ratings[k];
+        g.querySelectorAll('[data-n]').forEach((y) => y.classList.toggle('on', (f.ratings[k] || 0) >= Number(y.dataset.n))); saveDraft(); };
+    }));
+    // photos
+    const pbox = body.querySelector('#vvPhotos');
+    const drawPhotos = async () => {
+      if (!f.photos.length) { pbox.innerHTML = ''; return; }
+      pbox.innerHTML = f.photos.map((p, i) => `<div class="vv-ph" data-i="${i}"><span class="muted">…</span><button type="button" aria-label="Remove photo" data-rm="${i}">×</button></div>`).join('');
+      pbox.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = () => { f.photos.splice(Number(b.dataset.rm), 1); saveDraft(); drawPhotos(); }; });
+      try {
+        const { data } = await sb.storage.from('proofs').createSignedUrls(f.photos, 3600);
+        (data || []).forEach((d, i) => { const el = pbox.querySelector(`[data-i="${i}"]`); if (el && d.signedUrl) { el.querySelector('span').outerHTML = `<a href="${esc(d.signedUrl)}" target="_blank" rel="noopener"><img src="${esc(d.signedUrl)}" alt="Visit photo ${i + 1}"></a>`; } });
+      } catch (_) { /* offline: placeholders stay */ }
+    };
+    drawPhotos();
+    body.querySelector('#vvPhotoIn').onchange = async (e) => {
+      const files = [...e.target.files]; e.target.value = '';
+      for (const file of files) {
+        try { toast('Uploading photo…'); const path = await uploadProof(await shrinkPhoto(file), 'vendor-visits'); f.photos.push(path); saveDraft(); await drawPhotos(); toast('Photo added'); }
+        catch (err) { toast(errText(err), true); }
+      }
+    };
+    body.querySelector('#vvSave').onclick = async (e) => {
+      const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const id = await q(sb.rpc('save_vendor_visit', { p: { id: row ? row.id : null, city: f.city, trip: f.trip, visited_on: f.visited_on, name: f.name, kind: f.kind,
+          contact_person: f.contact_person, phone: f.phone, whatsapp: f.whatsapp, email: f.email, address: f.address, website: f.website,
+          ticks: f.ticks, facts: f.facts, ratings: f.ratings, verdict: f.verdict, follow_up: f.follow_up, next_step: f.next_step, notes: f.notes, photos: f.photos } }));
+        clearDraft(); state.visitLastCity = f.city; state.visitLastTrip = f.trip;
+        closePanel(); toast(row ? 'Visit saved' : `${f.name} saved`); if (!row) C.confetti(0.4); done(id);
+      } catch (err) { btn.disabled = false; btn.textContent = row ? 'Save changes' : 'Save visit'; toast(`${errText(err)} Your notes are kept on this phone.`, true); }
+    };
+    const del = body.querySelector('#vvDel');
+    if (del) del.onclick = async () => {
+      const ok = await ask({ title: `Delete ${row.name}?`, html: '<p class="muted">This visit and its notes are removed for every partner. Photos stay in storage.</p>', ok: 'Delete', okClass: 'bad' });
+      if (!ok) return;
+      try { await q(sb.rpc('delete_vendor_visit', { p_id: row.id })); clearDraft(); closePanel(); toast('Visit deleted'); done(); } catch (err) { toast(errText(err), true); }
+    };
+    const tv = body.querySelector('#vvToVendor');
+    if (tv) tv.onclick = () => {
+      const cat = f.kind === 'Printer / embellisher' ? (f.ticks.includes('DTF') ? 'dtf' : f.ticks.includes('Embroidery') ? 'embroidery' : 'other') : ['Own factory', 'Trader / wholesaler', 'Job worker (stitching)'].includes(f.kind) ? 'plain' : 'other';
+      vendorForm(null, async (r) => {
+        try { await q(sb.rpc('save_vendor_visit', { p: { ...f, id: row.id, vendor_id: r.id } })); toast(`Added to PO vendors as ${r.code}`); } catch (err) { toast(errText(err), true); }
+        done();
+      }, { category: cat, name: f.name, contact_person: f.contact_person, phone: f.phone, email: f.email, address: f.address, city: f.city, gstin: f.facts.gstin, payment_terms: f.facts.payment, notes: `Met on ${f.visited_on}` });
+    };
+  }
 
   // ---------------- returns & exchanges
   VIEWS.returns = async (view) => {
@@ -2810,7 +3044,7 @@
   const waNum = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length === 10 ? `91${d}` : d; };
 
   function vendorForm(v, done, preset = {}) {
-    const x = v || { category: preset.category || 'plain', state_code: myStateCode() };
+    const x = v || { state_code: myStateCode(), ...preset, category: preset.category || 'plain' };
     const body = panel(`<h1 style="margin-top:14px">${v ? `Edit ${esc(v.code)}` : 'New vendor'}</h1>
       <p class="sub">${v ? 'The vendor code never changes.' : 'The code is made when you save.'}</p>
       <label>Supplies</label>
