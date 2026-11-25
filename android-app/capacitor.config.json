@@ -13,5 +13,10 @@
       "style": "DARK",
       "overlaysWebView": false
     }
+  },
+  "server": {
+    "url": "https://sindiicat.dzynlabpvtltd.com/admin/",
+    "errorPath": "offline.html",
+    "cleartext": false
   }
 }

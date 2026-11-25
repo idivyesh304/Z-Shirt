@@ -1044,3 +1044,7 @@ header.top { display: flex; justify-content: space-between; }
 .app-dust { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
 .app-dust.over-boot { z-index: 101; }
 .dust-tog.on { border-color: var(--neon); color: var(--neon); }
+
+/* one-tap reinstall banner, only when the Android shell changed */
+.app-update{position:fixed;left:12px;right:12px;bottom:84px;z-index:60;padding:12px 16px;border:1px solid var(--cyan,#27e3ff);border-radius:14px;
+  background:#06080Aee;color:var(--cyan,#27e3ff);font:600 14px/1.35 inherit;text-align:left;box-shadow:0 0 18px #27e3ff40}

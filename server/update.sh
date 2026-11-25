@@ -29,6 +29,11 @@ if [ "$OLD" != "$NEW" ] || [ "$FORCE" = "--force" ]; then
       -e "s|SUPABASE_ANON_KEY: *'[^']*'|SUPABASE_ANON_KEY: '$(getenv ANON_KEY)'|" \
       -e "s|SHOP_URL: *'[^']*'|SHOP_URL: 'https://$DOMAIN/'|" "$REPO/web/config.js" > "$WEB/config.js.new"
   mv "$WEB/config.js.new" "$WEB/config.js"
+  # stamp the version on every page so phones and browsers fetch the new screens straight away
+  V=$(git rev-parse --short HEAD)
+  for h in "$WEB/index.html" "$WEB/admin/index.html"; do
+    [ -f "$h" ] && sed -i -E "s#(src|href)=\"([^\":]+\.(js|css))\"#\1=\"\2?v=$V\"#g" "$h"
+  done
   chmod -R a+rX "$WEB"
   say "pages updated to $(git rev-parse --short HEAD)"
 fi
@@ -61,3 +66,5 @@ if [ -n "$REL" ] && [ "$REL" != "$(cat "$STATE/apk-tag" 2>/dev/null)" ]; then
     say "phone app $REL ready"
   fi
 fi
+# tells installed phone apps which app build is newest (they offer the new install only when the app shell itself changed)
+if [ -n "$REL" ] && [ -d "$WEB/app" ]; then echo "{\"build\": ${REL##*.}}" > "$WEB/app/version.json"; chmod a+r "$WEB/app/version.json"; fi

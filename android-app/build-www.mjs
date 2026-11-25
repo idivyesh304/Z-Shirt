@@ -26,5 +26,6 @@ writeFileSync(html, readFileSync(html, 'utf8')
 const css = join(out, 'style.css');
 writeFileSync(css, readFileSync(css, 'utf8').replaceAll('../brand/', 'brand/'));
 
+cpSync(join(here, 'native', 'offline.html'), join(out, 'offline.html'));
 if (!existsSync(join(out, 'app.js'))) throw new Error('web/admin/app.js missing');
 console.log('www/ ready');

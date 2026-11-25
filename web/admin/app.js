@@ -48,6 +48,22 @@
       if (/^(https?:|tel:|mailto:)/i.test(href)) { e.preventDefault(); openExternal(href); }
     });
   }
+  // Screens load live from our server, so normal changes reach every phone on their own.
+  // Only when the Android shell itself changes (rare) do we offer a one-tap reinstall.
+  if (NATIVE && Plug.App && Plug.App.getInfo) {
+    setTimeout(async () => {
+      try {
+        const [info, r] = await Promise.all([Plug.App.getInfo(), fetch('../app/version.json', { cache: 'no-store' })]);
+        const latest = r.ok ? Number((await r.json()).build) : 0;
+        if (!latest || latest <= Number(info.build)) return;
+        const bar = document.createElement('button');
+        bar.className = 'app-update';
+        bar.textContent = 'A new version of the app is ready. Tap to install.';
+        bar.onclick = () => { location.href = 'https://github.com/idivyesh304/Z-Shirt/releases/latest/download/SINDIICAT-Team.apk'; bar.remove(); };
+        document.body.appendChild(bar);
+      } catch (_) { /* offline or old server: nothing to show */ }
+    }, 2500);
+  }
   const shopUrl = () => cfg.SHOP_URL || location.href.replace(/admin\/.*$/, '').split('?')[0];
   const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
   const sizeSort = (a, b) => (SIZE_ORDER.indexOf(a) + 99) % 99 - (SIZE_ORDER.indexOf(b) + 99) % 99 || String(a).localeCompare(String(b));

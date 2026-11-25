@@ -4,7 +4,8 @@ name: Android app
 on:
   push:
     branches: [main]
-    paths: ['web/**', 'android-app/**', '.github/workflows/android.yml']
+    # screens load live from our server, so only a change to the Android shell needs a new APK
+    paths: ['android-app/**', '.github/workflows/android.yml']
   workflow_dispatch:
 permissions:
   contents: write
