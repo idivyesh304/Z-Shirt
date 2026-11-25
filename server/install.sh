@@ -11,6 +11,13 @@
 # READ from (copied), never changed.
 # =====================================================================
 set -euo pipefail
+# When started as "curl ... | bash", save this script and run it from the file instead,
+# so no later step can swallow the rest of the script from the pipe.
+if [ -z "${SINDIICAT_FROM_FILE:-}" ]; then
+  mkdir -p /opt/sindiicat
+  curl -fsSL "https://raw.githubusercontent.com/idivyesh304/Z-Shirt/main/server/install.sh?$(date +%s)" -o /opt/sindiicat/install.sh
+  SINDIICAT_FROM_FILE=1 exec bash /opt/sindiicat/install.sh "$@" < /dev/tty
+fi
 DOMAIN=sindiicat.dzynlabpvtltd.com
 API=api.sindiicat.dzynlabpvtltd.com
 APP=/opt/sindiicat
@@ -94,7 +101,7 @@ sh run.sh start || docker compose up -d --wait || die "The database server did n
 ok "database server running"
 PGPW=$(getenv POSTGRES_PASSWORD); SRK=$(getenv SERVICE_ROLE_KEY); ANON=$(getenv ANON_KEY)
 tgt() { docker exec -i -e PGPASSWORD="$PGPW" supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
-tgt -Atc 'select 1' >/dev/null || die "Cannot reach the new database."
+tgt -Atc 'select 1' </dev/null >/dev/null || die "Cannot reach the new database."
 
 say "5/9 Copying everything from the old Supabase project"
 if [ -f "$STATE/migrated" ]; then ok "already copied on $(cat "$STATE/migrated")"
