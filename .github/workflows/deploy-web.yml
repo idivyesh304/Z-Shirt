@@ -1,4 +1,5 @@
-# Publishes the web/ folder to GitHub Pages whenever it changes on main.
+# SINDIICAT moved to its own server. The old GitHub Pages address now only forwards
+# every visitor (and every old link) to https://sindiicat.dzynlabpvtltd.com.
 name: Publish app
 on:
   push:
@@ -21,8 +22,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/configure-pages@v5
+      - name: Build the forwarding pages
+        run: |
+          mkdir -p moved/admin
+          cat > moved/index.html <<'HTML'
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>SINDIICAT has moved</title><meta name="robots" content="noindex">
+          <script>
+            var p = location.pathname.replace(/^\/Z-Shirt/, '').replace(/^\/SINDIICAT/, '');
+            location.replace('https://sindiicat.dzynlabpvtltd.com' + (p || '/') + location.search + location.hash);
+          </script>
+          <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#06080A;color:#F4F6F2;font:16px system-ui,sans-serif;text-align:center}a{color:#C7FF00}</style>
+          </head><body><p>SINDIICAT has moved to<br><a href="https://sindiicat.dzynlabpvtltd.com/">sindiicat.dzynlabpvtltd.com</a></p></body></html>
+          HTML
+          cp moved/index.html moved/admin/index.html
+          cp moved/index.html moved/404.html
+          # old installed team apps ask for this file; it now unregisters itself
+          printf "self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.registration.unregister()));\n" > moved/sw.js
+          cp moved/sw.js moved/admin/sw.js
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: moved
       - id: deployment
         uses: actions/deploy-pages@v4

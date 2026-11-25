@@ -4,8 +4,11 @@ Shop, orders, stock, returns, money and partner trust — in one system.
 
 | | Who uses it | Address after setup |
 |---|---|---|
-| **Shop** | Customers | `https://idivyesh304.github.io/Z-Shirt/` |
-| **Team app** | Aaryak, Ayush, Devanshi, Jigar (partners) and Mahendra (store) | `https://idivyesh304.github.io/Z-Shirt/admin/` |
+| **Shop** | Customers | `https://sindiicat.dzynlabpvtltd.com/` |
+| **Team app** | Aaryak, Ayush, Devanshi, Jigar (partners) and Mahendra (store) | `https://sindiicat.dzynlabpvtltd.com/admin/` |
+
+> **Runs on DZYN LAB's own Hostinger server** (since 25 Nov 2026): database, logins, photos, notifications, shop, team app and phone-app download all live on `sindiicat.dzynlabpvtltd.com`. Setup: `server/install.sh`; updates arrive by themselves every 2 minutes (`server/update.sh`); nightly backups in `/var/backups/sindiicat`. The old GitHub Pages address only forwards visitors to the new one.
+
 
 Both work on phones and laptops, and the team app installs to the home screen like a normal app.
 
@@ -106,10 +109,10 @@ Until this step is done, customers can still order with **cash on delivery**.
 ### 4. Put it online
 1. Repo → **Settings → Pages** → Source: **GitHub Actions**.
 2. Repo → **Actions → Publish app → Run workflow**.
-3. Supabase → **Authentication → URL Configuration** → Site URL = `https://idivyesh304.github.io/Z-Shirt/admin/`.
+3. Supabase → **Authentication → URL Configuration** → Site URL = `https://sindiicat.dzynlabpvtltd.com/admin/`.
 
 ### 5. Everyone joins the team app
-Each partner and Mahendra opens `…/Z-Shirt/admin/`, taps **Create account** with their registered e-mail, confirms it, signs in, and adds it to the home screen. Tap the 🔔 → **Turn on phone alerts**.
+Each partner and Mahendra opens `sindiicat.dzynlabpvtltd.com/admin/`, taps **Create account** with their registered e-mail, confirms it, signs in, and adds it to the home screen. Tap the 🔔 → **Turn on phone alerts**.
 
 ### 6. First steps inside
 1. Each partner records their **capital in** (More → New money entry) — the others approve.
@@ -127,7 +130,7 @@ The team app is also an installable Android app. GitHub builds a new APK automat
 
 Notes:
 - The app needs the Supabase keys in `web/config.js` (step 2 of setup). After you paste them, GitHub rebuilds the APK by itself — install that version.
-- In the app, the invoice button sends the invoice to the customer on WhatsApp (phones can't print). Print invoices and labels from a laptop at `…/Z-Shirt/admin/`.
+- In the app, the invoice button sends the invoice to the customer on WhatsApp (phones can't print). Print invoices and labels from a laptop at `sindiicat.dzynlabpvtltd.com/admin/`.
 - Every APK is signed with the same key (`android-app/signing/`), so updates always install. Before a Play Store launch, switch to a private key: add repo secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` — the build uses them automatically.
 - Alerts work while the app is open or recently used. Alerts on a fully closed phone (push) are the next step.
 

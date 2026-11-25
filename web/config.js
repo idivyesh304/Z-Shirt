@@ -1,8 +1,9 @@
-// Paste your Supabase project details here (Supabase → Project Settings → API).
+// SINDIICAT runs on DZYN LAB's own server (sindiicat.dzynlabpvtltd.com). The server rewrites
+// these two values from its own settings; they are kept here for the Android app build.
 // The "anon public" key is safe to put here: the database rules decide what anyone can see or do.
 window.ZS_CONFIG = {
-  SUPABASE_URL: 'https://apmtzjniptpvksyrnhph.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_7YLqao8VZFrsr_sFoJA2fg_XOCV0ZkJ',
+  SUPABASE_URL: 'https://api.sindiicat.dzynlabpvtltd.com',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NjAwMjg0LCJleHAiOjE5NTMyODAyODR9.iPQOg6_MNFKYV1wsO1ycZlRKC5UIt19t67nZFuxhflA',
 
   // Business details printed on invoices
   BUSINESS_NAME: 'SINDIICAT',
@@ -10,7 +11,7 @@ window.ZS_CONFIG = {
   GSTIN: '',                   // add once registered
 
   // Public address of the shop (used for links in WhatsApp messages and the Android app)
-  SHOP_URL: 'https://idivyesh304.github.io/Z-Shirt/',
+  SHOP_URL: 'https://sindiicat.dzynlabpvtltd.com/',
 
   // Shop details shown to customers
   STORE_WHATSAPP: '',          // e.g. '919876543210' (country code + number, no +). Leave '' to hide the button.
