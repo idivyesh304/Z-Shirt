@@ -28,6 +28,7 @@ exec > >(tee -a "$LOG") 2>&1
 say()  { printf '\n\033[1;33m==> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m    ✓ %s\033[0m\n' "$*"; }
 die()  { printf '\n\033[1;31m✗ %s\033[0m\n' "$*"; printf 'Full log: %s\nSend the red line above to Claude.\n' "$LOG"; exit 1; }
+trap 'die "Stopped at line $LINENO: $BASH_COMMAND"' ERR
 [ "$(id -u)" = 0 ] || die "Please run as root."
 command -v caddy >/dev/null || die "Caddy (the web server Lucy uses) was not found on this server."
 
@@ -55,7 +56,7 @@ ok "code $(git -C "$REPO" rev-parse --short HEAD)"
 say "4/9 Setting up the database server (Supabase, self-hosted)"
 setenv() { # KEY VALUE  (in $STACK/.env)
   if grep -q "^$1=" "$STACK/.env"; then sed -i "s|^$1=.*|$1=$2|" "$STACK/.env"; else echo "$1=$2" >> "$STACK/.env"; fi; }
-getenv() { grep "^$1=" "$STACK/.env" | head -n1 | cut -d= -f2-; }
+getenv() { awk -v k="$1" 'index($0, k "=") == 1 { print substr($0, length(k) + 2); exit }' "$STACK/.env"; }
 if [ ! -f "$STACK/.env" ]; then
   cd "$APP"
   curl -fsSL https://raw.githubusercontent.com/supabase/supabase/master/docker/setup.sh -o setup.sh

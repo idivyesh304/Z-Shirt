@@ -8,7 +8,7 @@ APP=/opt/sindiicat; REPO=$APP/repo; STACK=$APP/stack; WEB=/srv/sindiicat; STATE=
 DOMAIN=sindiicat.dzynlabpvtltd.com; API=api.sindiicat.dzynlabpvtltd.com
 exec 9>/run/sindiicat-update.lock; flock -n 9 || exit 0
 FORCE="${1:-}"
-getenv() { grep "^$1=" "$STACK/.env" | head -n1 | cut -d= -f2-; }
+getenv() { awk -v k="$1" 'index($0, k "=") == 1 { print substr($0, length(k) + 2); exit }' "$STACK/.env"; }
 say() { echo "[sindiicat-update] $*"; }
 
 cd "$REPO"
