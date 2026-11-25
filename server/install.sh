@@ -100,7 +100,9 @@ for f in push razorpay; do rsync -a --delete "$REPO/supabase/functions/$f/" "vol
 sh run.sh start || docker compose up -d --wait || die "The database server did not start. See: cd $STACK && docker compose ps"
 ok "database server running"
 PGPW=$(getenv POSTGRES_PASSWORD); SRK=$(getenv SERVICE_ROLE_KEY); ANON=$(getenv ANON_KEY)
-tgt() { docker exec -i -e PGPASSWORD="$PGPW" supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
+# tgt: run on the new database (reads no input); tgti: same, fed from a file or pipe
+tgt()  { docker exec    -e PGPASSWORD="$PGPW" supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q "$@" </dev/null; }
+tgti() { docker exec -i -e PGPASSWORD="$PGPW" supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
 tgt -Atc 'select 1' </dev/null >/dev/null || die "Cannot reach the new database."
 
 say "5/9 Copying everything from the old Supabase project"
@@ -112,7 +114,7 @@ else
   read -rsp "    Paste the connection string here and press Enter: " SRC </dev/tty; echo
   [[ "$SRC" == postgres* ]] || die "That does not look like a connection string (it starts with postgresql://)."
   PGIMG=$(docker inspect -f '{{.Config.Image}}' supabase-db)
-  src() { docker run --rm -i --network host -e PGCONNECT_TIMEOUT=15 "$PGIMG" psql "$SRC" -v ON_ERROR_STOP=1 -q "$@"; }
+  src() { docker run --rm --network host -e PGCONNECT_TIMEOUT=15 "$PGIMG" psql "$SRC" -v ON_ERROR_STOP=1 -q "$@" </dev/null; }
   src -Atc 'select 1' >/dev/null || die "Could not log in to the old database. Check the password in the connection string."
   ok "connected to the old database"
   D=$STATE/copy; mkdir -p "$D"; chmod 700 "$D"
@@ -127,7 +129,7 @@ else
     cols=$(comm -12 <(src -Atc "select column_name from information_schema.columns where table_schema='$s' and table_name='$n' order by 1") \
                     <(tgt -Atc "select column_name from information_schema.columns where table_schema='$s' and table_name='$n' and is_generated='NEVER' order by 1") | paste -sd, -)
     [ -n "$cols" ] || die "No matching columns for $t"
-    src -c "\copy (select $cols from $t) to stdout" | tgt -c "\copy $t($cols) from stdin"
+    src -c "\copy (select $cols from $t) to stdout" | tgti -c "\copy $t($cols) from stdin"
     ok "$t: $(tgt -Atc "select count(*) from $t") rows"
   }
   tgt -c 'alter table auth.users disable trigger user; ' 2>/dev/null || true
@@ -158,19 +160,19 @@ else
   src -Atc "select pg_get_triggerdef(t.oid) || ';' from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
             join pg_proc p on p.oid=t.tgfoid join pg_namespace pn on pn.oid=p.pronamespace
             where n.nspname='auth' and not t.tgisinternal and pn.nspname='public'" > "$D/auth_triggers.sql"
-  tgt < "$D/auth_triggers.sql"
+  tgti < "$D/auth_triggers.sql"
   src -Atc "select format('drop policy if exists %I on storage.objects; create policy %I on storage.objects as %s for %s to %s%s%s;',
               policyname, policyname, permissive, cmd, array_to_string(roles, ', '),
               coalesce(' using (' || qual || ')', ''), coalesce(' with check (' || with_check || ')', ''))
             from pg_policies where schemaname='storage' and tablename='objects'" > "$D/storage_policies.sql"
-  tgt < "$D/storage_policies.sql"
+  tgti < "$D/storage_policies.sql"
   src -Atc "select format('alter publication supabase_realtime add table %I.%I;', schemaname, tablename)
             from pg_publication_tables where pubname='supabase_realtime' and schemaname='public'" > "$D/realtime.sql"
   tgt -c "do \$\$ begin if not exists (select 1 from pg_publication where pubname='supabase_realtime') then create publication supabase_realtime; end if; end \$\$;"
-  tgt < "$D/realtime.sql" 2>/dev/null || true
+  tgti < "$D/realtime.sql" 2>/dev/null || true
   src -Atc "select format('select cron.schedule(%L, %L, %L);', jobname, schedule,
               replace(command, 'https://$CLOUD_REF.supabase.co', 'http://api-gw:8000')) from cron.job" > "$D/cron.sql"
-  tgt < "$D/cron.sql" >/dev/null
+  tgti < "$D/cron.sql" >/dev/null
   ok "notification timers: $(tgt -Atc "select string_agg(jobname, ', ') from cron.job")"
 
   # 5d. photos and files

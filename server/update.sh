@@ -42,9 +42,9 @@ PW=$(getenv POSTGRES_PASSWORD)
 db() { docker exec -i -e PGPASSWORD="$PW" supabase-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
 for f in $(ls "$REPO"/supabase/apply/*.sql 2>/dev/null | sort -V); do
   n=$(basename "$f")
-  [ "$(db -Atc "select 1 from sindiicat_ops.applied where file = '$n'")" = 1 ] && continue
+  [ "$(db -Atc "select 1 from sindiicat_ops.applied where file = '$n'" </dev/null)" = 1 ] && continue
   if db -1 < "$f" > "$STATE/last-sql.log" 2>&1; then
-    db -c "insert into sindiicat_ops.applied(file) values ('$n')"; say "database change applied: $n"
+    db -c "insert into sindiicat_ops.applied(file) values ('$n')" </dev/null; say "database change applied: $n"
   else say "database change FAILED: $n (see $STATE/last-sql.log)"; break; fi
 done
 
