@@ -111,7 +111,8 @@ else
   echo "    Open Supabase → your SINDIICAT project → Connect (top) → 'Session pooler' → copy the URI."
   echo "    Put your database password where it says [YOUR-PASSWORD]."
   echo "    (Forgot it? Supabase → Project Settings → Database → Reset database password.)"
-  read -rsp "    Paste the connection string here and press Enter: " SRC </dev/tty; echo
+  if [ -n "${SINDIICAT_SRC:-}" ]; then SRC=$SINDIICAT_SRC; echo "    Using the connection string given with the command."
+  else read -rsp "    Paste the connection string here and press Enter: " SRC </dev/tty; echo; fi
   [[ "$SRC" == postgres* ]] || die "That does not look like a connection string (it starts with postgresql://)."
   PGIMG=$(docker inspect -f '{{.Config.Image}}' supabase-db)
   src() { docker run --rm --network host -e PGCONNECT_TIMEOUT=15 "$PGIMG" psql "$SRC" -v ON_ERROR_STOP=1 -q "$@" </dev/null; }
@@ -203,7 +204,8 @@ else
   tgt -c "create schema if not exists sindiicat_ops; create table if not exists sindiicat_ops.applied (file text primary key, at timestamptz default now());"
   for f in "$REPO"/supabase/apply/*.sql; do tgt -c "insert into sindiicat_ops.applied(file) values ('$(basename "$f")') on conflict do nothing;"; done
   date '+%d %b %Y %H:%M' > "$STATE/migrated"
-  unset SRC
+  unset SRC SINDIICAT_SRC
+  history -c 2>/dev/null || true; : > /root/.bash_history 2>/dev/null || true
 fi
 
 say "6/9 Putting the shop and team app online"
