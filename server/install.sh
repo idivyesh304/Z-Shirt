@@ -5,7 +5,7 @@
 # the shop, the team app and the phone-app download.
 #
 # Run as root in Hostinger → VPS → Browser terminal:
-#   curl -fsSL https://raw.githubusercontent.com/idivyesh304/Z-Shirt/main/server/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/idivyesh304/Z-Shirt/main/server/install.sh -o /root/sindiicat-install.sh && bash /root/sindiicat-install.sh
 #
 # Safe to run again: finished steps are skipped. The old Supabase project is only
 # READ from (copied), never changed.
@@ -13,7 +13,7 @@
 set -euo pipefail
 # When started as "curl ... | bash", save this script and run it from the file instead,
 # so no later step can swallow the rest of the script from the pipe.
-if [ -z "${SINDIICAT_FROM_FILE:-}" ]; then
+if [ -z "${SINDIICAT_FROM_FILE:-}" ] && [ ! -t 0 ]; then
   mkdir -p /opt/sindiicat
   curl -fsSL "https://raw.githubusercontent.com/idivyesh304/Z-Shirt/main/server/install.sh?$(date +%s)" -o /opt/sindiicat/install.sh
   SINDIICAT_FROM_FILE=1 exec bash /opt/sindiicat/install.sh "$@" < /dev/tty
