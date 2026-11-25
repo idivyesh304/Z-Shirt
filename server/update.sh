@@ -18,6 +18,9 @@ REL=$(curl -fsS https://api.github.com/repos/idivyesh304/Z-Shirt/releases/latest
 [ "$OLD" = "$NEW" ] && [ "$FORCE" != "--force" ] && [ "$REL" = "$(cat "$STATE/apk-tag" 2>/dev/null)" ] && exit 0
 CHANGED=$(git diff --name-only "$OLD" "$NEW" || true)
 git reset -q --hard origin/main
+if ! cmp -s "$REPO/server/update.sh" /usr/local/bin/sindiicat-update; then
+  install -m 755 "$REPO/server/update.sh" /usr/local/bin/sindiicat-update; say "update helper refreshed"; exec /usr/local/bin/sindiicat-update --force
+fi
 
 # 1. pages: shop at /, team app at /admin/, settings pointed at this server
 if [ "$OLD" != "$NEW" ] || [ "$FORCE" = "--force" ]; then
@@ -39,12 +42,14 @@ fi
 
 # 3. database changes, oldest first, each once; stops at the first one that fails
 PW=$(getenv POSTGRES_PASSWORD)
-db() { docker exec -i -e PGPASSWORD="$PW" supabase-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
+# db: applies changes as "postgres" (same as Supabase's SQL editor); ops: the to-do list, kept by the admin user
+db()  { docker exec -i -e PGPASSWORD="$PW" supabase-db psql -h 127.0.0.1 -U postgres       -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
+ops() { docker exec    -e PGPASSWORD="$PW" supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q "$@" </dev/null; }
 for f in $(ls "$REPO"/supabase/apply/*.sql 2>/dev/null | sort -V); do
   n=$(basename "$f")
-  [ "$(db -Atc "select 1 from sindiicat_ops.applied where file = '$n'" </dev/null)" = 1 ] && continue
+  [ "$(ops -Atc "select 1 from sindiicat_ops.applied where file = '$n'")" = 1 ] && continue
   if db -1 < "$f" > "$STATE/last-sql.log" 2>&1; then
-    db -c "insert into sindiicat_ops.applied(file) values ('$n')" </dev/null; say "database change applied: $n"
+    ops -c "insert into sindiicat_ops.applied(file) values ('$n')"; say "database change applied: $n"
   else say "database change FAILED: $n (see $STATE/last-sql.log)"; break; fi
 done
 
