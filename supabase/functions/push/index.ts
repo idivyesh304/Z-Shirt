@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   const { data: subs } = await db.from('push_subscriptions').select('*').is('failed_at', null);
   const { data: members } = await db.from('members').select('id, role, active');
   const role = new Map((members ?? []).map((m) => [m.id, m]));
-  const shop = 'https://idivyesh304.github.io/Z-Shirt/';
+  const shop = 'https://sindiicat.dzynlabpvtltd.com/';
 
   let sent = 0;
   const dead = new Set<number>();
